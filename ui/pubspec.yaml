@@ -34,6 +34,8 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
+  # https://docs.strapi.io/developer-docs/latest/developer-resources/content-api/integrations/flutter.html#use-an-http-client
+  http: ^0.12.2
 
 dev_dependencies:
   flutter_test:
