@@ -41,13 +41,49 @@
             #@endif
 
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
-            <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                <form id="edit-form" action="{{ route('edit') }}" method="POST">
-                    @csrf
-                    <button>Make edit</button>
-                </form>
+                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
+                    <img src="{{ $qu->img_url }}" height=500></img>
+                </div>
+                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
+                    <div class="ml-4 text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image depict {{ $qu->depicts_id }} Fog?</div>
+                </div>
+                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
+                    <form id="yes-form" action="{{ route('edit') }}" method="POST">
+                        @csrf
+                        <input name="question" type="hidden" value="{{ $qu->id }}">
+                        <input name="answer" type="hidden" value="yes">
+                        <button>Yes</button>
+                    </form>
+                </div>
+                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
+                    <form id="no-form" action="{{ route('edit') }}" method="POST">
+                        @csrf
+                        <input name="question" type="hidden" value="{{ $qu->id }}">
+                        <input name="answer" type="hidden" value="no">
+                        <button>No</button>
+                    </form>
+                </div>
+                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
+                    <form id="skip-form" action="{{ route('edit') }}" method="POST">
+                        @csrf
+                        <input name="question" type="hidden" value="{{ $qu->id }}">
+                        <input name="answer" type="hidden" value="skip">
+                        <button>Skip</button>
+                    </form>
+                </div>
+
+                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
+                    <div class="text-center text-sm text-gray-500 sm:text-left">
+                        <div class="flex items-center">
+                            Footber left
+                        </div>
+                    </div>
+
+                    <div class="ml-4 text-center text-sm text-gray-500 sm:text-right sm:ml-0">
+                        Footer right
+                    </div>
+                </div>
             </div>
-        </div>
 
         </div>
     </body>
