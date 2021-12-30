@@ -50,5 +50,5 @@ Route::middleware('auth:sanctum')->post('/edit', function (Request $request) {
         AddDepicts::dispatch($storedAnswer->id);
     }
 
-    return view('edit');
+    return QuDepictsController::show();
 });
