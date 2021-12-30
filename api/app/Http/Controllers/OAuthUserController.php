@@ -28,13 +28,21 @@ class OAuthUserController extends Controller
     {
         $socialiteUser = Socialite::driver('mediawiki')->user();
 
-        $user = User::firstOrCreate([
-            'username' => $socialiteUser->name,
-            'mw_userid' => $socialiteUser->id,
-            // TODO get from response...
-            'token' => 'abc',
-            'token_secret' => '123',
-        ]);
+        $user = User::where('username',$socialiteUser->name)->where('mw_userid',$socialiteUser->id)->first();
+
+        if($user) {
+            $user->update([
+                'token' => $socialiteUser->token,
+                'token_secret' => $socialiteUser->tokenSecret,
+            ]);
+        } else {
+            $user = User::create([
+                'username' => $socialiteUser->name,
+                'mw_userid' => $socialiteUser->id,
+                'token' => $socialiteUser->token,
+                'token_secret' => $socialiteUser->tokenSecret,
+            ]);
+        }
 
         Auth::login($user, false);
         return redirect()->intended();

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3e26f0a49d50187e5b90775eefc54e3c",
+    "content-hash": "e493d7e7ec850f599a7f49b2bac3f1a1",
     "packages": [
         {
             "name": "asm89/stack-cors",
@@ -5260,16 +5260,19 @@
         },
         {
             "name": "taavi/laravel-socialite-mediawiki",
-            "version": "1.4.0",
+            "version": "1.5.0",
             "source": {
                 "type": "git",
                 "url": "https://git.sr.ht/~taavi/laravel-socialite-mediawiki",
-                "reference": "98b789f1f5ecfdbf98ebfab1d8263b67f2b336fa"
+                "reference": "22692ce06cdbfdb3e9be372ec75697ac9b5bfa75"
             },
             "require": {
                 "ext-json": "*",
                 "laravel/socialite": "^4.4|^5.0",
                 "php": "^7.0|^8.0"
+            },
+            "require-dev": {
+                "mediawiki/mediawiki-codesniffer": "37.0.0"
             },
             "type": "library",
             "extra": {
@@ -5291,11 +5294,11 @@
             "authors": [
                 {
                     "name": "Taavi Väänänen",
-                    "email": "mailbox@taavi.wtf"
+                    "email": "hi@taavi.wtf"
                 }
             ],
             "description": "A MediaWiki authentication provider for Laravel Socialite",
-            "time": "2020-12-06T14:11:41+00:00"
+            "time": "2021-12-30T12:20:03+00:00"
         },
         {
             "name": "tijsverkoyen/css-to-inline-styles",

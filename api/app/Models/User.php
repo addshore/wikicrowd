@@ -20,7 +20,9 @@ class User extends Authenticatable
     protected $fillable = [
         'username',
         'mw_userid',
+        // TODO encrypt at some point...
         'token',
         'token_secret',
     ];
+
 }
