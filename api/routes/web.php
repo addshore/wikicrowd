@@ -16,3 +16,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::middleware('auth:sanctum')->get('/edit', function () {
+    return view('edit');
+})->name('edit');
+
+Route::middleware('auth:sanctum')->post('/edit', function () {
+    return "posted!";
+});

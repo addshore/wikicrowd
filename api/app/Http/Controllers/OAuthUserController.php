@@ -30,7 +30,10 @@ class OAuthUserController extends Controller
 
         $user = User::firstOrCreate([
             'username' => $socialiteUser->name,
-            'mw_userid' => $socialiteUser->id
+            'mw_userid' => $socialiteUser->id,
+            // TODO get from response...
+            'token' => 'abc',
+            'token_secret' => '123',
         ]);
 
         Auth::login($user, false);
@@ -39,11 +42,17 @@ class OAuthUserController extends Controller
 
     public function logout(Request $request)
     {
+        $user = Auth::user();
+        $user->update([
+            'token' => null,
+            'token_secret' => null,
+        ]);
+
         $referer = $request->headers->get('referer');
         Auth::guard()->logout();
 
         $request->session()->invalidate();
 
-        return redirect($referer ?? '/');
+        return redirect('/');
     }
 }
