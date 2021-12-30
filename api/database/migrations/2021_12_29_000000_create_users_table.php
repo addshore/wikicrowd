@@ -17,8 +17,8 @@ class CreateUsersTable extends Migration
             $table->id();
             $table->string('username');
             $table->integer('mw_userid');
-            $table->string('token')->nullable();
-            $table->string('token_secret')->nullable();
+            $table->string('token', 500)->nullable();
+            $table->string('token_secret', 500)->nullable();
             $table->timestamps();
         });
     }
