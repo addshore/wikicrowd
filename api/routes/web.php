@@ -5,6 +5,7 @@ use App\Http\Controllers\QuDepictsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\QuDepictsAnswer;
+use App\Jobs\AddDepicts;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,30 +39,16 @@ Route::middleware('auth:sanctum')->post('/edit', function (Request $request) {
     $user = Auth::user();
 
     // Store the answer
-    QuDepictsAnswer::create([
+    $storedAnswer = QuDepictsAnswer::create([
         'qu_depicts_id' => $question,
         'user_id' => $user->id,
         'answer' => $answer,
     ]);
 
-    // And write to some mw instance
-    // TODO make this actually hit mediainfo?
-    // TODO make this defer
-    $mwAuth = new \Addwiki\Mediawiki\Api\Client\Auth\OAuthOwnerConsumer(
-        config('services.mediawiki.identifier'),
-        config('services.mediawiki.secret'),
-        $user->token,
-        $user->token_secret
-    );
+    // Dispatch the edit job..
+    if($answer === 'yes') {
+        AddDepicts::dispatch($storedAnswer->id);
+    }
 
-    $mw = \Addwiki\Mediawiki\Api\Client\MediaWiki::newFromEndpoint( 'https://addshore-alpha.wiki.opencura.com/w/api.php', $mwAuth );
-    $mwServices = new \Addwiki\Mediawiki\Api\MediawikiFactory( $mw->action() );
-
-    $result = $mwServices->newRevisionSaver()->save( new \Addwiki\Mediawiki\DataModel\Revision(
-        new \Addwiki\Mediawiki\DataModel\Content( "Question answered: " . json_encode(['user' => $user->id, 'question' => $question, 'answer' => $answer]) ),
-        new \Addwiki\Mediawiki\DataModel\PageIdentifier( new \Addwiki\Mediawiki\DataModel\Title( 'From Laravel Via OAuth' ) )
-    ) );
-
-    // TODO redirct to the next question...
-    return "posted and got result ${result}!";
+    return view('edit');
 });

@@ -40,6 +40,7 @@
                 </div>
             #@endif
 
+        @if ($qu)
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
                     <img src="{{ $qu->img_url }}" height=500></img>
@@ -86,5 +87,18 @@
             </div>
 
         </div>
+        @else
+        <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
+                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
+                    <div class="text-center text-sm text-gray-500 sm:text-left">
+                        <div class="flex items-center">
+                            No questions currently availible
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        #@endif
     </body>
 </html>

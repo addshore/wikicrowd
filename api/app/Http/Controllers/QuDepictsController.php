@@ -11,7 +11,8 @@ class QuDepictsController extends Controller
     public function show()
     {
         return view('edit', [
-            'qu' => QuDepicts::first()
+            // Find questions with no previous answer
+            'qu' => QuDepicts::doesntHave('answer')->first()
         ]);
     }
 

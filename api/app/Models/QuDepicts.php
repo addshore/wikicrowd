@@ -14,4 +14,14 @@ class QuDepicts extends Model
         'depicts_id',
         'img_url',
     ];
+
+    public function answer()
+    {
+        return $this->hasMany(QuDepictsAnswer::class, 'qu_depicts_id');
+    }
+
+    public function edit()
+    {
+        return $this->hasMany(QuDepictsEdit::class, 'qu_depicts_id');
+    }
 }
