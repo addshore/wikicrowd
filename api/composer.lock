@@ -4,37 +4,38 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "44c57013feb1cb5196ff51f9f117fa59",
+    "content-hash": "92fddc83f8aad70d39214cc93c246ee7",
     "packages": [
         {
             "name": "addwiki/mediawiki-api",
-            "version": "3.0.0",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/addwiki/mediawiki-api.git",
-                "reference": "dac6a268ef132409f8b73e31f1b53a2fc25d8ce2"
+                "reference": "6c0fb98b7eb8b56f17079a3433725d8301565e63"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/addwiki/mediawiki-api/zipball/dac6a268ef132409f8b73e31f1b53a2fc25d8ce2",
-                "reference": "dac6a268ef132409f8b73e31f1b53a2fc25d8ce2",
+                "url": "https://api.github.com/repos/addwiki/mediawiki-api/zipball/6c0fb98b7eb8b56f17079a3433725d8301565e63",
+                "reference": "6c0fb98b7eb8b56f17079a3433725d8301565e63",
                 "shasum": ""
             },
             "require": {
-                "addwiki/mediawiki-api-base": "^3.0",
-                "addwiki/mediawiki-datamodel": "^3.0",
+                "addwiki/mediawiki-api-base": "^3.1",
+                "addwiki/mediawiki-datamodel": "^3.1",
                 "php": ">=7.4"
             },
             "require-dev": {
-                "mediawiki/mediawiki-codesniffer": "~35.0",
+                "mediawiki/mediawiki-codesniffer": "~38.0",
                 "monolog/monolog": "^1.23",
                 "php-parallel-lint/php-parallel-lint": "^1.2",
                 "phpunit/phpunit": "~9"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "3.0-dev"
+                    "dev-main": "3.1-dev"
                 }
             },
             "autoload": {
@@ -60,22 +61,22 @@
                 "mediawiki"
             ],
             "support": {
-                "source": "https://github.com/addwiki/mediawiki-api/tree/3.0.0"
+                "source": "https://github.com/addwiki/mediawiki-api/tree/main"
             },
-            "time": "2021-10-23T08:50:04+00:00"
+            "time": "2022-01-01T21:03:55+00:00"
         },
         {
             "name": "addwiki/mediawiki-api-base",
-            "version": "3.0.0",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/addwiki/mediawiki-api-base.git",
-                "reference": "9db3892b18e79e8f47d59624ae85cabe93cd42ef"
+                "reference": "212a4ba499e06fdc09e608e6d72b432ea9e5e79a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/addwiki/mediawiki-api-base/zipball/9db3892b18e79e8f47d59624ae85cabe93cd42ef",
-                "reference": "9db3892b18e79e8f47d59624ae85cabe93cd42ef",
+                "url": "https://api.github.com/repos/addwiki/mediawiki-api-base/zipball/212a4ba499e06fdc09e608e6d72b432ea9e5e79a",
+                "reference": "212a4ba499e06fdc09e608e6d72b432ea9e5e79a",
                 "shasum": ""
             },
             "require": {
@@ -86,7 +87,7 @@
                 "psr/log": "~1.0"
             },
             "require-dev": {
-                "mediawiki/mediawiki-codesniffer": "~35.0",
+                "mediawiki/mediawiki-codesniffer": "~38.0",
                 "php-parallel-lint/php-parallel-lint": "^1.2",
                 "phpunit/phpunit": "~9"
             },
@@ -94,10 +95,11 @@
                 "ext-dom": "Needed if you want to discover APIs using only page URLs",
                 "ext-simplexml": "Needed if you want to discover APIs using only page URLs"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "3.0-dev"
+                    "dev-main": "3.1-dev"
                 }
             },
             "autoload": {
@@ -120,36 +122,37 @@
                 "mediawiki"
             ],
             "support": {
-                "source": "https://github.com/addwiki/mediawiki-api-base/tree/3.0.0"
+                "source": "https://github.com/addwiki/mediawiki-api-base/tree/main"
             },
-            "time": "2021-10-23T08:50:12+00:00"
+            "time": "2022-01-01T21:03:57+00:00"
         },
         {
             "name": "addwiki/mediawiki-datamodel",
-            "version": "3.0.0",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/addwiki/mediawiki-datamodel.git",
-                "reference": "29aa3e502f188129093b9741fd324990cefd519d"
+                "reference": "26789fcea64bb2350723321883d9ac1568c270ed"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/addwiki/mediawiki-datamodel/zipball/29aa3e502f188129093b9741fd324990cefd519d",
-                "reference": "29aa3e502f188129093b9741fd324990cefd519d",
+                "url": "https://api.github.com/repos/addwiki/mediawiki-datamodel/zipball/26789fcea64bb2350723321883d9ac1568c270ed",
+                "reference": "26789fcea64bb2350723321883d9ac1568c270ed",
                 "shasum": ""
             },
             "require": {
                 "php": ">=7.4"
             },
             "require-dev": {
-                "mediawiki/mediawiki-codesniffer": "~35.0",
+                "mediawiki/mediawiki-codesniffer": "~38.0",
                 "php-parallel-lint/php-parallel-lint": "^1.2",
                 "phpunit/phpunit": "~9"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "3.0-dev"
+                    "dev-main": "3.1-dev"
                 }
             },
             "autoload": {
@@ -171,27 +174,28 @@
                 "mediawiki"
             ],
             "support": {
-                "source": "https://github.com/addwiki/mediawiki-datamodel/tree/3.0.0"
+                "source": "https://github.com/addwiki/mediawiki-datamodel/tree/main"
             },
-            "time": "2021-10-23T08:50:04+00:00"
+            "time": "2022-01-01T21:03:56+00:00"
         },
         {
             "name": "addwiki/wikibase-api",
-            "version": "3.0.0",
+            "version": "dev-main",
             "source": {
                 "type": "git",
                 "url": "https://github.com/addwiki/wikibase-api.git",
-                "reference": "db00745efc33a24018d8db5573606a337f1a3e93"
+                "reference": "d42d23ca73f18286bdc62ec60766ac13a5206af5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/addwiki/wikibase-api/zipball/db00745efc33a24018d8db5573606a337f1a3e93",
-                "reference": "db00745efc33a24018d8db5573606a337f1a3e93",
+                "url": "https://api.github.com/repos/addwiki/wikibase-api/zipball/d42d23ca73f18286bdc62ec60766ac13a5206af5",
+                "reference": "d42d23ca73f18286bdc62ec60766ac13a5206af5",
                 "shasum": ""
             },
             "require": {
-                "addwiki/mediawiki-api-base": "^3.0",
-                "addwiki/mediawiki-datamodel": "^3.0",
+                "addwiki/mediawiki-api-base": "^3.1",
+                "addwiki/mediawiki-datamodel": "^3.1",
+                "addwiki/wikibase-datamodel": "^3.1",
                 "php": ">=7.4",
                 "serialization/serialization": "~3.2||~4.0",
                 "wikibase/data-model": "~9.2||~8.0",
@@ -206,19 +210,20 @@
                 "data-values/serialization": "~1.0",
                 "data-values/time": "~1.0",
                 "data-values/validators": "~0.1.0",
-                "mediawiki/mediawiki-codesniffer": "~35.0",
+                "mediawiki/mediawiki-codesniffer": "~38.0",
                 "php-parallel-lint/php-parallel-lint": "^1.2",
                 "phpunit/phpunit": "~9"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "3.0-dev"
+                    "dev-main": "3.1-dev"
                 }
             },
             "autoload": {
                 "psr-4": {
-                    "Addwiki\\Wikibase\\": "src/"
+                    "Addwiki\\Wikibase\\Api\\": "src/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -238,28 +243,88 @@
                 "wikidata"
             ],
             "support": {
-                "source": "https://github.com/addwiki/wikibase-api/tree/3.0.0"
+                "source": "https://github.com/addwiki/wikibase-api/tree/main"
             },
-            "time": "2021-10-23T08:50:02+00:00"
+            "time": "2022-01-01T23:13:58+00:00"
         },
         {
-            "name": "addwiki/wikimedia",
-            "version": "3.0.0",
+            "name": "addwiki/wikibase-datamodel",
+            "version": "dev-main",
             "source": {
                 "type": "git",
-                "url": "https://github.com/addwiki/wikimedia.git",
-                "reference": "4f75a7c08db4eed91852f9c41b16ef5e84d0dc76"
+                "url": "https://github.com/addwiki/wikibase-datamodel.git",
+                "reference": "0865b31114ad57277d11809c8671af35348858bb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/addwiki/wikimedia/zipball/4f75a7c08db4eed91852f9c41b16ef5e84d0dc76",
-                "reference": "4f75a7c08db4eed91852f9c41b16ef5e84d0dc76",
+                "url": "https://api.github.com/repos/addwiki/wikibase-datamodel/zipball/0865b31114ad57277d11809c8671af35348858bb",
+                "reference": "0865b31114ad57277d11809c8671af35348858bb",
                 "shasum": ""
             },
             "require": {
-                "addwiki/mediawiki-api": "^3.0",
-                "addwiki/mediawiki-api-base": "^3.0",
-                "addwiki/wikibase-api": "^3.0",
+                "addwiki/mediawiki-datamodel": "^3.1",
+                "php": ">=7.4",
+                "serialization/serialization": "~3.2||~4.0",
+                "wikibase/data-model": "~9.2||~8.0"
+            },
+            "require-dev": {
+                "mediawiki/mediawiki-codesniffer": "~38.0",
+                "php-parallel-lint/php-parallel-lint": "^1.2",
+                "phpunit/phpunit": "~9",
+                "wikibase/media-info": "dev-master#d86d961a0eb0c28e9b5d8ce600c64a9dae973533"
+            },
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "3.1-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Addwiki\\Wikibase\\DataModel\\": "src/",
+                    "Wikibase\\MediaInfo\\": "lib/wikibase/media-info/src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Addshore"
+                }
+            ],
+            "description": "A Wikibase datamodel",
+            "keywords": [
+                "DataModel",
+                "mediawiki",
+                "wikibase",
+                "wikidata"
+            ],
+            "support": {
+                "source": "https://github.com/addwiki/wikibase-datamodel/tree/main"
+            },
+            "time": "2022-01-01T23:14:00+00:00"
+        },
+        {
+            "name": "addwiki/wikimedia",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/addwiki/wikimedia.git",
+                "reference": "745b7545857c2c6c07a2537dcb709eb8c7f4f283"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/addwiki/wikimedia/zipball/745b7545857c2c6c07a2537dcb709eb8c7f4f283",
+                "reference": "745b7545857c2c6c07a2537dcb709eb8c7f4f283",
+                "shasum": ""
+            },
+            "require": {
+                "addwiki/mediawiki-api": "^3.1",
+                "addwiki/mediawiki-api-base": "^3.1",
+                "addwiki/wikibase-api": "^3.1",
                 "data-values/common": "~0.4.0",
                 "data-values/data-values": "~2.0",
                 "data-values/geo": "~4.0",
@@ -270,14 +335,15 @@
                 "wikibase/data-model": "~9.2||~8.0"
             },
             "require-dev": {
-                "mediawiki/mediawiki-codesniffer": "~35.0",
+                "mediawiki/mediawiki-codesniffer": "~38.0",
                 "php-parallel-lint/php-parallel-lint": "^1.2",
                 "phpunit/phpunit": "~9"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "3.0-dev"
+                    "dev-main": "3.1-dev"
                 }
             },
             "autoload": {
@@ -299,9 +365,9 @@
                 "Wikimedia"
             ],
             "support": {
-                "source": "https://github.com/addwiki/wikimedia/tree/3.0.0"
+                "source": "https://github.com/addwiki/wikimedia/tree/main"
             },
-            "time": "2021-10-23T08:50:04+00:00"
+            "time": "2022-01-01T23:13:58+00:00"
         },
         {
             "name": "asm89/stack-cors",
@@ -6792,68 +6858,6 @@
             "time": "2019-04-23T22:40:16+00:00"
         },
         {
-            "name": "wikibase/media-info",
-            "version": "dev-master",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/wikimedia/mediawiki-extensions-WikibaseMediaInfo.git",
-                "reference": "d86d961a0eb0c28e9b5d8ce600c64a9dae973533"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/wikimedia/mediawiki-extensions-WikibaseMediaInfo/zipball/d86d961a0eb0c28e9b5d8ce600c64a9dae973533",
-                "reference": "d86d961a0eb0c28e9b5d8ce600c64a9dae973533",
-                "shasum": ""
-            },
-            "require": {
-                "serialization/serialization": "~3.2|~4.0"
-            },
-            "require-dev": {
-                "mediawiki/mediawiki-codesniffer": "38.0.0",
-                "mediawiki/mediawiki-phan-config": "0.11.0",
-                "mediawiki/minus-x": "1.1.1",
-                "php-parallel-lint/php-console-highlighter": "0.5.0",
-                "php-parallel-lint/php-parallel-lint": "1.3.1"
-            },
-            "default-branch": true,
-            "type": "mediawiki-extension",
-            "autoload": {
-                "psr-4": {
-                    "Wikibase\\MediaInfo\\": "src/",
-                    "Wikibase\\MediaInfo\\Tests\\": "tests/phpunit/composer/",
-                    "Wikibase\\MediaInfo\\Tests\\MediaWiki\\": "tests/phpunit/mediawiki/",
-                    "Wikibase\\MediaInfo\\Tests\\Integration\\": "tests/phpunit/integration/"
-                }
-            },
-            "scripts": {
-                "fix": [
-                    "minus-x fix .",
-                    "phpcbf"
-                ],
-                "test": [
-                    "phpcs -p -s",
-                    "parallel-lint . --exclude vendor --exclude node_modules",
-                    "minus-x check ."
-                ]
-            },
-            "license": [
-                "GPL-2.0-or-later"
-            ],
-            "authors": [
-                {
-                    "name": "The Wikidata team"
-                }
-            ],
-            "description": "Wikibase extension to manage structured metadata of media files",
-            "homepage": "https://www.mediawiki.org/wiki/Extension:WikibaseMediaInfo",
-            "support": {
-                "issues": "https://phabricator.wikimedia.org/",
-                "irc": "irc://irc.freenode.net/wikidata",
-                "source": "https://github.com/wikimedia/mediawiki-extensions-WikibaseMediaInfo/tree/master"
-            },
-            "time": "2021-12-23T07:38:47+00:00"
-        },
-        {
             "name": "wikimedia/assert",
             "version": "v0.4.0",
             "source": {
@@ -9416,7 +9420,10 @@
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": {
-        "wikibase/media-info": 20
+        "addwiki/mediawiki-api": 20,
+        "addwiki/mediawiki-api-base": 20,
+        "addwiki/wikibase-api": 20,
+        "addwiki/wikimedia": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,
