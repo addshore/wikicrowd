@@ -17,7 +17,7 @@ class CreateQuDepictsTable extends Migration
             $table->id();
             $table->string('mediainfo_id');
             $table->string('depicts_id');
-            $table->string('img_url');
+            $table->text('img_url'); // img urls can be quite long, so use text
             $table->timestamps();
         });
     }
