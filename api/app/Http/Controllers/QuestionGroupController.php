@@ -16,6 +16,12 @@ class QuestionGroupController extends Controller
                 }])
                 ->having('unanswered', '>', 0);
             }])->get(),
+            'stats' => [
+                'questions' => \App\Models\Question::count(),
+                'answers' => \App\Models\Answer::count(),
+                'edits' => \App\Models\Edit::count(),
+                'users' => \App\Models\User::count(),
+            ]
         ]);
     }
 
