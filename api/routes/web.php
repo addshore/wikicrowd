@@ -62,5 +62,5 @@ Route::middleware('auth:sanctum')->post('/answers', function (Request $request) 
     }
 
     // Show the next one!
-    return QuestionController::showGroupUnanswered($question->group->name);
+    return redirect('/questions/' . $question->group->name);
 });
