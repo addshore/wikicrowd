@@ -9,10 +9,12 @@ class QuestionController extends Controller
 {
 
     public function showGroupUnanswered($groupName) {
-        return view('question', [
+        $question = Question::where('question_group_id', '=', QuestionGroup::where('name','=',$groupName)->first()->id)->doesntHave('answer')->with('group')->inRandomOrder()->first();
+        
+        return view($question->group->layout, [
             // Find questions with no previous answer
             // TODO don't ignore groups
-            'qu' => Question::where('question_group_id', '=', QuestionGroup::where('name','=',$groupName)->first()->id)->doesntHave('answer')->with('group')->inRandomOrder()->first(),
+            'qu' => $question,
         ]);
     }
 

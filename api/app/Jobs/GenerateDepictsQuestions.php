@@ -115,7 +115,7 @@ class GenerateDepictsQuestions implements ShouldQueue
                 // question already found
                 echo "Question exists\n";
                 return;
-             }
+            }
             $this->processFilePage( $pageIdentifier );
         } );
         $traverser->descend( new Page( new PageIdentifier( new Title( "Category:{$this->category}", 14 ) ) ) );
