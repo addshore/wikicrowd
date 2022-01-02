@@ -33,6 +33,15 @@ class GenerateDepictsQuestions implements ShouldQueue
 
     const DEPICTS_PROPERTY = 'P180';
     const COMMONS = 'commons.wikimedia.org';
+    const IMAGE_FILE_EXTENSIONS = [
+        // https://www.mediawiki.org/wiki/Help:Images#Supported_media_types_for_images
+        'jpg',
+        'jpeg',
+        'png',
+        'gif',
+        'svg',
+        'tiff',
+    ];
 
     private $category;
     private $depictItemId;
@@ -93,6 +102,11 @@ class GenerateDepictsQuestions implements ShouldQueue
             if( $pageIdentifier->getTitle()->getNs() !== 6 ) {
                 return;
             }
+            // Skip anything that is not an image
+            if( !in_array( $this->getFileExtensionFromName( $pageIdentifier->getTitle()->getText() ), self::IMAGE_FILE_EXTENSIONS ) ) {
+                echo "Non image\n";
+                return;
+            }
             // Skip pages we already generated a question for
             if (Question::where('question_group_id', '=', $this->targetGroup)
                     ->where('unique_id', '=', $this->uniqueID( $pageIdentifier ))
@@ -105,6 +119,11 @@ class GenerateDepictsQuestions implements ShouldQueue
             $this->processFilePage( $pageIdentifier );
         } );
         $traverser->descend( new Page( new PageIdentifier( new Title( "Category:{$this->category}", 14 ) ) ) );
+    }
+
+    private function getFileExtensionFromName( string $name ){
+        $parts = explode( '.', $name );
+        return end( $parts );
     }
 
     private function createQuestionGroups() {
