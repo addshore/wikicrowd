@@ -19,6 +19,8 @@ cp ~/src/toolforge/deployment.yaml ~/deployment.yaml
 rsync -av --delete ~/src/api/ ~/public_html
 # TODO migrate if needed
 webservice restart
+kubectl delete deployment laravel.queue
+kubectl create --validate=true -f ~/deployment.yaml
 ```
 
 ## Initial setup
@@ -84,6 +86,14 @@ webservice restart
 
 ### Queue
 
+To make the deployment:
+
 ```sh
 kubectl create --validate=true -f ~/deployment.yaml
+```
+
+To stop it
+
+```sh
+kubectl delete deployment laravel.queue
 ```

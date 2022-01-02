@@ -39,6 +39,8 @@ class GenerateDepictsQuestions implements ShouldQueue
     private $depictName;
     private $targetGroup;
     private $instancesOfAndSubclassesOf;
+    private $limit;
+    private $added = 0;
 
     /**
      * Create a new job instance.
@@ -48,12 +50,14 @@ class GenerateDepictsQuestions implements ShouldQueue
     public function __construct(
         string $category,
         string $depictItemId,
-        string $depictName
+        string $depictName,
+        int $limit
         )
     {
         $this->category = $category;
         $this->depictItemId = $depictItemId;
         $this->depictName = $depictName;
+        $this->limit = $limit;
     }
 
     /**
@@ -71,9 +75,19 @@ class GenerateDepictsQuestions implements ShouldQueue
         // Recursively descend the category looking for files
         $traverser = $mwServices->newCategoryTraverser();
         $traverser->addCallback( CategoryTraverser::CALLBACK_CATEGORY, function( Page $member, Page $rootCat ) {
+            // Terrible limiting, but the only way to do it right now..
+            if( $this->added >= $this->limit ) {
+                echo "Limit reached\n";
+                return;
+            }
             echo "Processing category: " . $member->getPageIdentifier()->getTitle()->getText() . "\n";
         } );
         $traverser->addCallback( CategoryTraverser::CALLBACK_PAGE, function( Page $member, Page $rootCat ) {
+            // Terrible limiting, but the only way to do it right now..
+            if( $this->added >= $this->limit ) {
+                echo "Limit reached\n";
+                return;
+            }
             $pageIdentifier = $member->getPageIdentifier();
             // Skip all non files
             if( $pageIdentifier->getTitle()->getNs() !== 6 ) {
@@ -207,6 +221,7 @@ class GenerateDepictsQuestions implements ShouldQueue
                     'img_url' => $thumbUrl,
                 ]
             ]);
+            $this->added++;
             echo "=D Question added for " . $mid->getSerialization() . "!" . PHP_EOL;
             return true;
         }
