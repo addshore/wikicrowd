@@ -6,14 +6,29 @@ With an OAuth consumer to Wikimedia production
 
 https://meta.wikimedia.org/w/index.php?title=Special:OAuthListConsumers/view/b7e6badde4982d44e053ca0a4fdde3ca&name=&publisher=&stage=0
 
-## Code
+## Updates
+
+```sh
+git -C ~/src pull
+webservice php7.4 shell -- composer install --working-dir=./src/api
+webservice node12 shell -- npm --prefix src/api install
+webservice node12 shell -- npm --prefix src/api run production
+cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
+cp ~/src/toolforge/service.template ~/service.template
+rsync -av --delete ~/src/api/ ~/public_html
+# TODO migrate if needed
+webservice restart
+```
+
+## Initial setup
 
 ```sh
 ssh login-toolforge.org
 become wikicrowd
 git clone https://github.com/addshore/wikicrowd.git ~/src/
+cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
+cp ~/src/toolforge/service.template ~/service.template
 webservice php7.4 shell -- composer install --working-dir=./src/api
-cp ~/src/toolforge/service.template ~/
 ```
 
 You'll also need to manually create a and configure a `.env.web` file.

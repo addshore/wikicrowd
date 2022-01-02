@@ -25,7 +25,7 @@ Route::get('/', function () {
     return redirect('/groups');
 });
 
-Route::middleware('auth:sanctum')->get('/groups', [QuestionGroupController::class, 'showTopLevelGroups'])->name('groups');
+Route::get('/groups', [QuestionGroupController::class, 'showTopLevelGroups'])->name('groups');
 
 Route::middleware('auth:sanctum')->get('/questions/{groupName}', [QuestionController::class, 'showGroupUnanswered'])
     ->where('groupName', '(.*)');

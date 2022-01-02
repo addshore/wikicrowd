@@ -12,7 +12,7 @@ class QuestionController extends Controller
         return view('question', [
             // Find questions with no previous answer
             // TODO don't ignore groups
-            'qu' => Question::where('question_group_id', '=', QuestionGroup::where('name','=',$groupName)->first()->id)->doesntHave('answer')->with('group')->first(),
+            'qu' => Question::where('question_group_id', '=', QuestionGroup::where('name','=',$groupName)->first()->id)->doesntHave('answer')->with('group')->inRandomOrder()->first(),
         ]);
     }
 
