@@ -15,6 +15,7 @@ webservice node12 shell -- npm --prefix src/api install
 webservice node12 shell -- npm --prefix src/api run production
 cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
 cp ~/src/toolforge/service.template ~/service.template
+cp ~/src/toolforge/deployment.yaml ~/deployment.yaml
 rsync -av --delete ~/src/api/ ~/public_html
 # TODO migrate if needed
 webservice restart
@@ -79,4 +80,10 @@ And start or restart the service
 
 ```
 webservice restart
+```
+
+### Queue
+
+```sh
+kubectl create --validate=true -f ~/deployment.yaml
 ```
