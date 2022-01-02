@@ -30,7 +30,7 @@ Route::get('/groups', [QuestionGroupController::class, 'showTopLevelGroups'])->n
 Route::middleware('auth:sanctum')->get('/questions/{groupName}', [QuestionController::class, 'showGroupUnanswered'])
     ->where('groupName', '(.*)');
 
-Route::middleware('auth:sanctum')->post('/answers', function (Request $request) {
+Route::middleware('auth:sanctum')->name('answers')->post('/answers', function (Request $request) {
 
     $v = Validator::make($request->all(), [
         'question' => 'required|exists:App\Models\Question,id',

@@ -16,7 +16,7 @@ webservice node12 shell -- npm --prefix src/api run production
 cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
 cp ~/src/toolforge/service.template ~/service.template
 cp ~/src/toolforge/deployment.yaml ~/deployment.yaml
-rsync -av --delete ~/src/api/ ~/public_html
+rsync -av --delete --exclude 'storage/framework/*' --exclude 'node_modules/*' ~/src/api/ ~/public_html
 # TODO migrate if needed
 webservice restart
 kubectl delete deployment laravel.queue
