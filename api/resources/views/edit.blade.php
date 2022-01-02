@@ -43,10 +43,10 @@
         @if ($qu)
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <img src="{{ $qu->img_url }}" height=500></img>
+                    <img src="{{ $qu->properties['img_url'] }}" height=500></img>
                 </div>
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <div class="ml-4 text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image depict {{ $qu->depicts_id }} Fog?</div>
+                    <div class="ml-4 text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image depict {{ $qu->properties['depicts_id'] }} {{ $qu->group->display_name }}?</div>
                 </div>
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
                     <form id="yes-form" action="{{ route('edit') }}" method="POST">
@@ -92,7 +92,7 @@
                 <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
                     <div class="text-center text-sm text-gray-500 sm:text-left">
                         <div class="flex items-center">
-                            No questions currently availible
+                            No questions currently availible for this group
                         </div>
                     </div>
                 </div>

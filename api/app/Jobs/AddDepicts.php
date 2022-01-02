@@ -3,14 +3,12 @@
 namespace App\Jobs;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use App\Models\User;
-use App\Models\QuDepictsAnswer;
-use App\Models\QuDepictsEdit;
+use App\Models\Answer;
+use App\Models\Edit;
 
 class AddDepicts implements ShouldQueue
 {
@@ -37,7 +35,8 @@ class AddDepicts implements ShouldQueue
      */
     public function handle()
     {
-        $answer = QuDepictsAnswer::with('question')->with('user')->find($this->answerId);
+        // TODO make sure an edit didnt already happen?
+        $answer = Answer::with('question')->with('user')->find($this->answerId);
         $question = $answer->question;
         $user = $answer->user;
 
@@ -60,7 +59,7 @@ class AddDepicts implements ShouldQueue
         $mwServices = new \Addwiki\Mediawiki\Api\MediawikiFactory( $mw->action() );
 
         $pageIdentifier = new \Addwiki\Mediawiki\DataModel\PageIdentifier( new \Addwiki\Mediawiki\DataModel\Title( 'From Laravel Via OAuth' ) );
-        $content = new \Addwiki\Mediawiki\DataModel\Content( "Edit made?: " . json_encode(['user' => $user->username, 'mediainfo' => $question->mediainfo_id, 'depicts' => $question->depicts_id]) );
+        $content = new \Addwiki\Mediawiki\DataModel\Content( "Edit made?: " . json_encode(['user' => $user->username, 'mediainfo' => $question->properties['mediainfo_id'], 'depicts' => $question->properties['depicts_id']]) );
 
         $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
 
@@ -80,9 +79,8 @@ class AddDepicts implements ShouldQueue
 
         $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
 
-        // TODO maybe don't bother recording these?
-        QuDepictsEdit::create([
-            'qu_depicts_id' => $question->id,
+        Edit::create([
+            'question_id' => $question->id,
             'user_id' => $user->id,
             'revision_id' => (int)$page->getRevisions()->getLatest()->getId(),
         ]);
