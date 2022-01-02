@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "92fddc83f8aad70d39214cc93c246ee7",
+    "content-hash": "989e36efb7854e54a0592b1081cb85a9",
     "packages": [
         {
             "name": "addwiki/mediawiki-api",
@@ -308,6 +308,64 @@
             "time": "2022-01-01T23:14:00+00:00"
         },
         {
+            "name": "addwiki/wikibase-query",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/addwiki/wikibase-query.git",
+                "reference": "56f689a97726b3aa1d32374330aaacc2d6bfe5db"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/addwiki/wikibase-query/zipball/56f689a97726b3aa1d32374330aaacc2d6bfe5db",
+                "reference": "56f689a97726b3aa1d32374330aaacc2d6bfe5db",
+                "shasum": ""
+            },
+            "require": {
+                "benestar/asparagus": "~0.4",
+                "php": ">=7.4"
+            },
+            "require-dev": {
+                "mediawiki/mediawiki-codesniffer": "~38.0",
+                "php-parallel-lint/php-parallel-lint": "^1.2",
+                "phpunit/phpunit": "~9"
+            },
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "3.1-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Addwiki\\Wikibase\\Query\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Addshore"
+                }
+            ],
+            "description": "Wikibase Query library",
+            "keywords": [
+                "api",
+                "mediawiki",
+                "query",
+                "sparql",
+                "wikibase",
+                "wikidata"
+            ],
+            "support": {
+                "source": "https://github.com/addwiki/wikibase-query/tree/main"
+            },
+            "time": "2022-01-02T13:12:08+00:00"
+        },
+        {
             "name": "addwiki/wikimedia",
             "version": "dev-main",
             "source": {
@@ -424,6 +482,57 @@
                 "source": "https://github.com/asm89/stack-cors/tree/v2.0.3"
             },
             "time": "2021-03-11T06:42:03+00:00"
+        },
+        {
+            "name": "benestar/asparagus",
+            "version": "0.4.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Benestar/asparagus.git",
+                "reference": "6299517dc28ace1e5934a0b09a2ac6d8a2910032"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Benestar/asparagus/zipball/6299517dc28ace1e5934a0b09a2ac6d8a2910032",
+                "reference": "6299517dc28ace1e5934a0b09a2ac6d8a2910032",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "0.4.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Asparagus\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GNU GPL v2+"
+            ],
+            "authors": [
+                {
+                    "name": "Bene*",
+                    "email": "benestar.wikimedia@gmail.com"
+                }
+            ],
+            "description": "SPARQL abstraction layer for PHP",
+            "homepage": "https://github.com/benestar/Asparagus",
+            "keywords": [
+                "Abstraction Layer",
+                "asparagus",
+                "sparql"
+            ],
+            "support": {
+                "issues": "https://github.com/Benestar/asparagus/issues",
+                "source": "https://github.com/Benestar/asparagus/tree/master"
+            },
+            "time": "2016-01-21T17:22:45+00:00"
         },
         {
             "name": "brick/math",
@@ -9423,6 +9532,7 @@
         "addwiki/mediawiki-api": 20,
         "addwiki/mediawiki-api-base": 20,
         "addwiki/wikibase-api": 20,
+        "addwiki/wikibase-query": 20,
         "addwiki/wikimedia": 20
     },
     "prefer-stable": true,

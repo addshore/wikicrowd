@@ -11,11 +11,22 @@ use Addwiki\Mediawiki\DataModel\Page;
 use Addwiki\Mediawiki\DataModel\PageIdentifier;
 use Addwiki\Mediawiki\DataModel\Title;
 use Addwiki\Mediawiki\Api\Service\CategoryTraverser;
-use Wikibase\DataModel\Entity\EntityId;
 use App\Models\Question;
 use App\Models\QuestionGroup;
 use Wikibase\MediaInfo\DataModel\MediaInfoId;
+use Addwiki\Wikibase\Query\PrefixSets;
 
+/**
+ * Generates questions from a Wikimedia Commons Category for a given depict statement taget Item.
+ * Will not generate a question if:
+ *  - The MediaInfo entity has a depicts statement of exactly the terget item, or an instance of or subclass of.
+ *  - A matching question already exists.
+ *  - Something else goes wrong.
+ * 
+ * GenerateDepictsQuestions Fog Q37477 Fog
+ * GenerateDepictsQuestions Badminton Q7291 Badminton
+ * GenerateDepictsQuestions Bridges Q12280 Bridge
+ */
 class GenerateDepictsQuestions implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -27,6 +38,7 @@ class GenerateDepictsQuestions implements ShouldQueue
     private $depictItemId;
     private $depictName;
     private $targetGroup;
+    private $instancesOfAndSubclassesOf;
 
     /**
      * Create a new job instance.
@@ -52,6 +64,7 @@ class GenerateDepictsQuestions implements ShouldQueue
     public function handle()
     {
         $this->createQuestionGroups();
+        $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $this->depictItemId );
 
         $mwServices = (new \Addwiki\Wikimedia\Api\WikimediaFactory())->newMediawikiFactoryForDomain( self::COMMONS );
 
@@ -103,6 +116,26 @@ class GenerateDepictsQuestions implements ShouldQueue
         return "M" . $filePageIdentifier->getId() . '/depicts/' . $this->depictItemId;
     }
 
+    private function instancesOfAndSubclassesOf( string $itemId ) : array {
+        $query = (new \Addwiki\Wikibase\Query\WikibaseQueryFactory(
+            "https://query.wikidata.org/sparql",
+            PrefixSets::WIKIDATA
+        ))->newWikibaseQueryService();
+        $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279* wd:${itemId} }" );
+
+        $ids = [];
+        foreach ( $result['results']['bindings'] as $binding ) {
+			$ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
+		}
+        return $ids;
+    }
+
+    private function getLastPartOfUrlPath( string $urlPath ): string {
+		// Assume that the last part is always the ID?
+		$parts = explode( '/', $urlPath );
+		return end( $parts );
+	}
+
     private function processFilePage( PageIdentifier $filePageIdentifier ) : bool {
         $wmFactory = (new \Addwiki\Wikimedia\Api\WikimediaFactory());
         $wbServices = $wmFactory->newWikibaseFactoryForDomain( self::COMMONS );
@@ -113,21 +146,35 @@ class GenerateDepictsQuestions implements ShouldQueue
 
         /** @var \Wikibase\MediaInfo\DataModel\MediaInfo $entity */
         $entity = $wbServices->newEntityLookup()->getEntity( $mid );
+        if($entity === null) {
+            // TODO could still create statements for this condition...
+            echo "MediaInfo entity not found\n";
+            return false;
+        }
         $foundDepicts = false;
         foreach( $entity->getStatements()->getByPropertyId( $depictsProperty )->toArray() as $statement ) {
-            if(
-                // Snak type is a value
-                $statement->getMainSnak()->getType() === 'value' &&
-                // And it is of the type we want to be setting
-                $statement->getMainSnak()->getDataValue()->getEntityId()->equals( $depictsValue ) 
-            ) {
-                $foundDepicts = true;
+            // Skip non value statements
+            if( $statement->getMainSnak()->getType() !== 'value' ) {
+                continue;
+            }
+
+            $entityId = $statement->getMainSnak()->getDataValue()->getEntityId();
+
+            // Skip exact depicts matches
+            if( $entityId->equals( $depictsValue ) ) {
+                $foundDepicts = 'exact';
+                break;
+            }
+
+            // and inherited matches
+            if( in_array( $entityId->getSerialization(), $this->instancesOfAndSubclassesOf ) ) {
+                $foundDepicts = 'inherited';
                 break;
             }
         }
 
-        if($foundDepicts) {
-            echo "Already has depicts" . PHP_EOL;
+        if($foundDepicts !== false) {
+            echo "Already has ${foundDepicts} depicts" . PHP_EOL;
             return false;
         } else {
             $mwApi = $wmFactory->newMediawikiApiForDomain(self::COMMONS);

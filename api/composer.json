@@ -9,6 +9,7 @@
         "addwiki/mediawiki-api": "~3.1@dev",
         "addwiki/mediawiki-api-base": "~3.1@dev",
         "addwiki/wikibase-api": "~3.1@dev",
+        "addwiki/wikibase-query": "~3.1@dev",
         "addwiki/wikimedia": "~3.1@dev",
         "fruitcake/laravel-cors": "^2.0",
         "guzzlehttp/guzzle": "^7.0.1",
