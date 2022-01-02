@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Laravel</title>
+        <title>WikiCrowd</title>
 
         <!-- Fonts -->
         <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
@@ -26,79 +26,60 @@
                 <div class="hidden fixed top-0 right-0 px-6 py-4 sm:block">
                     @auth
                         <span style="color:white">Hello, {{ Auth::user()->username }}!</span>
-                        <a href="{{ url('/') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Home</a>
-                        <a href="{{ url('/edit') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Edit</a>
-                        <a href="{{ route('login') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Log in again</a>
+                    @endauth
+                    <a href="{{ url('/') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Home</a>
+                    @auth
                         <a href="{{ route('logout') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Logout</a>
                     @else
-                        <a href="{{ route('login') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Log in</a>
-
-                        @if (Route::has('register'))
-                            <a href="{{ route('register') }}" class="ml-4 text-sm text-gray-700 dark:text-gray-500 underline">Register</a>
-                        @endif
+                        <a href="{{ route('login') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Login</a>
                     @endauth
                 </div>
             #@endif
 
-        @if ($qu)
-        <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
+            <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <img src="{{ $qu->properties['img_url'] }}" height=500></img>
-                </div>
-                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <div class="ml-4 text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image depict {{ $qu->properties['depicts_id'] }} {{ $qu->group->display_name }}?</div>
-                </div>
-                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <form id="yes-form" action="{{ route('edit') }}" method="POST">
-                        @csrf
-                        <input name="question" type="hidden" value="{{ $qu->id }}">
-                        <input name="answer" type="hidden" value="yes">
-                        <button>Yes</button>
-                    </form>
-                </div>
-                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <form id="no-form" action="{{ route('edit') }}" method="POST">
-                        @csrf
-                        <input name="question" type="hidden" value="{{ $qu->id }}">
-                        <input name="answer" type="hidden" value="no">
-                        <button>No</button>
-                    </form>
-                </div>
-                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <form id="skip-form" action="{{ route('edit') }}" method="POST">
-                        @csrf
-                        <input name="question" type="hidden" value="{{ $qu->id }}">
-                        <input name="answer" type="hidden" value="skip">
-                        <button>Skip</button>
-                    </form>
+                    <div class="ml-4 text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">WikiCrowd</span></div>
                 </div>
 
-                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                    <div class="text-center text-sm text-gray-500 sm:text-left">
-                        <div class="flex items-center">
-                            Footber left
+                @forelse ($groups as $group)
+                <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow sm:rounded-lg">
+                    <div class="grid grid-cols-1 md:grid-cols-2">
+                        <div class="p-6">
+                            <div class="flex items-center">
+                                <div class="ml-4 text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">{{$group->display_name}}</span></div>
+                            </div>
+
+                            @forelse ($group->subGroups as $subGroup)
+                            <div class="ml-12">
+                                <div class="mt-2 text-gray-600 dark:text-gray-400 text-sm">
+                                    <a href="{{ url('/questions/' . $subGroup->name) }}" class="text-sm text-gray-700 dark:text-gray-500 underline">{{$subGroup->display_name}}</a>
+                                    <span>({{$subGroup->unanswered}})</span>
+                                </div>
+                            </div>
+                            @empty
+                            #@endif
+                        </div>
+                    </div>
+                </div>
+                @empty
+                <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
+                        <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
+                            <div class="text-center text-sm text-gray-500 sm:text-left">
+                                <div class="flex items-center">
+                                    No groups currently ready for contributing to
+                                </div>
+                            </div>
                         </div>
                     </div>
 
+                </div>
+            #@endif
+
+                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
                     <div class="ml-4 text-center text-sm text-gray-500 sm:text-right sm:ml-0">
-                        Footer right
+                        Developed by Addshore
                     </div>
                 </div>
             </div>
-
-        </div>
-        @else
-        <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
-                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                    <div class="text-center text-sm text-gray-500 sm:text-left">
-                        <div class="flex items-center">
-                            No questions currently availible for this group
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-        #@endif
     </body>
 </html>

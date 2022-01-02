@@ -1,13 +1,14 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\QuDepictsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Jobs\AddDepicts;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Answer;
 use App\Http\Controllers\QuestionController;
+use App\Http\Controllers\QuestionGroupController;
+use App\Models\Question;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,13 +22,15 @@ use App\Http\Controllers\QuestionController;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/groups');
 });
 
-// For now, show ANY question...
-Route::middleware('auth:sanctum')->get('/edit', [QuestionController::class, 'show'])->name('edit');
+Route::middleware('auth:sanctum')->get('/groups', [QuestionGroupController::class, 'showTopLevelGroups'])->name('groups');
 
-Route::middleware('auth:sanctum')->post('/edit', function (Request $request) {
+Route::middleware('auth:sanctum')->get('/questions/{groupName}', [QuestionController::class, 'showGroupUnanswered'])
+    ->where('groupName', '(.*)');
+
+Route::middleware('auth:sanctum')->post('/answers', function (Request $request) {
 
     $v = Validator::make($request->all(), [
         'question' => 'required|exists:App\Models\Question,id',
@@ -42,9 +45,12 @@ Route::middleware('auth:sanctum')->post('/edit', function (Request $request) {
     $answer = $request->input('answer');
     $user = Auth::user();
 
+    // Get the question
+    $question = Question::find($question);
+
     // Store the answer
     $storedAnswer = Answer::create([
-        'question_id' => $question,
+        'question_id' => $question->id,
         'user_id' => $user->id,
         'answer' => $answer,
     ]);
@@ -56,5 +62,5 @@ Route::middleware('auth:sanctum')->post('/edit', function (Request $request) {
     }
 
     // Show the next one!
-    return QuestionController::show();
+    return QuestionController::showGroupUnanswered($question->group->name);
 });
