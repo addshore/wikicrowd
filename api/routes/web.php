@@ -9,6 +9,7 @@ use App\Models\Answer;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\QuestionGroupController;
 use App\Models\Question;
+use App\Jobs\AddAlias;
 
 /*
 |--------------------------------------------------------------------------
@@ -58,7 +59,12 @@ Route::middleware('auth:sanctum')->name('answers')->post('/answers', function (R
     // Dispatch the edit job..
     if($answer === 'yes') {
         // TODO make a generic answer -> edit job?
-        AddDepicts::dispatch($storedAnswer->id);
+        if($question->group->parentGroup->name === 'depicts') {
+            dispatch(new AddDepicts($storedAnswer->id));
+        }
+        if($question->group->parentGroup->name === 'aliases') {
+            dispatch(new AddAlias($storedAnswer->id));
+        }
     }
 
     // Show the next one!

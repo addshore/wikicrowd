@@ -12,15 +12,12 @@ use App\Models\Edit;
 use Addwiki\Wikimedia\Api\WikimediaFactory;
 use Addwiki\Mediawiki\Api\MediawikiFactory;
 use Addwiki\Mediawiki\DataModel\PageIdentifier;
-use Addwiki\Mediawiki\DataModel\Content;
-use Addwiki\Mediawiki\DataModel\Title;
 use Wikibase\MediaInfo\DataModel\MediaInfoId;
 use Wikibase\DataModel\Entity\PropertyId;
 use Wikibase\DataModel\Entity\ItemId;
 use Addwiki\Wikibase\Query\PrefixSets;
 use Wikibase\DataModel\Snak\PropertyValueSnak;
 use Wikibase\DataModel\Entity\EntityIdValue;
-use Addwiki\Mediawiki\DataModel\EditInfo;
 
 class AddDepicts implements ShouldQueue
 {
@@ -48,7 +45,6 @@ class AddDepicts implements ShouldQueue
      */
     public function handle()
     {
-        // TODO make sure an edit didnt already happen?
         $answer = Answer::with('question')->with('user')->with('question.edit')->find($this->answerId);
         $question = $answer->question;
         $user = $answer->user;
