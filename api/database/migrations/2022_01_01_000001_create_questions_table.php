@@ -12,7 +12,7 @@ class CreateQuestionsTable extends Migration
             $table->id();
             $table->integer( 'question_group_id' )->index();
             $table->string('unique_id');
-            $table->json('properties');
+            $table->text('properties');
             // Question ID i unique in the groups
             $table->unique(['question_group_id', 'unique_id']);
             $table->timestamps();
