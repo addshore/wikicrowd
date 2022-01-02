@@ -9,12 +9,25 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Answer;
 use App\Models\Edit;
+use Addwiki\Wikimedia\Api\WikimediaFactory;
+use Addwiki\Mediawiki\Api\MediawikiFactory;
+use Addwiki\Mediawiki\DataModel\PageIdentifier;
+use Addwiki\Mediawiki\DataModel\Content;
+use Addwiki\Mediawiki\DataModel\Title;
+use Wikibase\MediaInfo\DataModel\MediaInfoId;
+use Wikibase\DataModel\Entity\PropertyId;
+use Wikibase\DataModel\Entity\ItemId;
+use Addwiki\Wikibase\Query\PrefixSets;
+use Wikibase\DataModel\Snak\PropertyValueSnak;
+use Wikibase\DataModel\Entity\EntityIdValue;
+use Addwiki\Mediawiki\DataModel\EditInfo;
 
 class AddDepicts implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     private $answerId;
+    private $instancesOfAndSubclassesOf;
 
     /**
      * Create a new job instance.
@@ -36,9 +49,14 @@ class AddDepicts implements ShouldQueue
     public function handle()
     {
         // TODO make sure an edit didnt already happen?
-        $answer = Answer::with('question')->with('user')->find($this->answerId);
+        $answer = Answer::with('question')->with('user')->with('question.edit')->find($this->answerId);
         $question = $answer->question;
         $user = $answer->user;
+
+        // Edit already happened in this system
+        if( $question->edit->count() > 0 ) {
+            //return;
+        }
 
         if($user->token === null || $user->token_secret === null) {
             // TODO deal with this?
@@ -54,36 +72,90 @@ class AddDepicts implements ShouldQueue
             $user->token_secret
         );
 
-        // TODO commons
-        $mw = \Addwiki\Mediawiki\Api\Client\MediaWiki::newFromEndpoint( 'https://addshore-alpha.wiki.opencura.com/w/api.php', $mwAuth );
-        $mwServices = new \Addwiki\Mediawiki\Api\MediawikiFactory( $mw->action() );
+        $wm = new WikimediaFactory();
+        $mwApi = $wm->newMediawikiApiForDomain("commons.wikimedia.org", $mwAuth);
+        $wbServices = $wm->newWikibaseFactoryForDomain("commons.wikimedia.org", $mwAuth);
 
-        $pageIdentifier = new \Addwiki\Mediawiki\DataModel\PageIdentifier( new \Addwiki\Mediawiki\DataModel\Title( 'From Laravel Via OAuth' ) );
-        $content = new \Addwiki\Mediawiki\DataModel\Content( "Edit made?: " . json_encode(['user' => $user->username, 'mediainfo' => $question->properties['mediainfo_id'], 'depicts' => $question->properties['depicts_id']]) );
+        $mid = new MediaInfoId( $question->properties['mediainfo_id'] );
+        $depictsProperty = new PropertyId( 'P180' );
+        $depictsValue = new ItemId( $question->properties['depicts_id'] );
 
-        $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
 
-        // Skip if page is already correct TODO change to checking if depicts is already set..
-        if($page->getRevisions()->getLatest()->getContent()->getData() === $content->getData()) {
+        // TODO code reuse section start
+        /** @var \Wikibase\MediaInfo\DataModel\MediaInfo $entity */
+        $entity = $wbServices->newEntityLookup()->getEntity( $mid );
+        if($entity === null) {
+            // TODO could still create statements for this condition...
+            echo "MediaInfo entity not found\n";
             return;
         }
+        $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $depictsValue->getSerialization() );
+        $foundDepicts = false;
+        foreach( $entity->getStatements()->getByPropertyId( $depictsProperty )->toArray() as $statement ) {
+            // Skip non value statements
+            if( $statement->getMainSnak()->getType() !== 'value' ) {
+                continue;
+            }
 
-        $result = $mwServices->newRevisionSaver()->save( new \Addwiki\Mediawiki\DataModel\Revision(
-            $content,
-            $pageIdentifier
-        ) );
+            $entityId = $statement->getMainSnak()->getDataValue()->getEntityId();
 
-        if(!$result) {
-            throw new \RuntimeException("Something went wrong making the edit");
+            // Skip exact depicts matches
+            if( $entityId->equals( $depictsValue ) ) {
+                $foundDepicts = 'exact';
+                break;
+            }
+
+            // and inherited matches
+            if( in_array( $entityId->getSerialization(), $this->instancesOfAndSubclassesOf ) ) {
+                $foundDepicts = 'inherited';
+                break;
+            }
         }
+        // TODO code reuse section end
 
-        $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
+        if($foundDepicts !== false) {
+            echo "Already has ${foundDepicts} depicts" . PHP_EOL;
+            return;
+        } else {
+            $wbServices->newStatementCreator()->create(
+                new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) ),
+                $mid
+            );
 
-        Edit::create([
-            'question_id' => $question->id,
-            'user_id' => $user->id,
-            'revision_id' => (int)$page->getRevisions()->getLatest()->getId(),
-        ]);
+            $mwServices = new MediawikiFactory( $mwApi );
 
+            $pageIdentifier = new PageIdentifier( null, str_replace( 'M', '', $mid->getSerialization() ) );
+            $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
+            $revId = $page->getRevisions()->getLatest()->getId();
+    
+            Edit::create([
+                'question_id' => $question->id,
+                'user_id' => $user->id,
+                'revision_id' => (int)$revId,
+            ]);
+        }
     }
+
+    
+    private function instancesOfAndSubclassesOf( string $itemId ) : array {
+        // TODO code reuse
+        $query = (new \Addwiki\Wikibase\Query\WikibaseQueryFactory(
+            "https://query.wikidata.org/sparql",
+            PrefixSets::WIKIDATA
+        ))->newWikibaseQueryService();
+        $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279* wd:${itemId} }" );
+
+        $ids = [];
+        foreach ( $result['results']['bindings'] as $binding ) {
+			$ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
+		}
+        return $ids;
+    }
+
+    private function getLastPartOfUrlPath( string $urlPath ): string {
+        // TODO code reuse
+		// Assume that the last part is always the ID?
+		$parts = explode( '/', $urlPath );
+		return end( $parts );
+	}
 }
