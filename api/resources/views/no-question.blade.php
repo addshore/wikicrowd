@@ -41,7 +41,7 @@
                 <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
                     <div class="text-center text-sm text-gray-500 sm:text-left">
                         <div class="flex items-center">
-                            No questions currently availible for this group
+                            No questions currently available for this group
                         </div>
                     <div class="text-center text-sm text-gray-500 sm:text-left">
                         <div class="flex items-center">
