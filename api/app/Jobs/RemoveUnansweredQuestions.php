@@ -31,7 +31,7 @@ class RemoveUnansweredQuestions implements ShouldQueue
             return;
         }
         $c = Question::where('question_group_id', '=', $qg->id)->doesntHave('answer')->doesntHave('edit')->delete();
-        echo "Deleted $c questions";
+        echo "Deleted $c questions\n";
     }
 
 }
