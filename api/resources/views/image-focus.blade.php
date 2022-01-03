@@ -41,7 +41,7 @@
 
             <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image depict {{ $qu->properties['depicts_id'] }} {{ $qu->group->display_name }}?</div>
+                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image clearly depict {{ $qu->properties['depicts_id'] }} {{ $qu->group->display_name }}?</div>
                 </div>
                 <div class="py-2 flex justify-center pt-8 sm:justify-start sm:pt-0">
                     <form class="pr-2" id="yes-form" action="{{ route('answers') }}" method="POST">
