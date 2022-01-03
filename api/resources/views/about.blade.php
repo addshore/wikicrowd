@@ -41,9 +41,10 @@
                     <div class="text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">WikiCrowd</span></div>
                 </div>
 
-                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                    <div class="ml-4 text-center text-sm text-gray-500 sm:text-right sm:ml-0">
-                        Quick and easy micro contributions to the wiki space.
+                <div class="flex">
+                    <div class="text-sm text-gray-500">
+                        Quick and easy micro contributions to the wiki space.<br>
+                        Using this tool will result in edits being made for your account.
                     </div>
                 </div>
 

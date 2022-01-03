@@ -41,30 +41,32 @@
                     <div class="text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">WikiCrowd</span></div>
                 </div>
 
-                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                    <div class="ml-4 text-center text-sm text-gray-500 sm:text-right sm:ml-0">
-                        Quick and easy micro contributions to the wiki space.
+                <div class="flex">
+                    <div class="text-sm text-gray-500">
+                        Quick and easy micro contributions to the wiki space.<br>
+                        Using this tool will result in edits being made for your account.
                     </div>
                 </div>
 
                 @forelse ($groups as $group)
                 <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow sm:rounded-lg">
-                    <div class="grid grid-cols-1 md:grid-cols-2">
-                        <div class="p-6">
-                            <div class="flex items-center">
-                                <div class="ml-4 text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">{{$group->display_name}}</span></div>
-                            </div>
-
-                            @forelse ($group->subGroups as $subGroup)
-                            <div class="ml-12">
-                                <div class="mt-2 text-gray-600 dark:text-gray-400 text-sm">
-                                    <a href="{{ url('/questions/' . $subGroup->name) }}" class="text-sm text-gray-700 dark:text-gray-500 underline">{{$subGroup->display_name}}</a>
-                                    <span>({{$subGroup->unanswered}})</span>
-                                </div>
-                            </div>
-                            @empty
-                            @endif
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="ml-4 text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">{{$group->display_name}}</span></div>
                         </div>
+                        <div class="flex items-center">
+                            <div class="ml-4 text-sm"><span class="text-gray-900 dark:text-white">{{$group->display_description}}</span></div>
+                        </div>
+
+                        @forelse ($group->subGroups as $subGroup)
+                        <div class="ml-12">
+                            <div class="mt-2 text-gray-600 dark:text-gray-400 text-sm">
+                                <a href="{{ url('/questions/' . $subGroup->name) }}" class="text-sm text-gray-700 dark:text-gray-500 underline">{{$subGroup->display_name}}</a>
+                                <span>({{$subGroup->unanswered}})</span>
+                            </div>
+                        </div>
+                        @empty
+                        @endif
                     </div>
                 </div>
                 @empty
