@@ -34,6 +34,7 @@ class GenerateDepictsQuestions implements ShouldQueue
     ];
 
     private $category;
+    private $ignoreCategories;
     private $depictItemId;
     private $depictName;
     private $depictsSubGroup;
@@ -50,12 +51,14 @@ class GenerateDepictsQuestions implements ShouldQueue
      */
     public function __construct(
         string $category,
+        string $ignoreCategories,
         string $depictItemId,
         string $depictName,
         int $limit
         )
     {
         $this->category = $category;
+        $this->ignoreCategories = explode('|', $ignoreCategories);
         $this->depictItemId = $depictItemId;
         $this->depictName = $depictName;
         $this->limit = $limit;
@@ -77,12 +80,17 @@ class GenerateDepictsQuestions implements ShouldQueue
         // Recursively descend the category looking for files
         $traverser = $mwServices->newCategoryTraverser();
         $traverser->addCallback( CategoryTraverser::CALLBACK_CATEGORY, function( Page $member, Page $rootCat ) {
-            // Terrible limiting, but the only way to do it right now..
             if( $this->added >= $this->limit ) {
                 echo "Limit reached\n";
-                return;
+                return false;
             }
-            echo "Processing category: " . $member->getPageIdentifier()->getTitle()->getText() . "\n";
+            $memberText = $member->getPageIdentifier()->getTitle()->getText();
+            $rootText = $rootCat->getPageIdentifier()->getTitle()->getText();
+            if(in_array($memberText, $this->ignoreCategories)) {
+                echo "Ignoring $memberText\n";
+                return false;
+            }
+            echo "Processing: " . $memberText . ", Parent was: " . $rootText . "\n";
         } );
         $traverser->addCallback( CategoryTraverser::CALLBACK_PAGE, function( Page $member, Page $rootCat ) {
             // Terrible limiting, but the only way to do it right now..
@@ -111,7 +119,7 @@ class GenerateDepictsQuestions implements ShouldQueue
             }
             $this->processFilePage( $pageIdentifier );
         } );
-        $traverser->descend( new Page( new PageIdentifier( new Title( "Category:{$this->category}", 14 ) ) ) );
+        $traverser->descend( new Page( new PageIdentifier( new Title( $this->category, 14 ) ) ) );
     }
 
     private function getFileExtensionFromName( string $name ){

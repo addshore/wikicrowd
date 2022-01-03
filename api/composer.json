@@ -19,6 +19,7 @@
         "laravel/tinker": "^2.5",
         "laraveldaily/laravel-charts": "^0.1.28",
         "mxl/laravel-job": "^1.2",
+        "symfony/yaml": "^5.4",
         "taavi/laravel-socialite-mediawiki": "^1.5"
     },
     "require-dev": {

@@ -1,0 +1,19 @@
+depictsId: Q12280
+name: Bridge
+category: Category:Bridges
+# Worked down from the top category a level or 2 deciding what shouldn't be included
+exclude:
+  - Category:Covered bridges
+  - Category:Covered bridges by color
+  - Category:Bridge elements
+  - Category:Inscriptions on bridges
+  - Category:Street Lights on Bridges
+  - Category:People and bridges
+  - Category:Plaques about bridges
+  - Category:Shadows of bridges
+  - Category:Views from bridges
+  - Category:Views under bridges
+  - Category:Maps of bridges
+  - Category:Gallery pages of bridges
+  - Category:Videos of bridges
+  - Category:Bridge engineering
