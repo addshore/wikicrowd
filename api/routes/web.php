@@ -13,6 +13,8 @@ use App\Jobs\AddAlias;
 use App\Models\Edit;
 use App\Models\User;
 use App\Jobs\SwapDepicts;
+use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
+use LaravelDaily\LaravelCharts\Classes\LaravelChart;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,7 +39,33 @@ Route::get('/about', function () {
             'edits' => Edit::where('user_id','=',$user->id)->count(),
         ];
     }
-    return view('about', [
+
+    $chart1 = new LaravelChart([
+            'chart_title' => 'Questions',
+            'report_type' => 'group_by_date',
+            'model' => Question::class,
+            'group_by_field' => Question::CREATED_AT,
+            'group_by_period' => 'day',
+            'chart_type' => 'line',
+        ]);
+    $chart2 = new LaravelChart([
+            'chart_title' => 'Answers',
+            'report_type' => 'group_by_date',
+            'model' => Answer::class,
+            'group_by_field' => Answer::CREATED_AT,
+            'group_by_period' => 'day',
+            'chart_type' => 'line',
+        ]);
+    $chart3 = new LaravelChart([
+            'chart_title' => 'Edits',
+            'report_type' => 'group_by_date',
+            'model' => Edit::class,
+            'group_by_field' => Edit::CREATED_AT,
+            'group_by_period' => 'day',
+            'chart_type' => 'line',
+        ]);
+
+    return view('about', compact('chart1', 'chart2', 'chart3'), [
         'rcurls' => [
             "Commons" => "https://commons.wikimedia.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2",
             "Wikidata" => "https://www.wikidata.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2",

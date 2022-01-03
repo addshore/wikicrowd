@@ -48,38 +48,66 @@
                     </div>
                 </div>
 
-                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                    <div class="ml-4 text-sm text-gray-500 sm:ml-0">
-                        See edits on...
-                        <ul class="ml-4">
-                            @foreach($rcurls as $key => $url)
-                            <li>
-                                {{$key}}:&nbsp;
-                                <a href="{{$url}}">All edits</a>
-                                @auth
-                                 / <a href="{{$url}}&hidebyothers=1">Your edits</a>
-                                @endauth
-                            </li>
-                            @endforeach
-                        </ul>
+                <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow sm:rounded-lg">
+                    <div class="p-6">
+
+                        <div class="flex items-center">
+                            <div class="ml-4 text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">Wikimedia</span></div>
+                        </div>
+
+                        <div class="flex justify-center sm:items-center sm:justify-between">
+                            <div class="ml-4 text-sm text-gray-500 sm:ml-0">
+                                <ul class="ml-4">
+                                    @foreach($rcurls as $key => $url)
+                                    <li>
+                                        {{$key}}:&nbsp;
+                                        <a href="{{$url}}">All edits</a>
+                                        @auth
+                                         / <a href="{{$url}}&hidebyothers=1">Your edits</a>
+                                        @endauth
+                                    </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
-                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                    <div class="ml-4 text-sm text-gray-500 sm:ml-0">
-                        Stats...
-                        <ul class="ml-4">
-                            <li>
-                                Overall:&nbsp;
-                                Questions: {{$stats['questions']}} | Answers: {{$stats['answers']}} | Edits: {{$stats['edits']}} | Users: {{$stats['users']}}
-                            </li>
-                            @auth
-                            <li>
-                                {{ Auth::user()->username }}:&nbsp;
-                                Answers: {{$userstats['answers']}} | Edits: {{$userstats['edits']}}
-                            </li>
-                            @endauth
-                        </ul>
+                <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow sm:rounded-lg">
+                    <div class="p-6">
+
+                        <div class="flex items-center">
+                            <div class="ml-4 text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">Stats</span></div>
+                        </div>
+
+                        <div class="flex justify-center sm:items-center sm:justify-between">
+                            <div class="ml-4 text-sm text-gray-500 sm:ml-0">
+                                <ul class="ml-4">
+                                    <li>
+                                        Overall:&nbsp;
+                                        Questions: {{$stats['questions']}} | Answers: {{$stats['answers']}} | Edits: {{$stats['edits']}} | Users: {{$stats['users']}}
+                                    </li>
+                                    @auth
+                                    <li>
+                                        {{ Auth::user()->username }}:&nbsp;
+                                        Answers: {{$userstats['answers']}} | Edits: {{$userstats['edits']}}
+                                    </li>
+                                    @endauth
+                                </ul>
+                            </div>
+                        </div>
+
+                        {!! $chart1->renderHtml() !!}
+                        {!! $chart2->renderHtml() !!}
+                        {!! $chart3->renderHtml() !!}
+                        {{-- The below is generated as the chart library, but we want to load it from elsewhere for toolforge
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+                        {!! $chart1->renderChartJsLibrary() !!} --}}
+                        <script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+                        {!! $chart1->renderJs() !!}
+                        {!! $chart2->renderJs() !!}
+                        {!! $chart3->renderJs() !!}
                     </div>
                 </div>
 
