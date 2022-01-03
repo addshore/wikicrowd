@@ -40,9 +40,31 @@
             </div>
 
             <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
+                {{-- TODO make this generic... --}}
+                @if ( array_key_exists('old_depicts_id',$qu->properties) )
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image clearly depict {{ $qu->properties['depicts_id'] }} {{ $qu->group->display_name }}?</div>
+                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">This image currently depicts
+                        <a href="https://www.wikidata.org/wiki/{{$qu->properties['old_depicts_id']}}" target="_blank">
+                        {{ $qu->properties['old_depicts_id'] }} <u>{{ $qu->properties['old_depicts_name'] }}</u>
+                        </a>
+                    </div>
                 </div>
+                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
+                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image actually clearly depict
+                        <a href="https://www.wikidata.org/wiki/{{$qu->properties['depicts_id']}}" target="_blank">
+                        {{ $qu->properties['depicts_id'] }} <u>{{ $qu->properties['depicts_name'] }}</u>
+                        </a>
+                    </div>
+                </div>
+                @else
+                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
+                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image clearly depict
+                        <a href="https://www.wikidata.org/wiki/{{$qu->properties['depicts_id']}}" target="_blank">
+                        {{ $qu->properties['depicts_id'] }} <u>{{ $qu->properties['depicts_name'] }}</u>
+                        </a>
+                    </div>
+                </div>
+                @endif
                 <div class="py-2 flex justify-center pt-8 sm:justify-start sm:pt-0">
                     <form class="pr-2" id="yes-form" action="{{ route('answers') }}" method="POST">
                         @csrf

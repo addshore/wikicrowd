@@ -16,22 +16,12 @@ use App\Models\QuestionGroup;
 use Wikibase\MediaInfo\DataModel\MediaInfoId;
 use Addwiki\Wikibase\Query\PrefixSets;
 
-/**
- * Generates questions from a Wikimedia Commons Category for a given depict statement taget Item.
- * Will not generate a question if:
- *  - The MediaInfo entity has a depicts statement of exactly the terget item, or an instance of or subclass of.
- *  - A matching question already exists.
- *  - Something else goes wrong.
- * 
- * GenerateDepictsQuestions Fog Q37477 Fog
- * GenerateDepictsQuestions Badminton Q7291 Badminton
- * GenerateDepictsQuestions Bridges Q12280 Bridge
- */
 class GenerateDepictsQuestions implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     const DEPICTS_PROPERTY = 'P180';
+    const WIKIDATA = 'www.wikidata.org';
     const COMMONS = 'commons.wikimedia.org';
     const IMAGE_FILE_EXTENSIONS = [
         // https://www.mediawiki.org/wiki/Help:Images#Supported_media_types_for_images
@@ -46,8 +36,10 @@ class GenerateDepictsQuestions implements ShouldQueue
     private $category;
     private $depictItemId;
     private $depictName;
-    private $targetGroup;
+    private $depictsSubGroup;
+    private $depictsRefineSubGroup;
     private $instancesOfAndSubclassesOf;
+    private $parentInstancesOfAndSubclassesOf;
     private $limit;
     private $added = 0;
 
@@ -78,6 +70,7 @@ class GenerateDepictsQuestions implements ShouldQueue
     {
         $this->createQuestionGroups();
         $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $this->depictItemId );
+        $this->parentInstancesOfAndSubclassesOf = $this->parentInstancesOfAndSubclassesOf( $this->depictItemId );
 
         $mwServices = (new \Addwiki\Wikimedia\Api\WikimediaFactory())->newMediawikiFactoryForDomain( self::COMMONS );
 
@@ -107,9 +100,9 @@ class GenerateDepictsQuestions implements ShouldQueue
                 echo "Non image\n";
                 return;
             }
-            // Skip pages we already generated a question for
-            if (Question::where('question_group_id', '=', $this->targetGroup)
-                    ->where('unique_id', '=', $this->uniqueID( $pageIdentifier ))
+            // Skip pages we already generated a question for of any depicts type
+            if (Question::whereIn('question_group_id', [ $this->depictsSubGroup, $this->depictsRefineSubGroup] )
+                    ->whereIn('unique_id', [ $this->uniqueID( 'depicts', $pageIdentifier ), $this->uniqueID( 'depicts-refine', $pageIdentifier ) ])
                     ->exists()
                 ) {
                 // question already found
@@ -142,11 +135,29 @@ class GenerateDepictsQuestions implements ShouldQueue
                 'parent' => $depictsGroup->id,
             ]
         );
-        $this->targetGroup = $depictsSubGroup->id;
+        $this->depictsSubGroup = $depictsSubGroup->id;
+        
+        $depictsRefineGroup = QuestionGroup::firstOrCreate(
+            ['name' => 'depicts-refine'],
+            [
+                'display_name' => 'Depicts Refinement',
+                'display_description' => 'Refining high level depicts statements to more specific statements.',
+                'layout' => 'grid',
+            ]
+        );
+        $depictsRefineSubGroup = QuestionGroup::firstOrCreate(
+            ['name' => 'depicts-refine/' . $this->depictItemId],
+            [
+                'display_name' => $this->depictName,
+                'layout' => 'image-focus',
+                'parent' => $depictsRefineGroup->id,
+            ]
+        );
+        $this->depictsRefineSubGroup = $depictsRefineSubGroup->id;
     }
 
-    private function uniqueID( PageIdentifier $filePageIdentifier ) : string {
-        return "M" . $filePageIdentifier->getId() . '/depicts/' . $this->depictItemId;
+    private function uniqueID( string $groupName, PageIdentifier $filePageIdentifier ) : string {
+        return "M" . $filePageIdentifier->getId() . '/' . $groupName . '/' . $this->depictItemId;
     }
 
     private function instancesOfAndSubclassesOf( string $itemId ) : array {
@@ -163,6 +174,20 @@ class GenerateDepictsQuestions implements ShouldQueue
         return $ids;
     }
 
+    private function parentInstancesOfAndSubclassesOf( string $itemId ) : array {
+        $query = (new \Addwiki\Wikibase\Query\WikibaseQueryFactory(
+            "https://query.wikidata.org/sparql",
+            PrefixSets::WIKIDATA
+        ))->newWikibaseQueryService();
+        $result = $query->query( "SELECT DISTINCT ?i WHERE{wd:${itemId} wdt:P279+ ?i }" );
+
+        $ids = [];
+        foreach ( $result['results']['bindings'] as $binding ) {
+			$ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
+		}
+        return $ids;
+    }
+
     private function getLastPartOfUrlPath( string $urlPath ): string {
 		// Assume that the last part is always the ID?
 		$parts = explode( '/', $urlPath );
@@ -171,20 +196,26 @@ class GenerateDepictsQuestions implements ShouldQueue
 
     private function processFilePage( PageIdentifier $filePageIdentifier ) : bool {
         $wmFactory = (new \Addwiki\Wikimedia\Api\WikimediaFactory());
-        $wbServices = $wmFactory->newWikibaseFactoryForDomain( self::COMMONS );
+        $commonsWbServices = $wmFactory->newWikibaseFactoryForDomain( self::COMMONS );
         $depictsProperty = new \Wikibase\DataModel\Entity\PropertyId( self::DEPICTS_PROPERTY );
         $depictsValue = new \Wikibase\DataModel\Entity\ItemId( $this->depictItemId );
 
         $mid = new MediaInfoId( "M" . $filePageIdentifier->getId() );
 
         /** @var \Wikibase\MediaInfo\DataModel\MediaInfo $entity */
-        $entity = $wbServices->newEntityLookup()->getEntity( $mid );
+        $entity = $commonsWbServices->newEntityLookup()->getEntity( $mid );
         if($entity === null) {
             // TODO could still create statements for this condition...
             echo "MediaInfo entity not found\n";
             return false;
         }
-        $foundDepicts = false;
+
+        $foundDepicts = [
+            'exact' => 0,
+            'moreSpecific' => 0,
+            'lessSpecific' => 0,
+        ];
+        $lessSpecificValue = null;
         foreach( $entity->getStatements()->getByPropertyId( $depictsProperty )->toArray() as $statement ) {
             // Skip non value statements
             if( $statement->getMainSnak()->getType() !== 'value' ) {
@@ -193,56 +224,111 @@ class GenerateDepictsQuestions implements ShouldQueue
 
             $entityId = $statement->getMainSnak()->getDataValue()->getEntityId();
 
-            // Skip exact depicts matches
             if( $entityId->equals( $depictsValue ) ) {
-                $foundDepicts = 'exact';
-                break;
+                $foundDepicts['exact']++;
+                continue;
             }
-
-            // and inherited matches
             if( in_array( $entityId->getSerialization(), $this->instancesOfAndSubclassesOf ) ) {
-                $foundDepicts = 'inherited';
-                break;
+                $foundDepicts['moreSpecific']++;
+                continue;
+            }
+            if( in_array( $entityId->getSerialization(), $this->parentInstancesOfAndSubclassesOf ) ) {
+                $lessSpecificValue = $entityId;
+                $foundDepicts['lessSpecific']++;
+                continue;
             }
         }
 
-        if($foundDepicts !== false) {
-            echo "Already has ${foundDepicts} depicts" . PHP_EOL;
+        if($foundDepicts['exact'] > 0) {
+            echo "Exact depicts found\n";
             return false;
-        } else {
-            $mwApi = $wmFactory->newMediawikiApiForDomain(self::COMMONS);
-            $response = $mwApi->request(
-                \Addwiki\Mediawiki\Api\Client\Action\Request\ActionRequest::simpleGet(
-                    'query',
-                    [
-                        'titles' => $filePageIdentifier->getTitle()->getText(),
-                        'prop' => 'imageinfo',
-                        'iiprop' => 'url',
-                        'iiurlwidth' => '800',
-                        'iiurlheight' => '800',
-                        'format' => 'json',
-                    ]
-                ));
-            $thumbUrl = $response['query']['pages'][$filePageIdentifier->getId()]['imageinfo'][0]['thumburl'];
-            if(empty($thumbUrl)) {
-                echo "ERROR: Failed getting thumb url: " . $filePageIdentifier->getTitle()->getText() . PHP_EOL;
+        }
+        if($foundDepicts['moreSpecific'] > 0) {
+            echo "More specific depicts found\n";
+            return false;
+        }
+
+        $thumbUrl = $this->getThumbUrl( $filePageIdentifier );
+        if($thumbUrl===null) {
+            echo "ERROR: Failed getting thumb url: " . $filePageIdentifier->getTitle()->getText() . PHP_EOL;
+            return false;
+        }
+
+        if($foundDepicts['lessSpecific'] > 0) {
+            if($foundDepicts['lessSpecific'] !== 1) {
+                echo "BAIL: I'm scared, as multiple less specific statements were found...\n";
                 return false;
             }
+            
+            $wikidataWbServices = $wmFactory->newWikibaseFactoryForDomain( self::WIKIDATA );
+            $lessSpecificItem = $wikidataWbServices->newItemLookup()->getItemForId( $lessSpecificValue );
+            if(!$lessSpecificItem) {
+                echo "ERROR: Failed to get less specific item\n";
+                return false;
+            }
+            // TODO don't harcode to en?
+            if(!$lessSpecificItem->getLabels()->hasTermForLanguage( 'en' )) {
+                echo "ERROR: Less specific item has no label in English\n";
+                return false;
+            }
+            $lessSpecificItemLabel = $lessSpecificItem->getLabels()->getByLanguage( 'en' );
 
-            // Create the question
             Question::create([
-                'question_group_id' => $this->targetGroup,
-                'unique_id' => $this->uniqueID( $filePageIdentifier ),
+                'question_group_id' => $this->depictsRefineSubGroup,
+                // TODO don't harcode group name?
+                'unique_id' => $this->uniqueID( 'depicts-refine', $filePageIdentifier ),
                 'properties' => [
                     'mediainfo_id' => $mid->getSerialization(),
+                    'old_depicts_id' => $lessSpecificValue->getSerialization(),
+                    'old_depicts_name' => $lessSpecificItemLabel->getText(),
                     'depicts_id' => $this->depictItemId,
                     'depicts_name' => $this->depictName,
                     'img_url' => $thumbUrl,
                 ]
             ]);
             $this->added++;
-            echo "=D Question added for " . $mid->getSerialization() . "!" . PHP_EOL;
+            echo "=D Depict Refine question added for " . $mid->getSerialization() . "!" . PHP_EOL;
+
             return true;
         }
+
+        // Create the add depicts questions
+        Question::create([
+            'question_group_id' => $this->depictsSubGroup,
+            // TODO don't harcode group name?
+            'unique_id' => $this->uniqueID( 'depicts', $filePageIdentifier ),
+            'properties' => [
+                'mediainfo_id' => $mid->getSerialization(),
+                'depicts_id' => $this->depictItemId,
+                'depicts_name' => $this->depictName,
+                'img_url' => $thumbUrl,
+            ]
+        ]);
+        $this->added++;
+        echo "=D Depict Add question added for " . $mid->getSerialization() . "!" . PHP_EOL;
+        return true;
+    }
+
+    private function getThumbUrl( PageIdentifier $filePageIdentifier ) : ?string {
+        // TODO factor into addwiki mediawiki library?
+        $wmFactory = (new \Addwiki\Wikimedia\Api\WikimediaFactory());
+        $mwApi = $wmFactory->newMediawikiApiForDomain(self::COMMONS);
+        $response = $mwApi->request(
+            \Addwiki\Mediawiki\Api\Client\Action\Request\ActionRequest::simpleGet(
+                'query',
+                [
+                    'titles' => $filePageIdentifier->getTitle()->getText(),
+                    'prop' => 'imageinfo',
+                    'iiprop' => 'url',
+                    'iiurlwidth' => '800',
+                    'iiurlheight' => '800',
+                    'format' => 'json',
+                ]
+            ));
+        $thumbUrl = $response['query']['pages'][$filePageIdentifier->getId()]['imageinfo'][0]['thumburl'];
+        if(empty($thumbUrl)) {
+            return null;
+        }
+        return $thumbUrl;
     }
 }
