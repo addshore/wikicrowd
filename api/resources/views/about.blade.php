@@ -65,8 +65,20 @@
                 </div>
 
                 <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                    <div class="ml-4 text-center text-sm text-gray-500 sm:text-right sm:ml-0">
-                        Questions: {{$stats['questions']}} | Answers: {{$stats['answers']}} | Edits: {{$stats['edits']}} | Users: {{$stats['users']}}
+                    <div class="ml-4 text-sm text-gray-500 sm:ml-0">
+                        Stats...
+                        <ul class="ml-4">
+                            <li>
+                                Overall:&nbsp;
+                                Questions: {{$stats['questions']}} | Answers: {{$stats['answers']}} | Edits: {{$stats['edits']}} | Users: {{$stats['users']}}
+                            </li>
+                            @auth
+                            <li>
+                                {{ Auth::user()->username }}:&nbsp;
+                                Answers: {{$userstats['answers']}} | Edits: {{$userstats['edits']}}
+                            </li>
+                            @endauth
+                        </ul>
                     </div>
                 </div>
 

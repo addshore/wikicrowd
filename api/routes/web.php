@@ -29,6 +29,13 @@ Route::get('/', function () {
 });
 
 Route::get('/about', function () {
+    $user = Auth::user();
+    if($user) {
+        $userStats = [
+            'answers' => Answer::where('user_id','=',$user->id)->count(),
+            'edits' => Edit::where('user_id','=',$user->id)->count(),
+        ];
+    }
     return view('about', [
         'rcurls' => [
             "Commons" => "https://commons.wikimedia.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2",
@@ -39,7 +46,8 @@ Route::get('/about', function () {
             'answers' => Answer::count(),
             'edits' => Edit::count(),
             'users' => User::count(),
-        ]
+        ],
+        'userstats' => $userStats ?? [],
     ]);
 })->name('about');
 
