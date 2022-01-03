@@ -10,6 +10,8 @@ use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\QuestionGroupController;
 use App\Models\Question;
 use App\Jobs\AddAlias;
+use App\Models\Edit;
+use App\Models\User;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +27,21 @@ use App\Jobs\AddAlias;
 Route::get('/', function () {
     return redirect('/groups');
 });
+
+Route::get('/about', function () {
+    return view('about', [
+        'rcurls' => [
+            "Commons" => "https://commons.wikimedia.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2",
+            "Wikidata" => "https://www.wikidata.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2",
+        ],
+        'stats' => [
+            'questions' => Question::count(),
+            'answers' => Answer::count(),
+            'edits' => Edit::count(),
+            'users' => User::count(),
+        ]
+    ]);
+})->name('about');
 
 Route::get('/groups', [QuestionGroupController::class, 'showTopLevelGroups'])->name('groups');
 

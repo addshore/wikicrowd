@@ -20,7 +20,6 @@
                 font-family: 'Nunito', sans-serif;
             }
         </style>
-
     </head>
     <body class="antialiased">
         <div class="relative flex items-top justify-center min-h-screen bg-gray-100 dark:bg-gray-900 sm:items-center py-4 sm:pt-0">
@@ -37,22 +36,40 @@
                         <a href="{{ route('login') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Login</a>
                     @endauth
                 </div>
-            #@endif
+            @endif
 
             <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
+                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
+                    <div class="text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">WikiCrowd</span></div>
+                </div>
+
                 <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                    <div class="text-center text-sm text-gray-500 sm:text-left">
-                        <div class="flex items-center">
-                            No questions currently availible for this group
-                        </div>
-                    <div class="text-center text-sm text-gray-500 sm:text-left">
-                        <div class="flex items-center">
-                            <a href="{{ url('/') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Home</a>
-                        </div>
+                    <div class="ml-4 text-center text-sm text-gray-500 sm:text-right sm:ml-0">
+                        Quick and easy micro contributions to the wiki space.
                     </div>
                 </div>
-            </div>
 
-        </div>
+                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
+                    <div class="ml-4 text-sm text-gray-500 sm:ml-0">
+                        See edits on...
+                        <ul class="ml-4">
+                            @foreach($rcurls as $key => $url)
+                            <li><a href="{{$url}}">{{$key}}</a></li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
+                    <div class="ml-4 text-center text-sm text-gray-500 sm:text-right sm:ml-0">
+                        Questions: {{$stats['questions']}} | Answers: {{$stats['answers']}} | Edits: {{$stats['edits']}} | Users: {{$stats['users']}}
+                    </div>
+                </div>
+
+                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
+                    <div class="ml-4 text-center text-sm text-gray-500 sm:text-right sm:ml-0">
+                        Developed by&nbsp;<a href="https://twitter.com/addshore">Addshore</a>
+                    </div>
+                </div>
     </body>
 </html>
