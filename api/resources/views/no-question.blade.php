@@ -36,54 +36,21 @@
                         <a href="{{ route('login') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Login</a>
                     @endauth
                 </div>
-            @endif
+            #@endif
 
-        <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
-                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Is "<strong>{{ $qu->properties['suggestion'] }}</strong>" another English alias for {{ $qu->properties['item'] }} {{ $qu->properties['label'] }}?</div>
-                </div>
-                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    @if ($qu->properties['aliases'])
-                    <div class="text-sm leading-7 font-semibold text-gray-900 dark:text-white">Current Aliases:</div>&nbsp;<div class="text-md leading-7 text-gray-900 dark:text-white">{{ implode( ', ', $qu->properties['aliases']) }}</div>
-                    @else
-                    <div class="text-sm leading-7 font-semibold text-gray-900 dark:text-white">Current Aliases:</div>&nbsp;<div class="text-md leading-7 text-gray-900 dark:text-white"></div>
-                    @endif
-                </div>
-                <div class="py-2 flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <form class="pr-2" id="yes-form" action="{{ route('answers') }}" method="POST">
-                        @csrf
-                        <input name="question" type="hidden" value="{{ $qu->id }}">
-                        <input name="answer" type="hidden" value="yes">
-                        <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Yes</button>
-                    </form>
-                    <form id="no-form" action="{{ route('answers') }}" method="POST">
-                        @csrf
-                        <input name="question" type="hidden" value="{{ $qu->id }}">
-                        <input name="answer" type="hidden" value="no">
-                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">No</button>
-                    </form>
-                    <form class="pl-2" id="skip-form" action="{{ route('answers') }}" method="POST">
-                        @csrf
-                        <input name="question" type="hidden" value="{{ $qu->id }}">
-                        <input name="answer" type="hidden" value="skip">
-                        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Skip</button>
-                    </form>
-                </div>
-
-                <div class="flex justify-center sm:items-center sm:justify-between">
+            <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
+                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
                     <div class="text-center text-sm text-gray-500 sm:text-left">
                         <div class="flex items-center">
-                            Selecting "Yes" will result in an edit from your account adding the English alias.
+                            No questions currently availible for this group
+                        </div>
+                    <div class="text-center text-sm text-gray-500 sm:text-left">
+                        <div class="flex items-center">
+                            <a href="{{ url('/') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Home</a>
                         </div>
                     </div>
                 </div>
-
-                <div class="max-w-4xl p-4 text-gray-800 bg-white rounded-lg shadow" style="height:400px;width:800px;">
-                    <p>From English Wikipedia:</p></br>
-                    @php
-                    {{ echo $qu->properties['html_context'];}}
-                    @endphp
-                </div>
+            </div>
 
         </div>
     </body>

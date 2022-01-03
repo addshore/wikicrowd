@@ -40,7 +40,6 @@
                 </div>
             #@endif
 
-        @if ($qu)
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
                     <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image depict {{ $qu->properties['depicts_id'] }} {{ $qu->group->display_name }}?</div>
@@ -79,22 +78,5 @@
             </div>
 
         </div>
-        @else
-        <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
-                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                    <div class="text-center text-sm text-gray-500 sm:text-left">
-                        <div class="flex items-center">
-                            No questions currently availible for this group
-                        </div>
-                    <div class="text-center text-sm text-gray-500 sm:text-left">
-                        <div class="flex items-center">
-                            <a href="{{ url('/') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Home</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-        #@endif
     </body>
 </html>
