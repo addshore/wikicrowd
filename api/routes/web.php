@@ -12,6 +12,7 @@ use App\Models\Question;
 use App\Jobs\AddAlias;
 use App\Models\Edit;
 use App\Models\User;
+use App\Jobs\SwapDepicts;
 
 /*
 |--------------------------------------------------------------------------
@@ -86,6 +87,9 @@ Route::middleware('auth:sanctum')->name('answers')->post('/answers', function (R
         // TODO make a generic answer -> edit job?
         if($question->group->parentGroup->name === 'depicts') {
             dispatch(new AddDepicts($storedAnswer->id));
+        }
+        if($question->group->parentGroup->name === 'depicts-refine') {
+            dispatch(new SwapDepicts($storedAnswer->id));
         }
         if($question->group->parentGroup->name === 'aliases') {
             dispatch(new AddAlias($storedAnswer->id));
