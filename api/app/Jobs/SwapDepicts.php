@@ -18,6 +18,7 @@ use Wikibase\DataModel\Entity\ItemId;
 use Addwiki\Wikibase\Query\PrefixSets;
 use Wikibase\DataModel\Snak\PropertyValueSnak;
 use Wikibase\DataModel\Entity\EntityIdValue;
+use Illuminate\Support\Facades\Cache;
 
 class SwapDepicts implements ShouldQueue
 {
@@ -164,17 +165,19 @@ class SwapDepicts implements ShouldQueue
 
     private function instancesOfAndSubclassesOf( string $itemId ) : array {
         // TODO code reuse
-        $query = (new \Addwiki\Wikibase\Query\WikibaseQueryFactory(
-            "https://query.wikidata.org/sparql",
-            PrefixSets::WIKIDATA
-        ))->newWikibaseQueryService();
-        $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279* wd:${itemId} }" );
+        return Cache::remember('instancesOfAndSubclassesOf:' . $itemId, 60*2, function () use ($itemId) {
+            $query = (new \Addwiki\Wikibase\Query\WikibaseQueryFactory(
+                "https://query.wikidata.org/sparql",
+                PrefixSets::WIKIDATA
+            ))->newWikibaseQueryService();
+            $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279* wd:${itemId} }" );
 
-        $ids = [];
-        foreach ( $result['results']['bindings'] as $binding ) {
-			$ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
-		}
-        return $ids;
+            $ids = [];
+            foreach ( $result['results']['bindings'] as $binding ) {
+                $ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
+            }
+            return $ids;
+        });
     }
 
     private function getLastPartOfUrlPath( string $urlPath ): string {

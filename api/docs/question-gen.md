@@ -1,7 +1,7 @@
 General depicts, big categories:
 
 ```sh
-php ./src/api/artisan job:dispatchNow GenerateDepictsQuestions "Helicopters" Q34486 "Helicopter" 100
+php ./src/api/artisan job:dispatchNow GenerateDepictsQuestions "Views of helicopters" Q34486 "Helicopter" 100
 php ./src/api/artisan job:dispatchNow GenerateDepictsQuestions "Trains" Q870 "Train" 100
 php ./src/api/artisan job:dispatchNow GenerateDepictsQuestions "Photographs of tennis" Q847 "Tennis" 200
 php ./src/api/artisan job:dispatchNow GenerateDepictsQuestions "Barack Obama" Q76 "Barack Obama" 200
