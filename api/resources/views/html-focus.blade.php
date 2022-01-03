@@ -69,16 +69,7 @@
                     </form>
                 </div>
 
-                <div class="flex justify-center sm:items-center sm:justify-between">
-                    <div class="text-center text-sm text-gray-500 sm:text-left">
-                        <div class="flex items-center">
-                            Selecting "Yes" will result in an edit from your account adding the English alias.
-                        </div>
-                    </div>
-                </div>
-
                 <div class="max-w-4xl p-4 text-gray-800 bg-white rounded-lg shadow" style="height:400px;width:800px;">
-                    <p>From English Wikipedia:</p></br>
                     @php
                     {{ echo $qu->properties['html_context'];}}
                     @endphp

@@ -24,10 +24,18 @@ class GenerateAliasQuestions implements ShouldQueue
     private $limit;
     private $done = 0;
     private $targetGroup;
+    private $sourceDomain;
+    private $sourceName;
+    private $sourceWikidataLangCode;
 
     public function __construct( int $limit )
     {
         $this->limit = $limit;
+
+        // TODO at some point don't just do English
+        $this->sourceDomain = "en.wikipedia.org";
+        $this->sourceName = "English";
+        $this->sourceWikidataLangCode = "en";
     }
 
     /**
@@ -44,13 +52,12 @@ class GenerateAliasQuestions implements ShouldQueue
     }
 
     private function handleIteration() {
-
         $wmFactory = new \Addwiki\Wikimedia\Api\WikimediaFactory();
-        $enwikiApi = $wmFactory ->newMediawikiApiForDomain( 'en.wikipedia.org' );
+        $wikiApi = $wmFactory ->newMediawikiApiForDomain( $this->sourceDomain );
         $wbServices = $wmFactory->newWikibaseFactoryForDomain( self::WIKIDATA );
 
         // https://en.wikipedia.org/w/api.php?action=query&prop=extracts|pageterms&exlimit=20&exintro=1&generator=random&grnnamespace=0&grnlimit=20
-        $listResponse =  $enwikiApi->request(
+        $listResponse =  $wikiApi->request(
             ActionRequest::simpleGet(
                 'query',
                 [
@@ -83,7 +90,7 @@ class GenerateAliasQuestions implements ShouldQueue
 
             if ( count($candidates) === 0 ) continue ;
 
-            $itemRevision = $wbServices->newRevisionGetter()->getFromSiteAndTitle( 'enwiki', $pageData['title'] );
+            $itemRevision = $wbServices->newRevisionGetter()->getFromSiteAndTitle( $this->sourceWikidataLangCode . 'wiki', $pageData['title'] );
             if ( $itemRevision === null ){
                 echo "No item revision for {$pageData['title']}\n";
                 continue;
@@ -103,6 +110,8 @@ class GenerateAliasQuestions implements ShouldQueue
                 }
 
                 echo "Creating question for {$candidate}\n";
+                // Prefix the Html with where it is coming from!
+                $h = "<p>" . $this->sourceName . " Wikipedia:</p></br>" . $h;
                 Question::create([
                     'question_group_id' => $this->targetGroup,
                     'unique_id' => $uniq,
@@ -127,11 +136,10 @@ class GenerateAliasQuestions implements ShouldQueue
                 'layout' => 'grid',
             ]
         );
-        // TODO at some point don't just do English
         $subGroup = QuestionGroup::firstOrCreate(
-            ['name' => 'aliases/en'],
+            ['name' => 'aliases/' . $this->sourceWikidataLangCode],
             [
-                'display_name' => "English",
+                'display_name' => $this->sourceName,
                 'layout' => 'html-focus',
                 'parent' => $parentGroup->id,
             ]
@@ -140,7 +148,7 @@ class GenerateAliasQuestions implements ShouldQueue
     }
 
     private function uniqueID( ItemId $itemId, string $suggested ) : string {
-        return $itemId->getSerialization() . '/aliases/en/' . $suggested;
+        return $itemId->getSerialization() . '/aliases/' . $this->sourceWikidataLangCode . '/' . $suggested;
     }
 
 }

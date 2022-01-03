@@ -64,13 +64,6 @@
                     </form>
                 </div>
 
-                <div class="flex justify-center sm:items-center sm:justify-between">
-                    <div class="text-center text-sm text-gray-500 sm:text-left">
-                        <div class="flex items-center">
-                            Selecting "Yes" will result in an edit from your account stating that the image depicts {{ $qu->group->display_name }}.
-                        </div>
-                    </div>
-                </div>
                 <div class="flex flex-row justify-center items-start" style="height:800px;width:800px;">
                     <img class="object-contain align-top" style="object-position:top" src="{{ $qu->properties['img_url'] }}"></img>
                 </div>
