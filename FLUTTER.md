@@ -1,0 +1,1 @@
+https://medium.joshkautz.com/installing-flutter-2-0-on-wsl2-2fbf0a354c78
