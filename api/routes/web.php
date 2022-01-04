@@ -85,6 +85,7 @@ Route::get('/groups', [QuestionGroupController::class, 'showTopLevelGroups'])->n
 Route::middleware('auth:sanctum')->get('/questions/{groupName}', [QuestionController::class, 'showGroupUnanswered'])
     ->where('groupName', '(.*)');
 
+// TODO also move this to the API
 Route::middleware('auth:sanctum')->name('answers')->post('/answers', function (Request $request) {
 
     $v = Validator::make($request->all(), [

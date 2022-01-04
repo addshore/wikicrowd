@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+// Route::post('token', [\App\Http\Controllers\ApiAuthController::class, 'requestToken']);
+
+Route::get('/groups', [\App\Http\Controllers\QuestionGroupController::class, 'getTopLevelGroups'])->name('groups');
+
+Route::middleware('auth:sanctum')
+    ->get('/questions/{groupName}', [\App\Http\Controllers\QuestionController::class, 'getGroupUnanswered'])
+    ->where('groupName', '(.*)');

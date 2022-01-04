@@ -61,6 +61,6 @@ class OAuthUserController extends Controller
 
         $request->session()->invalidate();
 
-        return redirect('/');
+        return redirect()->intended();
     }
 }
