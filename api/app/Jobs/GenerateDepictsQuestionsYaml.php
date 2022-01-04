@@ -31,7 +31,7 @@ class GenerateDepictsQuestionsYaml implements ShouldQueue
         $value = Yaml::parse($content);
         ( new GenerateDepictsQuestions(
             $value['category'],
-            implode($value['exclude'], '|'),
+            implode($value['exclude'] ?: [], '|'),
             $value['depictsId'],
             $value['name'],
             $this->limit
