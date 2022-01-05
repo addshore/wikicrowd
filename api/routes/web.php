@@ -40,32 +40,46 @@ Route::get('/about', function () {
         ];
     }
 
-    $chart1 = new LaravelChart([
+    $chart = new LaravelChart(
+        [
             'chart_title' => 'Questions',
             'report_type' => 'group_by_date',
             'model' => Question::class,
             'group_by_field' => Question::CREATED_AT,
             'group_by_period' => 'day',
+            'continuous_time' => true,
+            'show_blank_data' => true,
+            'filter_days' => 5,
             'chart_type' => 'line',
-        ]);
-    $chart2 = new LaravelChart([
+            'chart_color' => "255,0,255",
+        ],
+        [
             'chart_title' => 'Answers',
             'report_type' => 'group_by_date',
             'model' => Answer::class,
             'group_by_field' => Answer::CREATED_AT,
             'group_by_period' => 'day',
+            'continuous_time' => true,
+            'show_blank_data' => true,
+            'filter_days' => 5,
             'chart_type' => 'line',
-        ]);
-    $chart3 = new LaravelChart([
+            'chart_color' => "0,255,255",
+        ],
+        [
             'chart_title' => 'Edits',
             'report_type' => 'group_by_date',
             'model' => Edit::class,
             'group_by_field' => Edit::CREATED_AT,
             'group_by_period' => 'day',
+            'continuous_time' => true,
+            'show_blank_data' => true,
+            'filter_days' => 5,
             'chart_type' => 'line',
-        ]);
+            'chart_color' => "255,255,0",
+        ]
+    );
 
-    return view('about', compact('chart1', 'chart2', 'chart3'), [
+    return view('about', compact('chart'), [
         'rcurls' => [
             "Commons" => "https://commons.wikimedia.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2",
             "Wikidata" => "https://www.wikidata.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2",

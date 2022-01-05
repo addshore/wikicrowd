@@ -98,16 +98,12 @@
                             </div>
                         </div>
 
-                        {!! $chart1->renderHtml() !!}
-                        {!! $chart2->renderHtml() !!}
-                        {!! $chart3->renderHtml() !!}
+                        {!! $chart->renderHtml() !!}
                         {{-- The below is generated as the chart library, but we want to load it from elsewhere for toolforge
                         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
-                        {!! $chart1->renderChartJsLibrary() !!} --}}
+                        {!! $chart->renderChartJsLibrary() !!} --}}
                         <script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
-                        {!! $chart1->renderJs() !!}
-                        {!! $chart2->renderJs() !!}
-                        {!! $chart3->renderJs() !!}
+                        {!! $chart->renderJs() !!}
                     </div>
                 </div>
 
