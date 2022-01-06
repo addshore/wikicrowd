@@ -144,7 +144,7 @@ class GenerateDepictsQuestions implements ShouldQueue
             ]
         );
         $this->depictsSubGroup = $depictsSubGroup->id;
-        
+
         $depictsRefineGroup = QuestionGroup::firstOrCreate(
             ['name' => 'depicts-refine'],
             [
@@ -173,7 +173,7 @@ class GenerateDepictsQuestions implements ShouldQueue
             "https://query.wikidata.org/sparql",
             PrefixSets::WIKIDATA
         ))->newWikibaseQueryService();
-        $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279* wd:${itemId} }" );
+        $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279*|wdt:P279/wdt:P279* wd:${itemId} }" );
 
         $ids = [];
         foreach ( $result['results']['bindings'] as $binding ) {
@@ -267,7 +267,7 @@ class GenerateDepictsQuestions implements ShouldQueue
                 echo "BAIL: I'm scared, as multiple less specific statements were found...\n";
                 return false;
             }
-            
+
             $wikidataWbServices = $wmFactory->newWikibaseFactoryForDomain( self::WIKIDATA );
             $lessSpecificItem = $wikidataWbServices->newItemLookup()->getItemForId( $lessSpecificValue );
             if(!$lessSpecificItem) {

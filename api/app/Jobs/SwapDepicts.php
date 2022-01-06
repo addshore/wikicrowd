@@ -89,7 +89,7 @@ class SwapDepicts implements ShouldQueue
         }
         $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $depictsValue->getSerialization() );
 
-        
+
         $foundDepicts = [
             'old-exact' => 0,
             'new-exact' => 0,
@@ -170,7 +170,7 @@ class SwapDepicts implements ShouldQueue
                 "https://query.wikidata.org/sparql",
                 PrefixSets::WIKIDATA
             ))->newWikibaseQueryService();
-            $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279* wd:${itemId} }" );
+            $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279*|wdt:P279/wdt:P279* wd:${itemId} }" );
 
             $ids = [];
             foreach ( $result['results']['bindings'] as $binding ) {

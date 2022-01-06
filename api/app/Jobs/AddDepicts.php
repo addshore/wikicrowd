@@ -124,7 +124,7 @@ class AddDepicts implements ShouldQueue
             $pageIdentifier = new PageIdentifier( null, str_replace( 'M', '', $mid->getSerialization() ) );
             $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
             $revId = $page->getRevisions()->getLatest()->getId();
-    
+
             Edit::create([
                 'question_id' => $question->id,
                 'user_id' => $user->id,
@@ -140,7 +140,7 @@ class AddDepicts implements ShouldQueue
                 "https://query.wikidata.org/sparql",
                 PrefixSets::WIKIDATA
             ))->newWikibaseQueryService();
-            $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279* wd:${itemId} }" );
+            $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279*|wdt:P279/wdt:P279* wd:${itemId} }" );
 
             $ids = [];
             foreach ( $result['results']['bindings'] as $binding ) {
