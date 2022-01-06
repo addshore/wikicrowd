@@ -43,15 +43,22 @@ class GenerateDepictsQuestionsYaml implements ShouldQueue
     private function processYamlFile( string $yamlFile ){
         echo "Running for ${yamlFile}\n";
 
-        $content = file_get_contents($yamlFile);
-        $value = Yaml::parse($content);
-        ( new GenerateDepictsQuestions(
-            $value['category'],
-            implode($value['exclude'] ?: [], '|'),
-            $value['depictsId'],
-            $value['name'],
-            $value['limit']
-        ) )->handle();
+        $file = Yaml::parse(file_get_contents($yamlFile), Yaml::PARSE_OBJECT_FOR_MAP);
+        if( is_array( $file ) ) {
+            $jobs = $file;
+        } else {
+            $jobs = [ $file ];
+        }
+
+        foreach( $jobs as $job ) {
+            ( new GenerateDepictsQuestions(
+                $job->category,
+                implode($job->exclude ?: [], '|'),
+                $job->depictsId,
+                $job->name,
+                $job->limit
+            ) )->handle();
+        }
     }
 
     private function getRecursiveYamlFilesInDirectory(string $directory){
