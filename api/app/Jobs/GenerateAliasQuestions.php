@@ -28,14 +28,32 @@ class GenerateAliasQuestions implements ShouldQueue
     private $sourceName;
     private $sourceWikidataLangCode;
 
-    public function __construct( int $limit )
-    {
-        $this->limit = $limit;
+    private const WIKI_MAP = [
+        'enwiki' => [
+            'name' => 'English',
+            'wikidata_lang' => 'en',
+            'domain' => 'en.wikipedia.org',
+        ],
+        'dewiki' => [
+            'name' => 'German',
+            'wikidata_lang' => 'de',
+            'domain' => 'de.wikipedia.org',
+        ],
+    ];
 
-        // TODO at some point don't just do English
-        $this->sourceDomain = "en.wikipedia.org";
-        $this->sourceName = "English";
-        $this->sourceWikidataLangCode = "en";
+    public function __construct(
+        string $code,
+        int $limit
+        )
+    {
+        if(!array_key_exists($code, self::WIKI_MAP)) {
+            throw new \Exception("Unknown wiki code: $code");
+        }
+
+        $this->sourceDomain = self::WIKI_MAP[$code]['domain'];
+        $this->sourceName = self::WIKI_MAP[$code]['name'];
+        $this->sourceWikidataLangCode = self::WIKI_MAP[$code]['wikidata_lang'];
+        $this->limit = $limit;
     }
 
     /**
