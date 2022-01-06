@@ -104,6 +104,9 @@
                         {!! $chart->renderChartJsLibrary() !!} --}}
                         <script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
                         {!! $chart->renderJs() !!}
+                        <div class="ml-4 text-center text-sm text-gray-500 sm:text-right sm:ml-0">
+                            Chart has a 5 min cache
+                        </div>
                     </div>
                 </div>
 

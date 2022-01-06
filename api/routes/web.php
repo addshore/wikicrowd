@@ -13,8 +13,8 @@ use App\Jobs\AddAlias;
 use App\Models\Edit;
 use App\Models\User;
 use App\Jobs\SwapDepicts;
-use Illuminate\Database\Eloquent\Concerns\HasTimestamps;
 use LaravelDaily\LaravelCharts\Classes\LaravelChart;
+use Illuminate\Support\Facades\Cache;
 
 /*
 |--------------------------------------------------------------------------
@@ -40,44 +40,46 @@ Route::get('/about', function () {
         ];
     }
 
-    $chart = new LaravelChart(
-        [
-            'chart_title' => 'Questions',
-            'report_type' => 'group_by_date',
-            'model' => Question::class,
-            'group_by_field' => Question::CREATED_AT,
-            'group_by_period' => 'day',
-            'continuous_time' => true,
-            'show_blank_data' => true,
-            'filter_days' => 5,
-            'chart_type' => 'line',
-            'chart_color' => "255,0,255",
-        ],
-        [
-            'chart_title' => 'Answers',
-            'report_type' => 'group_by_date',
-            'model' => Answer::class,
-            'group_by_field' => Answer::CREATED_AT,
-            'group_by_period' => 'day',
-            'continuous_time' => true,
-            'show_blank_data' => true,
-            'filter_days' => 5,
-            'chart_type' => 'line',
-            'chart_color' => "0,255,255",
-        ],
-        [
-            'chart_title' => 'Edits',
-            'report_type' => 'group_by_date',
-            'model' => Edit::class,
-            'group_by_field' => Edit::CREATED_AT,
-            'group_by_period' => 'day',
-            'continuous_time' => true,
-            'show_blank_data' => true,
-            'filter_days' => 5,
-            'chart_type' => 'line',
-            'chart_color' => "255,255,0",
-        ]
-    );
+    $chart = Cache::remember('web-about-chart', 60*5, function () {
+        return new LaravelChart(
+            [
+                'chart_title' => 'Questions',
+                'report_type' => 'group_by_date',
+                'model' => Question::class,
+                'group_by_field' => Question::CREATED_AT,
+                'group_by_period' => 'day',
+                'continuous_time' => true,
+                'show_blank_data' => true,
+                'filter_days' => 5,
+                'chart_type' => 'line',
+                'chart_color' => "255,0,255",
+            ],
+            [
+                'chart_title' => 'Answers',
+                'report_type' => 'group_by_date',
+                'model' => Answer::class,
+                'group_by_field' => Answer::CREATED_AT,
+                'group_by_period' => 'day',
+                'continuous_time' => true,
+                'show_blank_data' => true,
+                'filter_days' => 5,
+                'chart_type' => 'line',
+                'chart_color' => "0,255,255",
+            ],
+            [
+                'chart_title' => 'Edits',
+                'report_type' => 'group_by_date',
+                'model' => Edit::class,
+                'group_by_field' => Edit::CREATED_AT,
+                'group_by_period' => 'day',
+                'continuous_time' => true,
+                'show_blank_data' => true,
+                'filter_days' => 5,
+                'chart_type' => 'line',
+                'chart_color' => "255,255,0",
+            ]
+        );
+    });
 
     return view('about', compact('chart'), [
         'rcurls' => [
