@@ -3,3 +3,4 @@ name: Firework
 limit: 500
 category: Category:Fireworks
 exclude:
+excludeRegex: "/(Videos)/i"

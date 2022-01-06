@@ -3,5 +3,5 @@ name: Parachute
 limit: 100
 category: Category:Parachutes
 exclude:
-  - Category:Videos of parachutes
-  - Category:Parachutes in art
+  - Category:Parachute maintenance
+excludeRegex: "/(Videos|in (art|heraldry))/i"

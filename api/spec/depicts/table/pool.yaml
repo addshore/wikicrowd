@@ -3,3 +3,4 @@ name: Pool table
 limit: 200
 category: Category:Pool tables
 exclude:
+excludeRegex: "/(Videos)/i"

@@ -3,3 +3,4 @@ name: Mousepad
 limit: 200
 category: Category:Mousepads
 exclude:
+excludeRegex: "/(Videos)/i"

@@ -3,3 +3,4 @@ name: Laptop
 limit: 300
 category: Category:Dell_laptops
 exclude:
+excludeRegex: "/(Videos)/i"

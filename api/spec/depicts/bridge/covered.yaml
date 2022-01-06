@@ -3,3 +3,4 @@ name: Covered Bridge
 limit: 100
 category: Category:Covered bridges
 exclude:
+excludeRegex: "/(Videos)/i"

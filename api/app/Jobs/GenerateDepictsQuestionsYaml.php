@@ -53,7 +53,8 @@ class GenerateDepictsQuestionsYaml implements ShouldQueue
         foreach( $jobs as $job ) {
             ( new GenerateDepictsQuestions(
                 $job->category,
-                implode($job->exclude ?: [], '|'),
+                implode($job->exclude ?: [], '|||'),
+                $job->excludeRegex ?: "",
                 $job->depictsId,
                 $job->name,
                 $job->limit

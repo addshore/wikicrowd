@@ -3,3 +3,4 @@ name: Tennis
 limit: 200
 category: Category:Photographs of tennis
 exclude:
+excludeRegex: "/(Videos)/i"

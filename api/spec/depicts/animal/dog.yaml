@@ -3,3 +3,4 @@ name: Domestic dog
 limit: 300
 category: Category:Dogs
 exclude:
+excludeRegex: "/(Videos)/i"

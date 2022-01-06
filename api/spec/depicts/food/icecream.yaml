@@ -4,9 +4,4 @@ limit: 200
 category: Category:Ice cream
 # Worked down from the top category a level or 2 deciding what shouldn't be included
 exclude:
-  - Category:Ice cream spoons
-  - Category:Ice cream scoops
-  - Category:Ice cream shops
-  - Category:Ice cream symbols
-  - Category:Ice cream shops by country
-  - Category:Ice cream vans by country
+excludeRegex: "/(Ice cream (vans|shops|spoons|scoops|symbols))/i"

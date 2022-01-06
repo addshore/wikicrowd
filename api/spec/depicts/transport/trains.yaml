@@ -4,6 +4,7 @@
   category: Category:Trains
   exclude:
   - Category:Steam locomotives
+  excludeRegex: "/(Videos)/i"
 
 - depictsId: Q171043
   name: Steam locomotive / train
@@ -20,3 +21,4 @@
   - Category:Steam locomotive boiler blowdown
   - Category:Steam locomotive driving cabs
   - Category:Steam locomotive interiors
+  excludeRegex: "/(Videos)/i"

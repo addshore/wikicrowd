@@ -16,5 +16,5 @@ exclude:
   - Category:Views under bridges
   - Category:Maps of bridges
   - Category:Gallery pages of bridges
-  - Category:Videos of bridges
   - Category:Bridge engineering
+excludeRegex: "/(Videos)/i"

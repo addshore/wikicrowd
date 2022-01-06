@@ -3,3 +3,4 @@ name: Candle
 limit: 200
 category: Category:Candles
 exclude:
+excludeRegex: "/(Videos)/i"

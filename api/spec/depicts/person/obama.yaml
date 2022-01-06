@@ -3,9 +3,7 @@ name: Barack Obama
 limit: 300
 category: Category:Barack Obama
 exclude:
-  - Category:Audio files of Barack Obama
   - Category:Books about Barack Obama
-  - Category:Videos of Barack Obama
   - Category:Approval ratings of Barack Obama
   - Category:Barack Obama Presidential Center
   - Category:Demonstrations and protests against Barack Obama
@@ -16,3 +14,4 @@ exclude:
   - Category:Places and things named after Barack Obama
   - Category:Quotes by Barack Obama
   - Category:Barack Obama supporters
+excludeRegex: "/(Videos|Audio)/i"

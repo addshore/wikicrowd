@@ -4,8 +4,6 @@
   limit: 200
   category: Category:Parabadminton
   exclude:
-  - Category:Badminton audio files
-  - Category:Videos of badminton
   - Category:Books about badminton
   - Category:Badminton clubs
   - Category:Draws of badminton
@@ -22,6 +20,7 @@
   - Category:Badminton venues
   # Split out as own tree
   - Category:Parabadminton
+  excludeRegex: "/(Videos|audio)/i"
 
 
 - depictsId: Q18629677
@@ -29,3 +28,4 @@
   limit: 200
   category: Category:Parabadminton
   exclude:
+  excludeRegex: "/(Videos)/i"

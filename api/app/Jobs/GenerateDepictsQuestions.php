@@ -35,6 +35,7 @@ class GenerateDepictsQuestions implements ShouldQueue
 
     private $category;
     private $ignoreCategories;
+    private $ignoreCategoriesRegex;
     private $depictItemId;
     private $depictName;
     private $depictsSubGroup;
@@ -52,13 +53,15 @@ class GenerateDepictsQuestions implements ShouldQueue
     public function __construct(
         string $category,
         string $ignoreCategories,
+        string $ignoreCategoriesRegex,
         string $depictItemId,
         string $depictName,
         int $limit
         )
     {
         $this->category = $category;
-        $this->ignoreCategories = explode('|', $ignoreCategories);
+        $this->ignoreCategories = explode('|||', $ignoreCategories);
+        $this->ignoreCategoriesRegex = $ignoreCategoriesRegex;
         $this->depictItemId = $depictItemId;
         $this->depictName = $depictName;
         $this->limit = $limit;
@@ -104,7 +107,11 @@ class GenerateDepictsQuestions implements ShouldQueue
             $memberText = $member->getPageIdentifier()->getTitle()->getText();
             $rootText = $rootCat->getPageIdentifier()->getTitle()->getText();
             if(in_array($memberText, $this->ignoreCategories)) {
-                echo "Ignoring $memberText\n";
+                echo "Ignoring text match $memberText\n";
+                return false;
+            }
+            if($this->ignoreCategoriesRegex !== "" && preg_match($this->ignoreCategoriesRegex, $memberText)) {
+                echo "Ignoring regex match $memberText\n";
                 return false;
             }
             echo "Processing: " . $memberText . ", Parent was: " . $rootText . "\n";

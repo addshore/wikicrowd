@@ -4,3 +4,4 @@ name: Pastel de nata
 limit: 200
 category: Category:Pastéis de nata
 exclude:
+excludeRegex: "/(Videos)/i"
