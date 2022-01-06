@@ -1,5 +1,6 @@
 depictsId: Q12280
 name: Bridge
+limit: 200
 category: Category:Bridges
 # Worked down from the top category a level or 2 deciding what shouldn't be included
 exclude:

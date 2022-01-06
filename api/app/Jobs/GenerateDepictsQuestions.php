@@ -42,7 +42,7 @@ class GenerateDepictsQuestions implements ShouldQueue
     private $instancesOfAndSubclassesOf;
     private $parentInstancesOfAndSubclassesOf;
     private $limit;
-    private $added = 0;
+    private $got = 0;
 
     /**
      * Create a new job instance.
@@ -72,6 +72,23 @@ class GenerateDepictsQuestions implements ShouldQueue
     public function handle()
     {
         $this->createQuestionGroups();
+
+        // Figure out how many questions for the category we already have
+        $depictGroupCount = QuestionGroup::where('id','=',$this->depictsSubGroup)
+            ->withCount(['question as unanswered' => function($query){
+            $query->doesntHave('answer');
+            }])->first()->unanswered;
+        $depictRefineGroupCount = QuestionGroup::where('id','=',$this->depictsRefineSubGroup)
+            ->withCount(['question as unanswered' => function($query){
+            $query->doesntHave('answer');
+            }])->first()->unanswered;
+        $this->got = $depictGroupCount + $depictRefineGroupCount;
+        echo "Already got $this->got questions\n";
+        if($this->got >= $this->limit) {
+            echo "Already got enough questions\n";
+            return;
+        }
+
         $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $this->depictItemId );
         $this->parentInstancesOfAndSubclassesOf = $this->parentInstancesOfAndSubclassesOf( $this->depictItemId );
 
@@ -80,7 +97,7 @@ class GenerateDepictsQuestions implements ShouldQueue
         // Recursively descend the category looking for files
         $traverser = $mwServices->newCategoryTraverser();
         $traverser->addCallback( CategoryTraverser::CALLBACK_CATEGORY, function( Page $member, Page $rootCat ) {
-            if( $this->added >= $this->limit ) {
+            if( $this->got >= $this->limit ) {
                 echo "Limit reached\n";
                 return false;
             }
@@ -94,7 +111,7 @@ class GenerateDepictsQuestions implements ShouldQueue
         } );
         $traverser->addCallback( CategoryTraverser::CALLBACK_PAGE, function( Page $member, Page $rootCat ) {
             // Terrible limiting, but the only way to do it right now..
-            if( $this->added >= $this->limit ) {
+            if( $this->got >= $this->limit ) {
                 echo "Limit reached\n";
                 return;
             }
@@ -294,7 +311,7 @@ class GenerateDepictsQuestions implements ShouldQueue
                     'img_url' => $thumbUrl,
                 ]
             ]);
-            $this->added++;
+            $this->got++;
             echo "=D Depict Refine question added for " . $mid->getSerialization() . "!" . PHP_EOL;
 
             return true;
@@ -312,7 +329,7 @@ class GenerateDepictsQuestions implements ShouldQueue
                 'img_url' => $thumbUrl,
             ]
         ]);
-        $this->added++;
+        $this->got++;
         echo "=D Depict Add question added for " . $mid->getSerialization() . "!" . PHP_EOL;
         return true;
     }

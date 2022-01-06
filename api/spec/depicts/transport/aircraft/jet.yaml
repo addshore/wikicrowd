@@ -1,5 +1,6 @@
 depictsId: Q206592
 name: Jet Aircraft
+limit: 200
 category: Category:Aircraft with jet engines
 exclude:
  - Category:Wind tunnel models of jet-powered aircraft
