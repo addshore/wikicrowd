@@ -1,6 +1,6 @@
 depictsId: Q847
 name: Tennis
-limit: 200
+limit: 250
 category: Category:Photographs of tennis
 exclude:
 excludeRegex: "/(Videos)/i"

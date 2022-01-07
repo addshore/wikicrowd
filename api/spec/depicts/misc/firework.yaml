@@ -1,6 +1,6 @@
 depictsId: Q127933
 name: Firework
-limit: 500
+limit: 750
 category: Category:Fireworks
 exclude:
 excludeRegex: "/(Videos)/i"
