@@ -1,6 +1,6 @@
 depictsId: Q146
 name: House cat / Common cat
-limit: 300
+limit: 500
 category: Category:Felis silvestris catus
 exclude:
 excludeRegex: "/(Videos)/i"

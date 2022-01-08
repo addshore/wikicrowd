@@ -1,6 +1,6 @@
 depictsId: Q6663
 name: Burger (Hamburger)
-limit: 100
+limit: 250
 category: Category:Hamburgers
 exclude:
 excludeRegex: "/(Audio|menus|presses|restaurants|in art|vendors)/i"

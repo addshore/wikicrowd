@@ -1,6 +1,6 @@
 depictsId: Q273404
 name: Pie chart
-limit: 300
+limit: 500
 category: Category:Pie charts
 exclude:
 excludeRegex: "/(Videos)/i"

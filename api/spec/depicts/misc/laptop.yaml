@@ -1,6 +1,6 @@
 - depictsId: Q3962
   name: Laptop
-  limit: 500
+  limit: 750
   category: Category:Dell laptops
   exclude:
   excludeRegex: "/(Videos)/i"

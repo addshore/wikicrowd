@@ -1,13 +1,13 @@
 - depictsId: Q34486
   name: Helicopter
-  limit: 250
+  limit: 500
   category: Category:Views of helicopters
   exclude:
   excludeRegex: "/(Videos)/i"
 
 - depictsId: Q206592
   name: Jet Aircraft
-  limit: 250
+  limit: 500
   category: Category:Aircraft with jet engines
   exclude:
   - Category:Wind tunnel models of jet-powered aircraft

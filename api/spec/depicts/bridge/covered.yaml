@@ -1,6 +1,6 @@
 depictsId: Q1825472
 name: Covered Bridge
-limit: 150
+limit: 250
 category: Category:Covered bridges
 exclude:
 excludeRegex: "/(Videos)/i"

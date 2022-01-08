@@ -1,6 +1,6 @@
 - depictsId: Q870
   name: Train
-  limit: 250
+  limit: 500
   category: Category:Trains
   exclude:
   - Category:Steam locomotives
