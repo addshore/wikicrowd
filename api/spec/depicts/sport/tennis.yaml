@@ -1,6 +1,14 @@
-depictsId: Q847
-name: Tennis
-limit: 500
-category: Category:Photographs of tennis
-exclude:
-excludeRegex: "/(Videos)/i"
+- depictsId: Q847
+  name: Tennis
+  limit: 500
+  category: Category:Photographs of tennis
+  exclude:
+  excludeRegex: "/(Videos)/i"
+
+
+- depictsId: Q1153025
+  name: Wheelchair tennis
+  limit: 50
+  category: Category:Wheelchair tennis
+  exclude:
+  excludeRegex: "/(Videos)/i"

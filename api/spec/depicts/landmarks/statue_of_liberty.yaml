@@ -1,0 +1,11 @@
+depictsId: Q9202
+name: Statue of Liberty
+limit: 100
+category: Category:Statue of Liberty
+exclude:
+  - Category:Detail of the Statue of Liberty
+  - Category:Interior of the Statue of Liberty
+  - Category:Replicas of the Statue of Liberty
+  - Category:Statue of Liberty Museum
+  - Category:Views_from_the_Statue_of_Liberty
+excludeRegex: "/(in art)/i"

@@ -1,0 +1,11 @@
+depictsId: Q15328
+name: Camera
+limit: 250
+category: Category:Cameras
+exclude:
+  - Category:Camera automobiles
+  - Category:Camera features
+  - Category:Camera parts
+  - Category:Camera showrooms
+  - Category:Camera accessories
+excludeRegex: "/(in art)/i"

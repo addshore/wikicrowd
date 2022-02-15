@@ -2,6 +2,12 @@
 
 This API is build on laravel.
 
+## Question generation
+
+Question genertation is done using Laravel jobs.
+
+For the primary questions (depicts), checkout the `spec` folder the the yaml that is used to generate the questions.
+
 ## Development
 
 To get the dependencies you'll need to do a composer install...

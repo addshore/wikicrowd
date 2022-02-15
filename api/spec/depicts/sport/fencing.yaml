@@ -1,0 +1,13 @@
+depictsId: Q12100
+name: Fencing
+limit: 100
+category: Category:Fencing
+exclude:
+  - Category:Fencing executives
+  - Category:Fencing equipment
+  - Category:Knife fighting
+  - Category:National fencing teams
+  - Category:Podiums in fencing
+  - Category:Fencing rules
+  - Category:Fencing theory
+excludeRegex: "/(Videos|in art)/i"
