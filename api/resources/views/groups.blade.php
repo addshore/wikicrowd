@@ -45,12 +45,9 @@
                 </div>
                 @empty
                 <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
-                        <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                            <div class="text-center text-sm text-gray-500 sm:text-left">
-                                <div class="flex items-center">
-                                    No groups currently ready for contributing to
-                                </div>
-                            </div>
+                    <div class="p-6">
+                        <div class="flex items-center">
+                            <div class="ml-4 text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">No groups currently ready for contributing to</span></div>
                         </div>
                     </div>
 
