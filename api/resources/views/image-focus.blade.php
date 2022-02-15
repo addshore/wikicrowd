@@ -23,17 +23,17 @@
                 </div>
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
                     <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image actually clearly depict
-                        <a href="https://www.wikidata.org/wiki/{{$qu->properties['depicts_id']}}" target="_blank">
-                        {{ $qu->properties['depicts_id'] }} <u>{{ $qu->properties['depicts_name'] }}</u>
-                        </a>
+                        "{{ $qu->properties['depicts_name'] }}"
+                        (<a href="https://www.wikidata.org/wiki/{{$qu->properties['depicts_id']}}" target="_blank">
+                        {{ $qu->properties['depicts_id'] }}</a>)?
                     </div>
                 </div>
                 @else
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
                     <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image clearly depict
-                        <a href="https://www.wikidata.org/wiki/{{$qu->properties['depicts_id']}}" target="_blank">
-                        {{ $qu->properties['depicts_id'] }} <u>{{ $qu->properties['depicts_name'] }}</u>
-                        </a>
+                        "{{ $qu->properties['depicts_name'] }}"
+                        (<a href="https://www.wikidata.org/wiki/{{$qu->properties['depicts_id']}}" target="_blank">
+                        {{ $qu->properties['depicts_id'] }}</a>)?
                     </div>
                 </div>
                 @endif
