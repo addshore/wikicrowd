@@ -1,11 +1,23 @@
-For developemnt
+# wikicrowd API
+
+This API is build on laravel.
+
+## Development
+
+To get the dependencies you'll need to do a composer install...
 
 ```sh
-./vendor/bin/sail up
+composer install
+```
+
+If you have docker you should be able to use sail to run the development system.
+
+```sh
+./vendor/bin/sail up -d
 npm run watch
 ```
 
-You'll need to create the databases.
+On first setup tou'll need to create the databases.
 
 ```sh
 ./vendor/bin/sail artisan migrate
@@ -18,3 +30,5 @@ You can then generate a couple of questions (just exit the command early so it d
 ```
 
 Then find the site at http://localhost
+
+In order to have the API fully setup you'll need to make your own `.env` file, including your own mediawiki oauth details.
