@@ -6,6 +6,22 @@ With an OAuth consumer to Wikimedia production
 
 https://meta.wikimedia.org/w/index.php?title=Special:OAuthListConsumers/view/b7e6badde4982d44e053ca0a4fdde3ca&name=&publisher=&stage=0
 
+## Question generation
+
+I should seutp a cron for this...
+But for now I'll need to login and do the following every now and again...
+
+```sh
+webservice php7.4 shell -- php ./src/api/artisan job:dispatchNow GenerateAliasQuestions 200
+webservice php7.4 shell -- php ./src/api/artisan job:dispatchNow GenerateDepictsQuestionsYaml
+```
+
+You can also target specific yaml files for depicts...
+
+```sh
+webservice php7.4 shell -- php ./src/api/artisan job:dispatchNow GenerateDepictsQuestionsYaml ./src/api/spec/depicts/food/burger.yaml
+```
+
 ## Updates
 
 ```sh
