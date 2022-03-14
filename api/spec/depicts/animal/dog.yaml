@@ -3,4 +3,4 @@ name: Domestic dog
 limit: 500
 category: Category:Dogs
 exclude:
-excludeRegex: "/(Videos|statues|sculpture)/i"
+excludeRegex: "/(Videos|statues|sculpture| art )/i"
