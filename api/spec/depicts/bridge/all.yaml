@@ -7,14 +7,6 @@ exclude:
   - Category:Covered bridges
   - Category:Covered bridges by color
   - Category:Bridge elements
-  - Category:Inscriptions on bridges
-  - Category:Street Lights on Bridges
   - Category:People and bridges
-  - Category:Plaques about bridges
-  - Category:Shadows of bridges
-  - Category:Views from bridges
-  - Category:Views under bridges
-  - Category:Maps of bridges
-  - Category:Gallery pages of bridges
   - Category:Bridge engineering
-excludeRegex: "/(Videos)/i"
+excludeRegex: "/(Videos|views (from|under)|(maps|shadows|plaques|inscriptions|street lights|gallery pages) (of|on|about))/i"
