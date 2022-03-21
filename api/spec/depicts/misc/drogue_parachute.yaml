@@ -1,0 +1,6 @@
+depictsId: Q591399
+name: Drogue parachute
+limit: 250
+category: Category:Drogue parachutes
+exclude:
+excludeRegex: "/(Videos)/i"
