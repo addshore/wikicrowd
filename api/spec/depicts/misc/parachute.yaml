@@ -4,4 +4,5 @@ limit: 250
 category: Category:Parachutes
 exclude:
   - Category:Parachute maintenance
+  - Category:Drogue parachutes
 excludeRegex: "/(Videos|in (art|heraldry))/i"
