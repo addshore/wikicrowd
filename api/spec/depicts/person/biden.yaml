@@ -1,0 +1,15 @@
+depictsId: Q6279
+name: Joe Biden
+limit: 1000
+category: Category:Joe Biden
+exclude:
+  - Category:Joe Biden in art
+  - Category:Joe Biden-related books
+  - Category:Demonstrations and protests against Joe Biden
+  - Category:Joe Biden-related documents
+  - Category:Places and things named after Joe Biden
+  - Category:Quotations by Joe Biden
+  - Category:Signatures of Joe Biden
+  - Category:Supporters of Joe Biden
+  - Category:Twitter and Joe Biden
+excludeRegex: "/(Videos|Audio)/i"
