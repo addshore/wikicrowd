@@ -4,19 +4,10 @@ limit: 1000
 category: Category:Donald Trump
 exclude:
  - Category:Anti-Trump signage
- - Category:Donald Trump in art
  - Category:Barack Obama citizenship conspiracy theories
- - Category:Demonstrations and protests against Donald Trump
  - Category:Donald Trump-related documents
- - Category:Donald Trump impersonators
  - Category:Donald Trump symbols and logos
  - Category:Donald Trump-related maps
- - Category:Donald Trump memorabilia
  - Category:Monuments and memorials to Donald Trump
- - Category:Pardons granted by Donald Trump
- - Category:Private residences of Donald Trump
- - Category:Quotations by Donald Trump
- - Category:Donald Trump supporters
  - Category:Donald Trump on social media
- - Category:Donald Trump supporters
-excludeRegex: "/(Videos|Audio)/i"
+excludeRegex: "/(Videos|Audio|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests against)/i"

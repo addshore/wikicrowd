@@ -1,10 +1,6 @@
-depictsId: Q6279
-name: Joe Biden
+depictsId: Q207
+name: George W. Bush
 limit: 500
-category: Category:Joe Biden
+category: Category:George W. Bush
 exclude:
-  - Category:Joe Biden-related books
-  - Category:Joe Biden-related documents
-  - Category:Places and things named after Joe Biden
-  - Category:Twitter and Joe Biden
 excludeRegex: "/(Videos|Audio|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests against)/i"
