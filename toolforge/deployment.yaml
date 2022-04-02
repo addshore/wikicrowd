@@ -1,5 +1,4 @@
 ---
-# NOTE: this deployment works with the "toolforge" Kubernetes cluster, and not the legacy "default" cluster.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,9 +23,40 @@ spec:
       containers:
         - name: queue
           image: docker-registry.tools.wmflabs.org/toolforge-php74-sssd-base:latest
-          command: [ "php", "/data/project/wikicrowd/src/artisan", "queue:work" ]
+          command: [ "php", "/data/project/wikicrowd/src/artisan", "queue:work", "--queue=high,default,low" ]
           workingDir: /data/project/wikicrowd
           env:
             - name: HOME
               value: /data/project/wikicrowd
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel.schedule
+  namespace: tool-wikicrowd
+  labels:
+    name: laravel.schedule
+    # The toolforge=tool label will cause $HOME and other paths to be mounted from Toolforge
+    toolforge: tool
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: laravel.schedule
+      toolforge: tool
+  template:
+    metadata:
+      labels:
+        name: laravel.schedule
+        toolforge: tool
+    spec:
+      containers:
+        - name: schedule
+          image: docker-registry.tools.wmflabs.org/toolforge-php74-sssd-base:latest
+          command: [ "php", "/data/project/wikicrowd/src/artisan", "schedule:work" ]
+          workingDir: /data/project/wikicrowd
+          env:
+            - name: HOME
+              value: /data/project/wikicrowd
+          imagePullPolicy: IfNotPresent

@@ -61,15 +61,18 @@ class GenerateAliasQuestions implements ShouldQueue
         $this->limit = $limit;
     }
 
-    /**
-     * Execute the job.
-     *
-     * @return void
-     */
     public function handle()
     {
         $this->createQuestionGroups();
-        while($this->done < $this->limit) {
+
+        // Get the current unanswered questions so we can quickly exit if we have enough
+        $unansweredQuestions = QuestionGroup::where('id','=',$this->targetGroup)
+            ->withCount(['question as unanswered' => function($query){
+                $query->doesntHave('answer');
+            }])->first()->unanswered;
+
+        // If there is space before the limit then run a batch
+        while(($unansweredQuestions + $this->done ) < $this->limit) {
             $this->handleIteration();
         }
     }

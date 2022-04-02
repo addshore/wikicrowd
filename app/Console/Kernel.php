@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use App\Jobs\GenerateAliasQuestions;
 
 class Kernel extends ConsoleKernel
 {
@@ -16,6 +17,11 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // $schedule->command('inspire')->hourly();
+
+        // GenerateAliasQuestions
+        $schedule->job(new GenerateAliasQuestions( 'enwiki', '300' ), "low")->hourly();
+        $schedule->job(new GenerateAliasQuestions( 'dewiki', '200' ), "low")->hourly();
+        $schedule->job(new GenerateAliasQuestions( 'plwiki', '100' ), "low")->hourly();
     }
 
     /**

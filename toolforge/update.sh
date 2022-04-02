@@ -1,6 +1,6 @@
 #!/bin/bash
 git -C ~/src pull
-webservice php7.4 shell -- composer install --working-dir=./src
+webservice php7.4 shell -- composer install --no-dev --working-dir=./src
 webservice node12 shell -- npm --prefix src install
 webservice node12 shell -- npm --prefix src run production
 cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
