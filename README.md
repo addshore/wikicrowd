@@ -2,6 +2,8 @@
 
 The [currently deployed web app](https://wikicrowd.toolforge.org) built using Laravel.
 
+![](https://i.imgur.com/mn5wRiQ.png)
+
 `toolforge` contains documentation and resources for deploying the web app.
 
 ## Question generation
