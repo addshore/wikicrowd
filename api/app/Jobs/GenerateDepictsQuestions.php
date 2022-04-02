@@ -314,7 +314,6 @@ class GenerateDepictsQuestions implements ShouldQueue
                     'old_depicts_name' => $lessSpecificItemLabel->getText(),
                     'depicts_id' => $this->depictItemId,
                     'depicts_name' => $this->depictName,
-                    'img_title' => $filePageIdentifier->getTitle()->getText(),
                     'img_url' => $thumbUrl,
                 ]
             ]);
@@ -333,7 +332,6 @@ class GenerateDepictsQuestions implements ShouldQueue
                 'mediainfo_id' => $mid->getSerialization(),
                 'depicts_id' => $this->depictItemId,
                 'depicts_name' => $this->depictName,
-                'img_title' => $filePageIdentifier->getTitle()->getText(),
                 'img_url' => $thumbUrl,
             ]
         ]);
