@@ -56,7 +56,7 @@
 
             <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
                 <div class="ml-4 text-sm text-gray-500 sm:ml-0">
-                    <p>Developed by <a href="https://twitter.com/addshore" target="_blank">Addshore</a> (<a href="https://github.com/addshore/wikicrowd" target="_blank">source</a>)</p>
+                    <p>Developed by <a href="https://twitter.com/addshore" target="_blank">Addshore</a> (<a href="https://github.com/addshore/wikicrowd" target="_blank">source code</a>)</p>
 
                     <p>Questions: {{$stats['questions']}} | Answers: {{$stats['answers']}} | Edits: {{$stats['edits']}} | Users: {{$stats['users']}}</p>
 
