@@ -23,7 +23,7 @@ If you have docker you should be able to use sail to run the development system.
 npm run watch
 ```
 
-On first setup tou'll need to create the databases.
+On first setup you'll need to create the databases.
 
 ```sh
 ./vendor/bin/sail artisan migrate

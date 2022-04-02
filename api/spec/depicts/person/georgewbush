@@ -1,0 +1,10 @@
+depictsId: Q207
+name: George W. Bush
+limit: 1000
+category: Category:George W. Bush
+exclude:
+  - Category:George W. Bush in art
+  - Category:Demonstrations and protests against George W. Bush
+  - Category:Places and things named after George W. Bush
+  - Category:George W. Bush administration personnel
+excludeRegex: "/(Videos|Audio)/i"

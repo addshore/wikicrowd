@@ -1,0 +1,12 @@
+depictsId: Q1124
+name: Bill Clinton
+limit: 1000
+category: Category:Bill Clinton
+exclude:
+  - Category:Bill Clinton in art
+  - Category:Bill Clinton-related audio
+  - Category:Documents relating to Bill Clinton
+  - Category:Clinton Foundation
+  - Category:William J. Clinton Presidential Center and Park
+  - Category:Bill Clinton administration personnel
+excludeRegex: "/(Videos|Audio)/i"
