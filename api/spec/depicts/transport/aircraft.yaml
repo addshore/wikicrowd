@@ -38,7 +38,7 @@
   - Category:Views from gliders
   excludeRegex: "/(Videos|art)/i"
   
-  - depictsId: Q133585
+- depictsId: Q133585
   name: Airship
   limit: 500
   category: Category:Airships
