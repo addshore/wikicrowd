@@ -3,7 +3,6 @@
         <span class="text-sm text-gray-800 dark:text-gray-400">Hello, {{ Auth::user()->username }}!</span>
     @endauth
     <a href="{{ url('/') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Home</a>
-    <a href="{{ route('about') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">About</a>
     @auth
         <a href="{{ route('logout') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Logout</a>
     @else

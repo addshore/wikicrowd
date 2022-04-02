@@ -55,16 +55,25 @@
             @endif
 
             <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                <div class="ml-4 text-center text-sm text-gray-500 sm:text-right sm:ml-0">
-                    Questions: {{$stats['questions']}} | Answers: {{$stats['answers']}} | Edits: {{$stats['edits']}} | Users: {{$stats['users']}}
-                </div>
-            </div>
+                <div class="ml-4 text-sm text-gray-500 sm:ml-0">
+                    <p>Developed by <a href="https://twitter.com/addshore">Addshore</a> (<a href="https://github.com/addshore/wikicrowd">source</a>)</p>
 
-                <div class="flex justify-center mt-4 sm:items-center sm:justify-between">
-                    <div class="ml-4 text-center text-sm text-gray-500 sm:text-right sm:ml-0">
-                        Developed by <a href="https://twitter.com/addshore">Addshore</a> (<a href="https://github.com/addshore/wikicrowd">source</a>)
-                    </div>
-                </div>
+                    <p>Questions: {{$stats['questions']}} | Answers: {{$stats['answers']}} | Edits: {{$stats['edits']}} | Users: {{$stats['users']}}</p>
+
+                    <p>
+                        Wikidata:&nbsp;
+                            <a href="https://www.wikidata.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2">All edits</a>
+                            @auth
+                                / <a href="https://www.wikidata.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2&hidebyothers=1">Your edits</a>
+                            @endauth
+                    </p>
+                    <p>
+                        Commons:&nbsp;
+                        <a href="https://commons.wikimedia.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2">All edits</a>
+                        @auth
+                            / <a href="https://commons.wikimedia.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2&hidebyothers=1">Your edits</a>
+                        @endauth
+                    </p>
             </div>
     </body>
 </html>
