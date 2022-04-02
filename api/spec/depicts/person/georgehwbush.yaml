@@ -1,0 +1,11 @@
+depictsId: Q23505
+name: George H. W. Bush
+limit: 1000
+category: Category:George H. W. Bush
+exclude:
+  - Category:George W. Bush in art
+  - Category:Demonstrations and protests against George W. Bush
+  - Category:George W. Bush Childhood Home
+  - Category:George W. Bush Presidential Center
+  - Category:Places and things named after George W. Bush
+excludeRegex: "/(Videos|Audio)/i"
