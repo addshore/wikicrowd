@@ -148,7 +148,7 @@ class GenerateAliasQuestions implements ShouldQueue, ShouldBeUnique
 
                 echo "Creating question for {$candidate}\n";
                 // Prefix the Html with where it is coming from!
-                $htmlContext = "<p>" . $this->sourceName . " Wikipedia:</p></br>" . $h;
+                $htmlContext = "<p><a href='https://" . $this->sourceDomain . "/wiki/" . $pageData['title'] . "' target='_blank'>" . $this->sourceName . " Wikipedia</a>:</p></br>" . $h;
                 Question::create([
                     'question_group_id' => $this->targetGroup,
                     'unique_id' => $uniq,
