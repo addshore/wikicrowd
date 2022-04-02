@@ -72,8 +72,7 @@ class GenerateDepictsQuestions implements ShouldQueue
      *
      * @return void
      */
-    public function handle()
-    {
+    public function handle() {
         $this->createQuestionGroups();
 
         // Figure out how many questions for the category we already have
@@ -201,8 +200,8 @@ class GenerateDepictsQuestions implements ShouldQueue
 
         $ids = [];
         foreach ( $result['results']['bindings'] as $binding ) {
-			$ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
-		}
+            $ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
+        }
         return $ids;
     }
 
@@ -215,16 +214,16 @@ class GenerateDepictsQuestions implements ShouldQueue
 
         $ids = [];
         foreach ( $result['results']['bindings'] as $binding ) {
-			$ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
-		}
+            $ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
+        }
         return $ids;
     }
 
     private function getLastPartOfUrlPath( string $urlPath ): string {
-		// Assume that the last part is always the ID?
-		$parts = explode( '/', $urlPath );
-		return end( $parts );
-	}
+        // Assume that the last part is always the ID?
+        $parts = explode( '/', $urlPath );
+        return end( $parts );
+    }
 
     private function processFilePage( PageIdentifier $filePageIdentifier ) : bool {
         $wmFactory = (new \Addwiki\Wikimedia\Api\WikimediaFactory());
