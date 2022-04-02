@@ -42,7 +42,7 @@
                 </div>
 
                 <div class="flex flex-row justify-center items-start" style="height:800px;width:800px;">
-                    <a href="https://commons.wikimedia.org/wiki/{{ $qu->properties['img_title'] }}">
+                    <a href="https://commons.wikimedia.org/wiki/{{ $qu->properties['img_title'] }}" target="_blank">
                         <img class="object-contain align-top" style="object-position:top" src="{{ $qu->properties['img_url'] }}"></img>
                     </a>
                 </div>
