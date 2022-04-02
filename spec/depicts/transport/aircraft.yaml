@@ -13,20 +13,10 @@
   - Category:Wind tunnel models of jet-powered aircraft
   excludeRegex: "/(Videos)/i"
 
-
-- depictsId: Q1153376
-  name: Flying boat
-  limit: 500
-  category: Category:Flying boats
-  exclude:
-  excludeRegex: "/(Videos)/i"
-
 - depictsId: Q115940
   name: Seaplane
   limit: 500
   category: Category:Seaplanes
-  exclude:
-  - Category:Flying boats
   excludeRegex: "/(Videos)/i"
 
 - depictsId: Q8492796
@@ -37,7 +27,7 @@
   - Category:Motorgliders
   - Category:Views from gliders
   excludeRegex: "/(Videos|art)/i"
-  
+
 - depictsId: Q133585
   name: Airship
   limit: 500
