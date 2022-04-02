@@ -39,6 +39,11 @@ class GenerateAliasQuestions implements ShouldQueue
             'wikidata_lang' => 'de',
             'domain' => 'de.wikipedia.org',
         ],
+        'plwiki' => [
+            'name' => 'Polish',
+            'wikidata_lang' => 'pl',
+            'domain' => 'pl.wikipedia.org',
+        ],
     ];
 
     public function __construct(

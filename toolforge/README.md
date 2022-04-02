@@ -28,9 +28,9 @@ webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQues
 
 ```sh
 git -C ~/src pull
-webservice php7.4 shell -- composer install --working-dir=./src/api
-webservice node12 shell -- npm --prefix src/api install
-webservice node12 shell -- npm --prefix src/api run production
+webservice php7.4 shell -- composer install --working-dir=./src
+webservice node12 shell -- npm --prefix src install
+webservice node12 shell -- npm --prefix src run production
 cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
 cp ~/src/toolforge/service.template ~/service.template
 cp ~/src/toolforge/deployment.yaml ~/deployment.yaml
@@ -49,7 +49,7 @@ become wikicrowd
 git clone https://github.com/addshore/wikicrowd.git ~/src/
 cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
 cp ~/src/toolforge/service.template ~/service.template
-webservice php7.4 shell -- composer install --working-dir=./src/api
+webservice php7.4 shell -- composer install --working-dir=./src
 ```
 
 You'll also need to manually create a and configure a `.env.web` file.
