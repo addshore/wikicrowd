@@ -35,8 +35,17 @@ You can then generate a couple of questions (just exit the command early so it d
 
 ```sh
 ./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestionsYaml
+webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions enwiki 10
 ```
 
 Then find the site at http://localhost
 
 In order to have the API fully setup you'll need to make your own `.env` file, including your own mediawiki oauth details.
+
+### Other commands
+
+You can run basic php linting:
+
+```sh
+composer run lint
+```
