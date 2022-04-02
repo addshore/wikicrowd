@@ -154,6 +154,7 @@ class GenerateAliasQuestions implements ShouldQueue, ShouldBeUnique
                     'unique_id' => $uniq,
                     'properties' => [
                         'item' => $item->getId()->getSerialization(),
+                        'language' => $this->sourceWikidataLangCode,
                         'label' => $label,
                         'aliases' => $aliases,
                         'suggestion' => $candidate,
