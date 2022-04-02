@@ -12,14 +12,16 @@ I should seutp a cron for this...
 But for now I'll need to login and do the following every now and again...
 
 ```sh
-webservice php7.4 shell -- php ./src/api/artisan job:dispatchNow GenerateAliasQuestions 200
-webservice php7.4 shell -- php ./src/api/artisan job:dispatchNow GenerateDepictsQuestionsYaml
+webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions enwiki 200
+webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions dewiki 100
+webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions plwiki 100
+webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQuestionsYaml
 ```
 
 You can also target specific yaml files for depicts...
 
 ```sh
-webservice php7.4 shell -- php ./src/api/artisan job:dispatchNow GenerateDepictsQuestionsYaml ./src/api/spec/depicts/food/burger.yaml
+webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQuestionsYaml ./src/spec/depicts/food/burger.yaml
 ```
 
 ## Updates
@@ -32,7 +34,7 @@ webservice node12 shell -- npm --prefix src/api run production
 cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
 cp ~/src/toolforge/service.template ~/service.template
 cp ~/src/toolforge/deployment.yaml ~/deployment.yaml
-rsync -av --delete --exclude 'storage/framework/*' --exclude 'node_modules/*' ~/src/api/ ~/public_html
+rsync -av --delete --exclude 'storage/framework/*' --exclude 'node_modules/*' ~/src/ ~/public_html
 # TODO migrate if needed
 webservice restart
 kubectl delete deployment laravel.queue
@@ -53,13 +55,13 @@ webservice php7.4 shell -- composer install --working-dir=./src/api
 You'll also need to manually create a and configure a `.env.web` file.
 
 ```sh
-cp ~/src/api/.env.example ~/src/api/.env
+cp ~/src/.env.example ~/src/.env
 ```
 
 Once code is setup You'll also want to generate a key:
 
 ```sh
-webservice php7.4 shell -- php ./src/api/artisan key:generate
+webservice php7.4 shell -- php ./src/artisan key:generate
 ```
 
 And modify the other needed env vars!!!
@@ -91,7 +93,7 @@ Setup the hosted directory
 
 ```sh
 mkdir -p ~/public_html
-rsync -av --delete ~/src/api/ ~/public_html
+rsync -av --delete ~/src/ ~/public_html
 ```
 
 And start or restart the service
