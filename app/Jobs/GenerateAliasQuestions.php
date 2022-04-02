@@ -121,7 +121,12 @@ class GenerateAliasQuestions implements ShouldQueue, ShouldBeUnique
             $candidates = [];
             foreach ( $m[1] as $alias ) {
                 if ( preg_match ( '/</' , $alias ) ) continue ; // HTML
+                // Normalize odd chars
+                // \u00a0 https://github.com/addshore/wikicrowd/issues/43
+                $alias = str_replace( chr(0xC2).chr(0xA0), ' ', $alias );
+                // Ignore existing labels and aliases
                 if ( in_array(strtolower($alias), $existing) ) continue ;
+                // Add to list of candidates
                 $candidates[strtolower($alias)] = $alias ;
             }
 
