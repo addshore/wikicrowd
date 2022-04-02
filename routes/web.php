@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Cache;
 
 Route::get('/', function () {
     return redirect('/groups');
-});
+})->name('home');
 
 Route::get('/about', function () {
     $user = Auth::user();
