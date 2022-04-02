@@ -62,6 +62,7 @@ class AddAlias implements ShouldQueue
         );
 
         $itemIdString = $question->properties['item'];
+        $inUseLanguage = $question->properties['language'];
 
         $wm = new WikimediaFactory();
         $mwApi = $wm->newMediawikiApiForDomain("www.wikidata.org", $mwAuth);
@@ -72,15 +73,15 @@ class AddAlias implements ShouldQueue
             die("Item not found");
         }
 
-        if ( $item->getAliasGroups()->hasGroupForLanguage('en') ) {
-            $aliasGroup = $item->getAliasGroups()->getByLanguage('en');
+        if ( $item->getAliasGroups()->hasGroupForLanguage($inUseLanguage) ) {
+            $aliasGroup = $item->getAliasGroups()->getByLanguage($inUseLanguage);
         } else {
-            $aliasGroup = new AliasGroup('en');
+            $aliasGroup = new AliasGroup($inUseLanguage);
         }
-        
+
         $existing = $aliasGroup->getAliases();
-        if( $item->getLabels()->hasTermForLanguage('en') ) {
-            $existing[] = $item->getLabels()->getByLanguage('en')->getText();
+        if( $item->getLabels()->hasTermForLanguage($inUseLanguage) ) {
+            $existing[] = $item->getLabels()->getByLanguage($inUseLanguage)->getText();
         }
         $existing = array_map('strtolower', $existing);
 
@@ -93,7 +94,7 @@ class AddAlias implements ShouldQueue
             'wbsetaliases',
             [
                 'id' => $itemIdString,
-                'language' => 'en',
+                'language' => $inUseLanguage,
                 'add' => $question->properties['suggestion'],
                 'token' => $mwApi->getToken(),
             ]
