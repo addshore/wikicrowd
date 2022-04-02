@@ -11,11 +11,12 @@ use App\Models\Question;
 use App\Models\QuestionGroup;
 use Wikibase\DataModel\Entity\ItemId;
 use Addwiki\Mediawiki\Api\Client\Action\Request\ActionRequest;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 
 /**
  * Inspired by https://bitbucket.org/magnusmanske/wikidata-game/src/master/tools/bold_aliases.php
  */
-class GenerateAliasQuestions implements ShouldQueue
+class GenerateAliasQuestions implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -59,6 +60,16 @@ class GenerateAliasQuestions implements ShouldQueue
         $this->sourceName = self::WIKI_MAP[$code]['name'];
         $this->sourceWikidataLangCode = self::WIKI_MAP[$code]['wikidata_lang'];
         $this->limit = $limit;
+    }
+
+    /**
+     * The unique ID of the job.
+     *
+     * @return string
+     */
+    public function uniqueId()
+    {
+        return $this->sourceDomain;
     }
 
     public function handle()
@@ -124,7 +135,7 @@ class GenerateAliasQuestions implements ShouldQueue
             $item = $itemRevision->getContent()->getData();
 
             foreach( $candidates as $candidate ) {
-                $uniq = $this->uniqueID( $item->getId(), $candidate );
+                $uniq = $this->uniqueQuestionID( $item->getId(), $candidate );
 
                 if (Question::where('question_group_id', '=', $this->targetGroup)
                     ->where('unique_id', '=', $uniq)
@@ -173,7 +184,7 @@ class GenerateAliasQuestions implements ShouldQueue
         $this->targetGroup = $subGroup->id;
     }
 
-    private function uniqueID( ItemId $itemId, string $suggested ) : string {
+    private function uniqueQuestionID( ItemId $itemId, string $suggested ) : string {
         return $itemId->getSerialization() . '/aliases/' . $this->sourceWikidataLangCode . '/' . $suggested;
     }
 

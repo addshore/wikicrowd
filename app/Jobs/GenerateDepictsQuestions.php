@@ -15,8 +15,9 @@ use App\Models\Question;
 use App\Models\QuestionGroup;
 use Wikibase\MediaInfo\DataModel\MediaInfoId;
 use Addwiki\Wikibase\Query\PrefixSets;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 
-class GenerateDepictsQuestions implements ShouldQueue
+class GenerateDepictsQuestions implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -65,6 +66,16 @@ class GenerateDepictsQuestions implements ShouldQueue
         $this->depictItemId = $depictItemId;
         $this->depictName = $depictName;
         $this->limit = $limit;
+    }
+
+    /**
+     * The unique ID of the job.
+     *
+     * @return string
+     */
+    public function uniqueId()
+    {
+        return $this->depictItemId;
     }
 
     /**
@@ -133,7 +144,7 @@ class GenerateDepictsQuestions implements ShouldQueue
             }
             // Skip pages we already generated a question for of any depicts type
             if (Question::whereIn('question_group_id', [ $this->depictsSubGroup, $this->depictsRefineSubGroup] )
-                    ->whereIn('unique_id', [ $this->uniqueID( 'depicts', $pageIdentifier ), $this->uniqueID( 'depicts-refine', $pageIdentifier ) ])
+                    ->whereIn('unique_id', [ $this->uniqueQuestionID( 'depicts', $pageIdentifier ), $this->uniqueQuestionID( 'depicts-refine', $pageIdentifier ) ])
                     ->exists()
                 ) {
                 // question already found
@@ -187,7 +198,7 @@ class GenerateDepictsQuestions implements ShouldQueue
         $this->depictsRefineSubGroup = $depictsRefineSubGroup->id;
     }
 
-    private function uniqueID( string $groupName, PageIdentifier $filePageIdentifier ) : string {
+    private function uniqueQuestionID( string $groupName, PageIdentifier $filePageIdentifier ) : string {
         return "M" . $filePageIdentifier->getId() . '/' . $groupName . '/' . $this->depictItemId;
     }
 
@@ -307,7 +318,7 @@ class GenerateDepictsQuestions implements ShouldQueue
             Question::create([
                 'question_group_id' => $this->depictsRefineSubGroup,
                 // TODO don't harcode group name?
-                'unique_id' => $this->uniqueID( 'depicts-refine', $filePageIdentifier ),
+                'unique_id' => $this->uniqueQuestionID( 'depicts-refine', $filePageIdentifier ),
                 'properties' => [
                     'mediainfo_id' => $mid->getSerialization(),
                     'old_depicts_id' => $lessSpecificValue->getSerialization(),
@@ -327,7 +338,7 @@ class GenerateDepictsQuestions implements ShouldQueue
         Question::create([
             'question_group_id' => $this->depictsSubGroup,
             // TODO don't harcode group name?
-            'unique_id' => $this->uniqueID( 'depicts', $filePageIdentifier ),
+            'unique_id' => $this->uniqueQuestionID( 'depicts', $filePageIdentifier ),
             'properties' => [
                 'mediainfo_id' => $mid->getSerialization(),
                 'depicts_id' => $this->depictItemId,
