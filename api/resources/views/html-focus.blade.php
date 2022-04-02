@@ -12,7 +12,7 @@
 
             <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Is "<strong>{{ $qu->properties['suggestion'] }}</strong>" an English alias for <a href="https://www.wikidata.org/wiki/{{ $qu->properties['item'] }}">{{ $qu->properties['item'] }}</a>, "{{ $qu->properties['label'] }}"?</div>
+                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Is "<strong>{{ $qu->properties['suggestion'] }}</strong>" an English alias for <a href="https://www.wikidata.org/wiki/{{ $qu->properties['item'] }}" target="_blank">{{ $qu->properties['item'] }}</a>, "{{ $qu->properties['label'] }}"?</div>
                 </div>
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
                     @if ($qu->properties['aliases'])
