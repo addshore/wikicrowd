@@ -5,7 +5,7 @@ use App\Models\QuestionGroup;
 use App\Models\Question;
 
 /**
- * One off migration to enable alignment of previously generated questions for the glider ID fix https://github.com/addshore/wikicrowd/commit/7949f43170ad8ef4b5a4589abde5adb511a36e22
+ * PT 1: One off migration to enable alignment of previously generated questions for the glider ID fix https://github.com/addshore/wikicrowd/commit/7949f43170ad8ef4b5a4589abde5adb511a36e22
  */
 class UpdateDepictsQuestionsForGliderItemIdFix extends Migration
 {
@@ -30,9 +30,10 @@ class UpdateDepictsQuestionsForGliderItemIdFix extends Migration
         }
 
         // At the time of writing this there was only depicts questions, so only rename the refine group!
-        $depictsRefineGroup = QuestionGroup::where('name', '=', 'depicts-refine/Q8492796')->first();
-        $depictsGroup->name = str_replace($this->oldId,$this->newId, $depictsGroup->name);
-        $depictsRefineGroup->save();
+        // XXX: Had a bug, so moved to the next migration... Lol :D
+        // $depictsRefineGroup = QuestionGroup::where('name', '=', 'depicts-refine/' . $this->oldId)->first();
+        // $depictsGroup->name = str_replace($this->oldId,$this->newId, $depictsGroup->name);
+        // $depictsRefineGroup->save();
     }
 
     public function down()
