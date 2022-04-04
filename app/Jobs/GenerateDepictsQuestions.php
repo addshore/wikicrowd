@@ -21,6 +21,13 @@ class GenerateDepictsQuestions implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * The number of seconds the job can run before timing out.
+     *
+     * @var int
+     */
+    public $timeout = 300;
+
     const DEPICTS_PROPERTY = 'P180';
     const WIKIDATA = 'www.wikidata.org';
     const COMMONS = 'commons.wikimedia.org';

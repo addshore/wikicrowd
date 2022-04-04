@@ -23,7 +23,7 @@ spec:
       containers:
         - name: queue
           image: docker-registry.tools.wmflabs.org/toolforge-php74-sssd-base:latest
-          command: [ "php", "/data/project/wikicrowd/src/artisan", "queue:work", "--queue=high,default,low" ]
+          command: [ "php", "/data/project/wikicrowd/src/artisan", "queue:work", "--queue=high,default,low", "--tries=3" ]
           workingDir: /data/project/wikicrowd/src
           env:
             - name: HOME
