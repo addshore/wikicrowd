@@ -17,6 +17,7 @@
   name: Seaplane
   limit: 500
   category: Category:Seaplanes
+  exclude:
   excludeRegex: "/(Videos)/i"
 
 - depictsId: Q2165278
