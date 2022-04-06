@@ -10,4 +10,4 @@ exclude:
  - Category:Donald Trump-related maps
  - Category:Monuments and memorials to Donald Trump
  - Category:Donald Trump on social media
-excludeRegex: "/(Videos|Audio|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests against)/i"
+excludeRegex: "/(Videos|Audio|presidential campaign|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests against)/i"
