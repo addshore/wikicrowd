@@ -3,4 +3,4 @@ name: George W. Bush
 limit: 500
 category: Category:George W. Bush
 exclude:
-excludeRegex: "/(Videos|Audio|presidential campaign|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests against)/i"
+excludeRegex: "/(Videos|Audio|presidential campaign|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests|national convention)/i"
