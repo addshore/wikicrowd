@@ -8,4 +8,5 @@ exclude:
   - Category:Camera parts
   - Category:Camera showrooms
   - Category:Camera accessories
+  - Category:Photographs by camera manufacturer
 excludeRegex: "/(in art)/i"
