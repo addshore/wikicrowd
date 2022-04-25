@@ -9,4 +9,4 @@ exclude:
   - Category:Camera showrooms
   - Category:Camera accessories
   - Category:Photographs by camera manufacturer
-excludeRegex: "/(in art|Taken with)/"
+excludeRegex: "/(in art|Taken with)/i"
