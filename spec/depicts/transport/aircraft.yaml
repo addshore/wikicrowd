@@ -3,21 +3,21 @@
   limit: 500
   category: Category:Views of helicopters
   exclude:
-  excludeRegex: "/(Videos|art|Models|engines|components|landing gear|views from)/i"
+  excludeRegex: "/(Videos|art|Models|engines|components|landing gear|views from|Orthophotos)/i"
 
 - depictsId: Q206592
   name: Jet Aircraft
   limit: 500
   category: Category:Aircraft with jet engines
   exclude:
-  excludeRegex: "/(Videos|art|Models|components|landing gear|views from)/i"
+  excludeRegex: "/(Videos|art|Models|components|landing gear|views from|Orthophotos)/i"
 
 - depictsId: Q115940
   name: Seaplane
   limit: 500
   category: Category:Seaplanes
   exclude:
-  excludeRegex: "/(Videos|art|Models|engines|components|landing gear|views from)/i"
+  excludeRegex: "/(Videos|art|Models|engines|components|landing gear|views from|Orthophotos)/i"
 
 - depictsId: Q2165278
   name: Glider
@@ -25,7 +25,7 @@
   category: Category:Gliders
   exclude:
   - Category:Motorgliders
-  excludeRegex: "/(Videos|art|Models|engines|components|landing gear|views from)/i"
+  excludeRegex: "/(Videos|art|Models|engines|components|landing gear|views from|Orthophotos)/i"
 
 - depictsId: Q133585
   name: Airship
@@ -33,4 +33,4 @@
   category: Category:Airships
   exclude:
   - Category:Airship technology
-  excludeRegex: "/(Videos|art|Models|engines|components|landing gear|views from)/i"
+  excludeRegex: "/(Videos|art|Models|engines|components|landing gear|views from|Orthophotos)/i"
