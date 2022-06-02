@@ -3,4 +3,4 @@ name: Pie chart
 limit: 500
 category: Category:Pie charts
 exclude:
-excludeRegex: "/(Videos)/i"
+excludeRegex: "/(Videos|Donut|Election apportionment)/i"
