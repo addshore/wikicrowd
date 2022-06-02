@@ -3,22 +3,21 @@
   limit: 500
   category: Category:Views of helicopters
   exclude:
-  excludeRegex: "/(Videos)/i"
+  excludeRegex: "/(Videos|art|Models|engines)/i"
 
 - depictsId: Q206592
   name: Jet Aircraft
   limit: 500
   category: Category:Aircraft with jet engines
   exclude:
-  - Category:Wind tunnel models of jet-powered aircraft
-  excludeRegex: "/(Videos)/i"
+  excludeRegex: "/(Videos|art|Models|engines)/i"
 
 - depictsId: Q115940
   name: Seaplane
   limit: 500
   category: Category:Seaplanes
   exclude:
-  excludeRegex: "/(Videos)/i"
+  excludeRegex: "/(Videos|art|Models|engines)/i"
 
 - depictsId: Q2165278
   name: Glider
@@ -27,7 +26,7 @@
   exclude:
   - Category:Motorgliders
   - Category:Views from gliders
-  excludeRegex: "/(Videos|art)/i"
+  excludeRegex: "/(Videos|art|Models|engines)/i"
 
 - depictsId: Q133585
   name: Airship
