@@ -6,29 +6,49 @@ With an OAuth consumer to Wikimedia production
 
 https://meta.wikimedia.org/w/index.php?title=Special:OAuthListConsumers/view/b7e6badde4982d44e053ca0a4fdde3ca&name=&publisher=&stage=0
 
-## Question generation
+We recommend that you use the mwcli tool for convenience :)
+See https://www.mediawiki.org/wiki/Cli/ref/mw_tools
 
-I should seutp a cron for this...
-But for now I'll need to login and do the following every now and again...
+## Updating code
+
+You can run the update script from your machine using mwcli.
 
 ```sh
-webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions enwiki 200
-webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions dewiki 100
-webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions plwiki 100
-webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQuestionsYaml
+mw tools exec --tool=wikicrowd ./src/toolforge/update.sh
+```
+
+## Runing scripts
+
+You can run artisan scripts from your local machine using mwcli.
+
+```sh
+mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan
+```
+
+### Removing questions
+
+```sh
+mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow RemoveUnansweredQuestions depicts/Q34486
+```
+
+### Question generation
+
+```sh
+mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions enwiki 200
+mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions dewiki 100
+mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions plwiki 100
+mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQuestionsYaml
 ```
 
 You can also target specific yaml files for depicts...
 
 ```sh
-webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQuestionsYaml ./src/spec/depicts/food/burger.yaml
+mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQuestionsYaml ./src/spec/depicts/food/burger.yaml
 ```
 
-## Updates
-
-See update.sh in this directory...
-
 ## Initial setup
+
+This only has to be run the very first time the tool is setup, thus it is already done!
 
 ```sh
 ssh login-toolforge.org
@@ -61,7 +81,7 @@ https://wikitech.wikimedia.org/wiki/Help:Toolforge/Redis_for_Toolforge
 SQL is primiarly used.
 
 ```sh
-sql tools
+mw tools exec --tool=wikicrowd sql tools
 ```
 
 Then
