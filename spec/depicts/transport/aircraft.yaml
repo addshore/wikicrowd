@@ -3,14 +3,14 @@
   limit: 500
   category: Category:Views of helicopters
   exclude:
-  excludeRegex: "/(Videos|art|Models|engines|components|landing gear|views from|Orthophotos)/i"
+  excludeRegex: "/(Videos|art|Models|components|landing gear|views from|Orthophotos|Insignia|Emblems)/i"
 
 - depictsId: Q206592
   name: Jet Aircraft
   limit: 500
   category: Category:Aircraft with jet engines
   exclude:
-  excludeRegex: "/(Videos|art|Models|components|landing gear|views from|Orthophotos)/i"
+  excludeRegex: "/(Videos|art|Models|components|landing gear|views from|Orthophotos|Insignia|Emblems)/i"
 
 - depictsId: Q115940
   name: Seaplane
