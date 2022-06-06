@@ -19,7 +19,7 @@
 
 <script>
 /**
- * Enhance form with keys	
+ * Enhance form with keys
  * 
  * Note this will fail in IE, but will not brake other code.
  */
