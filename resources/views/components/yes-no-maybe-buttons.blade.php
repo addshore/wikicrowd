@@ -21,7 +21,7 @@
 /**
  * Enhance form with keys
  * 
- * Note this will fail in IE, but will not brake other code.
+ * Note this will fail in IE, but will not break other code.
  */
 class KeyboardActions {
 	constructor() {
