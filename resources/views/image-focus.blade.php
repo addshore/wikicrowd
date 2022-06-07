@@ -6,6 +6,9 @@
         <title>WikiCrowd</title>
         <link href="/css/app.css" rel="stylesheet">
         <link rel="prefetch" href="{{ $qu->properties['img_url'] }}" />
+        @if ($next != null)
+            <link rel="prefetch" href="{{ $next->properties['img_url'] }}" />
+        @endif
     </head>
     <body class="antialiased">
         <div class="relative flex items-top justify-center min-h-screen bg-gray-100 dark:bg-gray-900 sm:items-center py-4 sm:pt-0">
@@ -36,7 +39,7 @@
                 </div>
                 @endif
                 <div class="py-2 flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <x-yes-no-maybe-buttons quId="{{ $qu->id }}"/>
+                    <x-yes-no-maybe-buttons quId="{{ $qu->id }}" nextId="{{ $next != null ? $next->id : null }}"/>
                 </div>
 
                 <div class="flex flex-row justify-center items-start" style="height:800px;width:800px;">
