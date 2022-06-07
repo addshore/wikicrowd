@@ -42,11 +42,11 @@ class KeyboardActions {
 		if (action === false) {
 			return false;
 		}
-		const button = document.querySelector(`#${action}-form button`);
-		if (!button) {
+		const form = document.querySelector(`#${action}-form`);
+		if (!form) {
 			return false;
 		}
-		button.dispatchEvent(new Event('click'));
+		form.submit()
 		// console.log(character, action);
 		return true;
 	}
