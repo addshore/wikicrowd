@@ -33,17 +33,20 @@ mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan j
 
 ### Question generation
 
+General question generation is done by an built in CRON.
+
+You can also trigger some question generation manually.
+
 ```sh
 mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions enwiki 200
 mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions dewiki 100
 mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions plwiki 100
-mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQuestionsYaml
 ```
 
-You can also target specific yaml files for depicts...
+For depicts right now you need to get a bunch of info from the YAML files in the spec dir...
 
 ```sh
-mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQuestionsYaml ./src/spec/depicts/food/burger.yaml
+mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQuestions Category:Gliders Category:Motorgliders "/(Videos|art|drawings|Models|engines|components|landing gear|views from|Orthophotos)/i" Q2165278 Glider 3
 ```
 
 ## Initial setup

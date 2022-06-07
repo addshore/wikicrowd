@@ -10,11 +10,7 @@ use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\QuestionGroupController;
 use App\Models\Question;
 use App\Jobs\AddAlias;
-use App\Models\Edit;
-use App\Models\User;
 use App\Jobs\SwapDepicts;
-use LaravelDaily\LaravelCharts\Classes\LaravelChart;
-use Illuminate\Support\Facades\Cache;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,8 +29,8 @@ Route::get('/', function () {
 
 Route::get('/groups', [QuestionGroupController::class, 'showTopLevelGroups'])->name('groups');
 
-Route::middleware('auth:sanctum')->get('/questions/{groupName}', [QuestionController::class, 'showGroupUnanswered'])
-    ->where('groupName', '(.*)');
+Route::middleware('auth:sanctum')->get('/questions/{groupName}/{desiredId?}', [QuestionController::class, 'showGroupDesiredOrUnanswered'])
+    ->where('groupName', '([^\/]*\/[^\/]*)');
 
 // TODO also move this to the API
 Route::middleware('auth:sanctum')->name('answers')->post('/answers', function (Request $request) {
@@ -43,6 +39,7 @@ Route::middleware('auth:sanctum')->name('answers')->post('/answers', function (R
         'question' => 'required|exists:App\Models\Question,id',
         // TODO make this generic (from group?)
         'answer' => 'required|in:yes,no,skip',
+        'next' => 'exists:App\Models\Question,id'
     ]);
     if ($v->fails()) {
         die("unexpected submission");
@@ -77,5 +74,9 @@ Route::middleware('auth:sanctum')->name('answers')->post('/answers', function (R
     }
 
     // Show the next one!
+    $next = $request->input('next');
+    if($next){
+        return redirect('/questions/' . $question->group->name . '/' . $next);
+    }
     return redirect('/questions/' . $question->group->name);
 });
