@@ -1,6 +1,6 @@
 depictsId: Q12100
 name: Fencing
-limit: 100
+limit: 250
 category: Category:Fencing
 exclude:
   - Category:Fencing executives

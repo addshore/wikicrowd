@@ -1,6 +1,6 @@
 - depictsId: Q3407658
   name: Tram
-  limit: 1000
+  limit: 250
   category: Category:Trams
   exclude:
   - Category:Mock-ups of trams

@@ -1,7 +1,7 @@
 
 - depictsId: Q7291
   name: Badminton
-  limit: 500
+  limit: 250
   category: Category:Parabadminton
   exclude:
   - Category:Books about badminton

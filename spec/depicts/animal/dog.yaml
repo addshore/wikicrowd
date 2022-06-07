@@ -1,6 +1,6 @@
 depictsId: Q144
 name: Domestic dog
-limit: 500
+limit: 250
 category: Category:Dogs
 exclude:
 excludeRegex: "/(Videos|statues|sculpture|art)/i"
