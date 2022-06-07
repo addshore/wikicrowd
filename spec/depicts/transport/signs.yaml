@@ -1,0 +1,9 @@
+- depictsId: Q250429
+  name: Stop sign
+  limit: 100
+  category: Category:Stop signs
+  exclude:
+  - Category:Diagrams of stop signs
+  - Category:Stop sign icons
+  - Category:Stop road markings
+  excludeRegex: "/(Videos|icons)/i"

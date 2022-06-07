@@ -1,0 +1,21 @@
+- depictsId: Q1455
+  name: Field hockey
+  limit: 100
+  category: Category:Field hockey
+  exclude:
+  excludeRegex: "/(Videos|art|culture|clubs|teams|flags|diagrams|equipment|rules|venues|maps|icons|Trophies|terminology|people|governing bodies|halls of fame|rinks|players|huddles|coaches|logos|referees)/i"
+
+
+- depictsId: Q41466
+  name: Ice hockey
+  limit: 100
+  category: Category:Ice hockey
+  exclude:
+  excludeRegex: "/(Videos|art|culture|clubs|teams|flags|diagrams|equipment|rules|venues|maps|icons|Trophies|terminology|people|governing bodies|halls of fame|rinks|players|huddles|coaches|logos|referees)/i"
+
+- depictsId: Q1748406
+  name: Roller hockey
+  limit: 250
+  category: Category:Roller hockey
+  exclude:
+  excludeRegex: "/(Videos|art|culture|clubs|teams|flags|diagrams|equipment|rules|venues|maps|icons|Trophies|terminology|people|governing bodies|halls of fame|rinks|players|huddles|coaches|logos|referees)/i"
