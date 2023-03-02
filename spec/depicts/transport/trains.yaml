@@ -4,6 +4,7 @@
   category: Category:Trains
   exclude:
   - Category:Steam locomotives
+  - Category:Rail transport modelling
   excludeRegex: "/(Videos|art|Models|Station|Maintenance Center)/i"
 
 - depictsId: Q171043
@@ -21,4 +22,5 @@
   - Category:Steam locomotive boiler blowdown
   - Category:Steam locomotive driving cabs
   - Category:Steam locomotive interiors
-  excludeRegex: "/(Videos|art|Models|Station|Maintenance Center)/i"
+  - Category:Rail transport modelling
+  excludeRegex: "/(Videos|art|Model|Station|Maintenance Center)/i"
