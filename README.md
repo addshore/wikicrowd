@@ -51,3 +51,7 @@ You can run basic php linting:
 ```sh
 composer run lint
 ```
+
+## Deployment
+
+You need to ssh into the tool, and then run `./src/toolforge/update.sh`.
