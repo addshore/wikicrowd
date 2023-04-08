@@ -3,4 +3,5 @@ name: Burger (Hamburger)
 limit: 250
 category: Category:Hamburgers
 exclude:
+  - Category:Vegan food
 excludeRegex: "/(Audio|menus|presses|restaurants|in art|vendors)/i"
