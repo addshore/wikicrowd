@@ -1,0 +1,6 @@
+depictsId: Q1002954
+name: Formuala One car
+limit: 100
+category: Category:Formula One cars
+exclude:
+excludeRegex: "/(Videos|Sounds|art|drawings|Models|components|views from|interiors|parts)/i"
