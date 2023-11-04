@@ -1,0 +1,6 @@
+depictsId: Q685206
+name: Alphorn
+limit: 250
+category: Category:Alphorns
+exclude:
+excludeRegex: "/(Videos|art|drawings|Models|components|views from|alphornists)/i"
