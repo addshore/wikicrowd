@@ -1,0 +1,21 @@
+# depictsId: Q44
+# name: Beer (drink)
+# limit: 100
+# category: Category:Beer
+# exclude:
+#   - Category:Beer cellars
+#   - Category:Beer lists
+#   - Category:Beer industry
+#   - Category:Brewing
+#   - Category:Beer culture
+#   - Category:Beer drinkaware
+#   - Category:Beer-based food
+#   - Category:Beer furniture
+#   - Category:John Barleycorn
+#   - Category:Beer maps
+#   - Category:Beer mixes
+#   - Category:Near beer
+#   - Category:Beer (text)
+#   - Category:Beer transport
+#   - Category:Beer vendors
+# excludeRegex: "/(Videos|Audio|in art|things named after|pronunciation|history of|products of|advert)/i"
