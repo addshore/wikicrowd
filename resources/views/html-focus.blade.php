@@ -16,7 +16,8 @@
                 </div>
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
                     @if ($qu->properties['aliases'])
-                    <div class="text-sm leading-7 font-semibold text-gray-900 dark:text-white">Current Aliases:</div>&nbsp;<div class="text-md leading-7 text-gray-900 dark:text-white">{{ implode( ', ', $qu->properties['aliases']) }}</div>
+                    <div class="text-sm leading-7 font-semibold text-gray-900 dark:text-white">Current Aliases:</div>&nbsp;
+                    <ul class="text-md leading-7 text-gray-900 dark:text-white"><li>{{ implode( '</li></li>', $qu->properties['aliases']) }}</li></ul>
                     @else
                     <div class="text-sm leading-7 font-semibold text-gray-900 dark:text-white">Current Aliases:</div>&nbsp;<div class="text-md leading-7 text-gray-900 dark:text-white"></div>
                     @endif
