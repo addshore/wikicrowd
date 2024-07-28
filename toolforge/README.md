@@ -54,7 +54,7 @@ mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan j
 This only has to be run the very first time the tool is setup, thus it is already done!
 
 ```sh
-ssh login-toolforge.org
+ssh login.toolforge.org
 become wikicrowd
 git clone https://github.com/addshore/wikicrowd.git ~/src/
 cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
