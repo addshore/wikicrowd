@@ -4,7 +4,6 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use App\Jobs\GenerateAliasQuestions;
 use Symfony\Component\Yaml\Yaml;
 use App\Jobs\GenerateDepictsQuestions;
 
@@ -22,11 +21,6 @@ class Kernel extends ConsoleKernel
 
         // TODO at some point refactor into a light job that checks if questions are needed
         // And a heavy job which actually generates them...
-
-        // GenerateAliasQuestions
-        $schedule->job(new GenerateAliasQuestions( 'enwiki', '300' ), "low")->hourly();
-        $schedule->job(new GenerateAliasQuestions( 'dewiki', '200' ), "low")->hourly();
-        $schedule->job(new GenerateAliasQuestions( 'plwiki', '100' ), "low")->hourly();
 
         // GenerateDepictsQuestions
         $depictsYamlDir =__DIR__ . '/../../spec/';

@@ -36,8 +36,7 @@ On first setup you'll need to create the databases.
 You can then generate a couple of questions (just exit the command early so it doesnt run forever)
 
 ```sh
-./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestionsYaml
-webservice php8.2 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions enwiki 10
+./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestions
 ```
 
 Then find the site at http://localhost
