@@ -4,7 +4,7 @@
 git -C ~/src pull
 
 # Install dependencies & prep files
-webservice php8.2 shell -- composer install --no-dev --working-dir=./src
+webservice php8.2 shell -- composer install --no-dev --ignore-platform-reqs --working-dir=./src
 webservice node12 shell -- npm --prefix src install
 webservice node12 shell -- npm --prefix src run production
 
@@ -18,7 +18,7 @@ webservice php8.2 shell -- php ./src/artisan migrate
 # Restart the web server
 cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
 cp ~/src/toolforge/service.template ~/service.template
-webservice restart
+webservice php8.2 restart
 
 # Re apply k8s Deployments
 kubectl delete -f ~/deployment.yaml

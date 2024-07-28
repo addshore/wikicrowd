@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: queue
-          image: docker-registry.tools.wmflabs.org/toolforge-php74-sssd-base:latest
+          image: docker-registry.tools.wmflabs.org/toolforge-php82-sssd-base:latest
           command: [ "php", "/data/project/wikicrowd/src/artisan", "queue:work", "--queue=high,default,low", "--tries=3" ]
           workingDir: /data/project/wikicrowd/src
           env:
@@ -53,7 +53,7 @@ spec:
     spec:
       containers:
         - name: schedule
-          image: docker-registry.tools.wmflabs.org/toolforge-php74-sssd-base:latest
+          image: docker-registry.tools.wmflabs.org/toolforge-php82-sssd-base:latest
           command: [ "php", "/data/project/wikicrowd/src/artisan", "schedule:work" ]
           workingDir: /data/project/wikicrowd/src
           env:
