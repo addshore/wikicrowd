@@ -17,6 +17,9 @@ class UpdateDepictsQuestionsForGliderItemIdFixAgain extends Migration
     {
         // At the time of writing this there was only depicts questions, so only rename the refine group!
         $depictsRefineGroup = QuestionGroup::where('name', '=', 'depicts-refine/' . $this->oldId)->first();
+        if ($depictsRefineGroup === null) {
+            return;
+        }
         $depictsRefineGroup->name = str_replace($this->oldId,$this->newId, $depictsRefineGroup->name);
         $depictsRefineGroup->save();
     }

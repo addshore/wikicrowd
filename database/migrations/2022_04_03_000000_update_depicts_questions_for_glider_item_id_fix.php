@@ -16,6 +16,9 @@ class UpdateDepictsQuestionsForGliderItemIdFix extends Migration
     public function up()
     {
         $depictsGroup = QuestionGroup::where('name', '=', 'depicts/' . $this->oldId)->first();
+        if ($depictsGroup === null) {
+            return;
+        }
         $depictsGroup->name = str_replace($this->oldId,$this->newId, $depictsGroup->name);
         $depictsGroup->save();
         if($depictsGroup !== null) {
