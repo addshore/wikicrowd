@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>WikiCrowd</title>
+        <title>WikiCrowd (Depicts)</title>
         <link href="/css/app.css" rel="stylesheet">
         <link rel="prefetch" href="{{ $qu->properties['img_url'] }}" />
         @if ($next != null)

@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>WikiCrowd</title>
+        <title>WikiCrowd (Depicts)</title>
         <link href="/css/app.css" rel="stylesheet">
     </head>
     <body class="antialiased">
@@ -12,12 +12,12 @@
 
             <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
                 <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                    <div class="text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">WikiCrowd</span></div>
+                    <div class="text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">WikiCrowd (Depicts)</span></div>
                 </div>
 
                 <div class="flex">
                     <div class="text-sm text-gray-500">
-                        Quick and easy micro contributions to the wiki space.<br>
+                        Quick and easy micro contributions to the wiki space, showing what images depict.<br>
                         Using this tool will result in edits being made for your account.
                     </div>
                 </div>
@@ -28,9 +28,11 @@
                         <div class="flex items-center">
                             <div class="ml-4 text-lg leading-7 font-semibold"><span class="text-gray-900 dark:text-white">{{$group->display_name}}</span></div>
                         </div>
-                        <div class="flex items-center">
-                            <div class="ml-4 text-sm"><span class="text-gray-900 dark:text-white">{{$group->display_description}}</span></div>
-                        </div>
+                        <?php if (isset($group->display_description)): ?>
+                            <div class="flex items-center">
+                                    <div class="ml-4 text-sm"><span class="text-gray-900 dark:text-white">{{$group->display_description}}</span></div>
+                            </div>
+                        <?php endif; ?>
 
                         @forelse ($group->subGroups as $subGroup)
                         <div class="ml-12">
