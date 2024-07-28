@@ -124,7 +124,7 @@ class GenerateDepictsQuestions implements ShouldQueue, ShouldBeUnique
 
             $inner = new self(
                 $job->category,
-                implode($job->exclude ?: [], '|||'),
+                implode('|||', $job->exclude ?: []),
                 $job->excludeRegex ?: "",
                 $job->depictsId,
                 $job->name,
