@@ -49,11 +49,9 @@ class QuestionGroupController extends Controller
         });
 
         $newManualGroups = [];
-        for ($i = 0; $i < count($groups); $i++) {
-            $gameGroup = $groups[$i];
+        foreach ($groups as $gameGroup) {
             $jIgnore = [];
-            for ($j = 0; $j < count($gameGroup->subGroups); $j++) {
-                $game = $gameGroup->subGroups[$j];
+            foreach ($gameGroup->subGroups as $j => $game) {
                 // Separate out the depict-refine names
                 if (strpos($game->name, 'depicts-refine') === 0) {
                     if (!isset($newManualGroups['refinement'])) {
