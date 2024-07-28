@@ -33,14 +33,14 @@
   exclude:
   excludeRegex: "/(Videos)/i"
   
-  - depictsId: Q55605393
+- depictsId: Q55605393
   name: Biathlon rifle
   limit: 100
   category: Category:Biathlon
   exclude:
   excludeRegex: "/(Videos)/i"
 
-  - depictsId: Q12252328
+- depictsId: Q12252328
   name: Association football ball
   limit: 100
   category: Category:Association football
