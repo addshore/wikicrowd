@@ -17,7 +17,7 @@ backend: kubernetes
 
 # Runtime type
 # See "Supported webservice types" in `webservice --help` output for valid values.
-type: php7.4
+type: php8.2
 
 # Extra arguments to be parsed by the chosen TYPE
 #extra_args:

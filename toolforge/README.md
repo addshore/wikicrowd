@@ -22,13 +22,13 @@ mw tools exec --tool=wikicrowd ./src/toolforge/update.sh
 You can run artisan scripts from your local machine using mwcli.
 
 ```sh
-mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan
+mw tools exec --tool=wikicrowd -- webservice php8.2 shell -- php ./src/artisan
 ```
 
 ### Removing questions
 
 ```sh
-mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow RemoveUnansweredQuestions depicts/Q34486
+mw tools exec --tool=wikicrowd -- webservice php8.2 shell -- php ./src/artisan job:dispatchNow RemoveUnansweredQuestions depicts/Q34486
 ```
 
 ### Question generation
@@ -38,15 +38,15 @@ General question generation is done by an built in CRON.
 You can also trigger some question generation manually.
 
 ```sh
-mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions enwiki 200
-mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions dewiki 100
-mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions plwiki 100
+mw tools exec --tool=wikicrowd -- webservice php8.2 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions enwiki 200
+mw tools exec --tool=wikicrowd -- webservice php8.2 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions dewiki 100
+mw tools exec --tool=wikicrowd -- webservice php8.2 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions plwiki 100
 ```
 
 For depicts right now you need to get a bunch of info from the YAML files in the spec dir...
 
 ```sh
-mw tools exec --tool=wikicrowd -- webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQuestions Category:Gliders Category:Motorgliders "/(Videos|art|drawings|Models|engines|components|landing gear|views from|Orthophotos)/i" Q2165278 Glider 3
+mw tools exec --tool=wikicrowd -- webservice php8.2 shell -- php ./src/artisan job:dispatchNow GenerateDepictsQuestions Category:Gliders Category:Motorgliders "/(Videos|art|drawings|Models|engines|components|landing gear|views from|Orthophotos)/i" Q2165278 Glider 3
 ```
 
 ## Initial setup
@@ -59,7 +59,7 @@ become wikicrowd
 git clone https://github.com/addshore/wikicrowd.git ~/src/
 cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
 cp ~/src/toolforge/service.template ~/service.template
-webservice php7.4 shell -- composer install --working-dir=./src
+webservice php8.2 shell -- composer install --working-dir=./src
 ```
 
 You'll also need to manually create a and configure a `.env.web` file.
@@ -71,7 +71,7 @@ cp ~/src/.env.example ~/src/.env
 Once code is setup You'll also want to generate a key:
 
 ```sh
-webservice php7.4 shell -- php ./src/artisan key:generate
+webservice php8.2 shell -- php ./src/artisan key:generate
 ```
 
 And modify the other needed env vars!!!

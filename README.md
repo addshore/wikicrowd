@@ -37,7 +37,7 @@ You can then generate a couple of questions (just exit the command early so it d
 
 ```sh
 ./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestionsYaml
-webservice php7.4 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions enwiki 10
+webservice php8.2 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions enwiki 10
 ```
 
 Then find the site at http://localhost
