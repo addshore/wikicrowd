@@ -16,6 +16,7 @@ use App\Models\QuestionGroup;
 use Wikibase\MediaInfo\DataModel\MediaInfoId;
 use Addwiki\Wikibase\Query\PrefixSets;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Symfony\Component\Yaml\Yaml;
 
 class GenerateDepictsQuestions implements ShouldQueue, ShouldBeUnique
 {
@@ -59,12 +60,12 @@ class GenerateDepictsQuestions implements ShouldQueue, ShouldBeUnique
      * @return void
      */
     public function __construct(
-        string $category,
-        string $ignoreCategories,
-        string $ignoreCategoriesRegex,
-        string $depictItemId,
-        string $depictName,
-        int $limit
+        string $category = "",
+        string $ignoreCategories = "",
+        string $ignoreCategoriesRegex = "",
+        string $depictItemId = "",
+        string $depictName = "",
+        int $limit = 0
         )
     {
         $this->category = $category;
@@ -91,6 +92,49 @@ class GenerateDepictsQuestions implements ShouldQueue, ShouldBeUnique
      * @return void
      */
     public function handle() {
+        // If we were constructed with values, handle this one instacne
+        // Otherwise, query the YAML and run each job
+        if ($this->depictItemId !== "") {
+            $this->handleOne();
+            return;
+        }
+        // GenerateDepictsQuestions
+        $depictsYamlDir =__DIR__ . '/../../spec/';
+        $depictsYamlFiles = $this->getRecursiveYamlFilesInDirectory( $depictsYamlDir );
+        $depictsJobs = [];
+        foreach( $depictsYamlFiles as $file ) {
+            $file = Yaml::parse(file_get_contents($file), Yaml::PARSE_OBJECT_FOR_MAP);
+            if( is_array( $file ) ) {
+                $depictsJobs = array_merge( $depictsJobs, $file );
+            } else {
+                $depictsJobs[] = $file;
+            }
+        }
+        foreach( $depictsJobs as $job ) {
+            // Make sure that job is an object
+            if( !is_object( $job ) ) {
+                echo "Job is not an object\n";
+                continue;
+            }
+            // Make sure it has the required fields
+            if( !isset( $job->category ) || !isset( $job->depictsId ) || !isset( $job->name ) || !isset( $job->limit ) ) {
+                echo "Job is missing required fields\n";
+                continue;
+            }
+
+            $inner = new self(
+                $job->category,
+                implode($job->exclude ?: [], '|||'),
+                $job->excludeRegex ?: "",
+                $job->depictsId,
+                $job->name,
+                $job->limit
+            );
+            $inner->handle();
+        }
+    }
+
+    public function handleOne() {
         $this->createQuestionGroups();
 
         // Figure out how many questions for the category we already have
@@ -380,4 +424,20 @@ class GenerateDepictsQuestions implements ShouldQueue, ShouldBeUnique
         }
         return $thumbUrl;
     }
+
+    /**
+     * TODO move this function elsewhere?
+     */
+    private function getRecursiveYamlFilesInDirectory(string $directory){
+        $files = [];
+        $dir = new \RecursiveDirectoryIterator($directory);
+        $iterator = new \RecursiveIteratorIterator($dir);
+        foreach ($iterator as $file) {
+            if ( $file->isFile() ) {
+                $files[] = realpath($file->getPathname());
+            }
+        }
+        return $files;
+    }
+
 }
