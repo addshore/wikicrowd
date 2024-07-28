@@ -41,6 +41,16 @@ class Kernel extends ConsoleKernel
             }
         }
         foreach( $depictsJobs as $job ) {
+            // Make sure that job is an object
+            if( !is_object( $job ) ) {
+                echo "Job is not an object\n";
+                continue;
+            }
+            // Make sure it has the required fields
+            if( !isset( $job->category ) || !isset( $job->depictsId ) || !isset( $job->name ) || !isset( $job->limit ) ) {
+                echo "Job is missing required fields\n";
+                continue;
+            }
             $schedule->job(
                 new GenerateDepictsQuestions(
                     $job->category,
