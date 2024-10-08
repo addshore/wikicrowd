@@ -100,10 +100,11 @@ class QuestionGroupController extends Controller
         }
 
         // Move the `refinement` group to the end
-        $refinement = $newManualGroups['refinement'];
-        unset($newManualGroups['refinement']);
-        $newManualGroups['refinement'] = $refinement;
-
+        if( array_key_exists('refinement', $newManualGroups)){
+            $refinement = $newManualGroups['refinement'];
+            unset($newManualGroups['refinement']);
+            $newManualGroups['refinement'] = $refinement;
+        }
 
         // And then totally restructure the groups, to focus on depicts, and the types of depicts we are doing ;D
 

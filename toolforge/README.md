@@ -17,6 +17,10 @@ You can run the update script from your machine using mwcli.
 mw tools exec --tool=wikicrowd ./src/toolforge/update.sh
 ```
 
+## Live debugging
+
+If you cant find things in the logs, consider changing the Laravel config to show debug mode in `~/public_html/config`.
+
 ## Running scripts
 
 You can run artisan scripts from your local machine using mwcli.
