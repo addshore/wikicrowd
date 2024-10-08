@@ -17,7 +17,7 @@ You can run the update script from your machine using mwcli.
 mw tools exec --tool=wikicrowd ./src/toolforge/update.sh
 ```
 
-## Runing scripts
+## Running scripts
 
 You can run artisan scripts from your local machine using mwcli.
 
