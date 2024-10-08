@@ -17,3 +17,10 @@ jobs:
           coverage: none
       - uses: "ramsey/composer-install@v1"
       - run: composer lint
+  yaml-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: sdesbure/yaml-lint-action@v2
+        with:
+          files: .github/workflows/*.yml
