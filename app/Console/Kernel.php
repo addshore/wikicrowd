@@ -48,7 +48,7 @@ class Kernel extends ConsoleKernel
             $schedule->job(
                 new GenerateDepictsQuestions(
                     $job->category,
-                    implode($job->exclude ?: [], '|||'),
+                    implode('|||', $job->exclude ?: []),
                     $job->excludeRegex ?: "",
                     $job->depictsId,
                     $job->name,
