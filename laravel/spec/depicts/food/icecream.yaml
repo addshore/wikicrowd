@@ -1,0 +1,7 @@
+depictsId: Q13233
+name: Icecream (frozen dessert)
+limit: 250
+category: Category:Ice cream
+# Worked down from the top category a level or 2 deciding what shouldn't be included
+exclude:
+excludeRegex: "/(Ice cream (vans|shops|spoons|scoops|symbols|vendors))/i"

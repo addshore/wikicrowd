@@ -1,0 +1,24 @@
+- depictsId: Q146
+  name: House cat / Common cat
+  category: Category:Felis silvestris catus
+  exclude:
+    - Category:Cats in ancient Egypt
+  excludeRegex: "/(Videos|statues|sculpture|art)/i"
+
+- depictsId: Q3736439
+  name: Duck
+  category: Category:Ducks
+  exclude:
+    - Category:Duck warning signs
+    - Category:Things named after ducks
+    - Category:Duck mascots
+    - Category:Duck houses
+    - Category:Duck hunting
+  excludeRegex: "/(Videos|statues|sculpture|art|houses|decoys)/i"
+
+- depictsId: Q144
+  name: Domestic dog
+  category: Category:Dogs
+  exclude: [] # Explicitly empty list if no exclusions
+  excludeRegex: "/(Videos|statues|sculpture|sign|art)/i"
+

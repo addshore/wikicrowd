@@ -1,0 +1,63 @@
+- depictsId: Q6279
+  name: Joe Biden
+  category: Category:Joe Biden
+  exclude:
+    - Category:Joe Biden-related books
+    - Category:Joe Biden-related documents
+    - Category:Places and things named after Joe Biden
+    - Category:Twitter and Joe Biden
+  excludeRegex: "/(Videos|Audio|presidential campaign|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests|national convention|rally)/i"
+
+- depictsId: Q1124
+  name: Bill Clinton
+  category: Category:Bill Clinton
+  exclude:
+    - Category:Clinton Foundation
+    - Category:William J. Clinton Presidential Center and Park
+  excludeRegex: "/(Videos|Audio|presidential campaign|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests|national convention)/i"
+
+- depictsId: Q22686
+  name: Donald Trump
+  category: Category:Donald Trump
+  exclude:
+    - Category:Donald Trump-related books
+    - Category:Donald Trump-related documents
+    - Category:Places and things named after Donald Trump
+    - Category:Twitter and Donald Trump
+  excludeRegex: "/(Videos|Audio|presidential campaign|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests|national convention|rally)/i"
+
+- depictsId: Q76
+  name: Barack Obama
+  category: Category:Barack Obama
+  exclude:
+    - Category:Barack Obama Presidential Center
+    - Category:Obama Foundation
+  excludeRegex: "/(Videos|Audio|presidential campaign|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests|national convention|rally)/i"
+
+- depictsId: Q207
+  name: George W. Bush
+  category: Category:George W. Bush
+  exclude:
+    - Category:George W. Bush Presidential Center
+  excludeRegex: "/(Videos|Audio|presidential campaign|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests|national convention|rally)/i"
+
+- depictsId: Q9682
+  name: Elizabeth II
+  category: Category:Elizabeth II of the United Kingdom
+  exclude:
+    - Category:Coronation of Elizabeth II
+    - Category:Death of Elizabeth II
+    - Category:Diamond Jubilee of Elizabeth II
+    - Category:Golden Jubilee of Elizabeth II
+    - Category:Platinum Jubilee of Elizabeth II
+    - Category:Ruby Jubilee of Elizabeth II
+    - Category:Silver Jubilee of Elizabeth II
+    - Category:Things named after Elizabeth II
+  excludeRegex: "/(Videos|Audio|in art|books about|named after|(quotes|Quotations) by|(supporters|signatures|memorabilia|impersonators|symbols and logos)|Documents relat(ed|ing) to|protests|funerals|weddings|coronations|jubilees)/i"
+
+- depictsId: Q567
+  name: Angela Merkel
+  category: Category:Angela Merkel
+  exclude:
+    - Category:Things named after Angela Merkel
+  excludeRegex: "/(Videos|Audio|in art|books about|named after|(quotes|Quotations) by|(supporters|signatures|memorabilia|impersonators|symbols and logos)|Documents relat(ed|ing) to|protests)/i"

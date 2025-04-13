@@ -1,0 +1,121 @@
+- depictsId: Q7291
+  name: Badminton
+  category: Category:Parabadminton
+  exclude:
+  - Category:Books about badminton
+  - Category:Badminton clubs
+  - Category:Draws of badminton
+  - Category:Badminton equipment
+  - Category:Badminton Exercises
+  - Category:Badminton icons
+  - Category:Badminton logos
+  - Category:Badminton maps
+  - Category:Badminton organizations
+  - Category:Badminton people
+  - Category:Badminton tactics
+  - Category:Badminton teams
+  - Category:Badminton techniques
+  - Category:Badminton venues
+  # Split out as own tree
+  - Category:Parabadminton
+  excludeRegex: "/(Videos|audio)/i"
+
+
+- depictsId: Q18629677
+  name: Para badminton
+  category: Category:Parabadminton
+  exclude:
+  excludeRegex: "/(Videos)/i"
+
+- depictsId: Q12100
+  name: Fencing
+  category: Category:Fencing
+  exclude:
+    - Category:Fencing executives
+    - Category:Fencing equipment
+    - Category:Knife fighting
+    - Category:National fencing teams
+    - Category:Podiums in fencing
+    - Category:Fencing rules
+    - Category:Fencing theory
+  excludeRegex: "/(Videos|in art)/i"
+
+- depictsId: Q1455
+  name: Field hockey
+  category: Category:Field hockey
+  exclude:
+  excludeRegex: "/(Videos|art|culture|clubs|teams|flags|diagrams|equipment|rules|venues|maps|icons|Trophies|terminology|people|governing bodies|halls of fame|rinks|players|huddles|coaches|logos|referees)/i"
+
+
+- depictsId: Q41466
+  name: Ice hockey
+  category: Category:Ice hockey
+  exclude:
+  excludeRegex: "/(Videos|art|culture|clubs|teams|flags|diagrams|equipment|rules|venues|maps|icons|Trophies|terminology|people|governing bodies|halls of fame|rinks|players|huddles|coaches|logos|referees)/i"
+
+- depictsId: Q1748406
+  name: Roller hockey
+  category: Category:Roller hockey
+  exclude:
+  excludeRegex: "/(Videos|art|culture|clubs|teams|flags|diagrams|equipment|rules|venues|maps|icons|Trophies|terminology|people|governing bodies|halls of fame|rinks|players|huddles|coaches|logos|referees)/i"
+
+- depictsId: Q1002954
+  name: Formuala One car
+  category: Category:Formula One cars
+  exclude:
+  excludeRegex: "/(Videos|Sounds|art|drawings|Models|components|views from|interiors|parts)/i"
+
+- depictsId: Q2356340
+  name: Ball (rhythmic gymnastics)
+  category: Category:Rhythmic gymnastics
+  exclude:
+  excludeRegex: "/(Videos)/i"
+
+- depictsId: Q15103818
+  name: Clubs (rhythmic gymnastics)
+  category: Category:Rhythmic gymnastics
+  exclude:
+  excludeRegex: "/(Videos)/i"
+  
+- depictsId: Q2553153
+  name: Hoop (rhythmic gymnastics)
+  category: Category:Rhythmic gymnastics
+  exclude:
+  excludeRegex: "/(Videos)/i"
+  
+- depictsId: Q748773
+  name: Ribbon (rhythmic gymnastics)
+  category: Category:Rhythmic gymnastics
+  exclude:
+  excludeRegex: "/(Videos)/i"
+  
+- depictsId: Q635343
+  name: Ropes (rhythmic gymnastics)
+  category: Category:Rhythmic gymnastics
+  exclude:
+  excludeRegex: "/(Videos)/i"
+  
+- depictsId: Q55605393
+  name: Biathlon rifle
+  category: Category:Biathlon
+  exclude:
+  excludeRegex: "/(Videos)/i"
+
+- depictsId: Q12252328
+  name: Association football ball
+  category: Category:Association football
+  exclude:
+  excludeRegex: "/(Videos)/i"
+
+- depictsId: Q847
+  name: Tennis
+  category: Category:Photographs of tennis
+  exclude:
+  excludeRegex: "/(Videos)/i"
+
+
+- depictsId: Q1153025
+  name: Wheelchair tennis
+  category: Category:Wheelchair tennis
+  exclude:
+  excludeRegex: "/(Videos)/i"

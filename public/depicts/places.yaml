@@ -1,0 +1,21 @@
+- depictsId: Q243
+  name: Eiffel Tower
+  category: Category:Eiffel Tower
+  exclude:
+    - Category:Eiffel Tower and communications
+    - Category:People associated with the Eiffel Tower
+    - Category:Replicas of the Eiffel Tower
+    - Category:Things named after the Eiffel Tower
+    - Category:Views from the Eiffel Tower
+  excludeRegex: "/(in art)/i"
+
+- depictsId: Q9202
+  name: Statue of Liberty
+  category: Category:Statue of Liberty
+  exclude:
+    - Category:Detail of the Statue of Liberty
+    - Category:Interior of the Statue of Liberty
+    - Category:Replicas of the Statue of Liberty
+    - Category:Statue of Liberty Museum
+    - Category:Views_from_the_Statue_of_Liberty
+  excludeRegex: "/(in art)/i"

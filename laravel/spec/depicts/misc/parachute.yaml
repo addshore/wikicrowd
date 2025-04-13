@@ -1,0 +1,9 @@
+depictsId: Q482816
+name: Parachute
+limit: 250
+category: Category:Parachutes
+exclude:
+  - Category:Parachute maintenance
+  - Category:Drogue parachutes
+  - Category:Paracord ties
+excludeRegex: "/(Videos|in (art|heraldry))/i"

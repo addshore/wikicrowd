@@ -1,0 +1,6 @@
+depictsId: Q273404
+name: Pie chart
+limit: 250
+category: Category:Pie charts
+exclude:
+excludeRegex: "/(Videos|Donut|Election apportionment)/i"

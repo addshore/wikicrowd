@@ -1,0 +1,80 @@
+- depictsId: Q34486
+  name: Helicopter
+  category: Category:Views of helicopters
+  exclude:
+  excludeRegex: "/(Videos|art|drawings|Models|components|landing gear|views from|Orthophotos|Insignia|Emblems)/i"
+
+- depictsId: Q206592
+  name: Jet Aircraft
+  category: Category:Aircraft with jet engines
+  exclude:
+  excludeRegex: "/(Videos|art|drawings|Models|components|landing gear|views from|Orthophotos|Insignia|Emblems)/i"
+
+- depictsId: Q115940
+  name: Seaplane
+  category: Category:Seaplanes
+  exclude:
+  excludeRegex: "/(Videos|art|drawings|Models|engines|components|landing gear|views from|Orthophotos)/i"
+
+- depictsId: Q2165278
+  name: Glider
+  category: Category:Gliders
+  exclude:
+  - Category:Motorgliders
+  excludeRegex: "/(Videos|art|drawings|Models|engines|components|landing gear|views from|Orthophotos)/i"
+
+- depictsId: Q133585
+  name: Airship
+  category: Category:Airships
+  exclude:
+  - Category:Airship technology
+  excludeRegex: "/(Videos|art|drawings|Models|engines|components|landing gear|views from|Orthophotos)/i"
+
+- depictsId: Q11442
+  name: Bicycle (pedal-driven two-wheel)
+  category: Category:Bicycles
+  exclude:
+  excludeRegex: "/(Videos|art|drawings|Models|components|advertising|tools|statistics|aviation|chic|equipment|industry|logo|maintenance|manufacturing|museums|parking|pranks|recycling|shops|shirts|shows|tracks|transport of|history of)/i"
+
+- depictsId: Q250429
+  name: Stop sign
+  category: Category:Stop signs
+  exclude:
+  - Category:Diagrams of stop signs
+  - Category:Stop sign icons
+  - Category:Stop road markings
+  excludeRegex: "/(Videos|icons)/i"
+
+- depictsId: Q870
+  name: Train
+  category: Category:Trains
+  exclude:
+  - Category:Steam locomotives
+  - Category:Rail transport modelling
+  excludeRegex: "/(Videos|art|Models|Station|Maintenance Center)/i"
+
+- depictsId: Q171043
+  name: Steam locomotive / train
+  category: Category:Steam locomotives
+  exclude:
+  - Category:Curiosities of Locomotive Design
+  - Category:Disassembled steam locomotives
+  - Category:Electric-steam locomotives
+  - Category:Steam locomotive events
+  - Category:Steam locomotive parts
+  - Category:Steam locomotive surfing
+  - Category:Steam heated trains
+  - Category:Steam locomotive boiler blowdown
+  - Category:Steam locomotive driving cabs
+  - Category:Steam locomotive interiors
+  - Category:Rail transport modelling
+  excludeRegex: "/(Videos|art|Model|Station|Maintenance Center)/i"
+
+- depictsId: Q3407658
+  name: Tram
+  category: Category:Trams
+  exclude:
+  - Category:Mock-ups of trams
+  - Category:Tram parts
+  - Category:People on trams
+  excludeRegex: "/(Videos)/i"
