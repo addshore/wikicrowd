@@ -147,15 +147,16 @@ const commonsError = ref<string | null>(null);
 const commonsImages = ref<CommonsImage[]>([]);
 
 // --- State for Infinite Scrolling ---
-const imageDisplayLimit = ref(100); // Initial limit, will be increased
-const imagesToFetchIncrement = 100; // How many more to fetch each time
-const isFetchingMore = ref(false); // True when fetching subsequent batches
-const canFetchMore = ref(false); // True if the last fetch hit the limit, suggesting more might exist
-const visitedCategories = ref(new Set<string>()); // Persist visited categories across fetch cycles
-const initialCategoryTitle = ref<string | null>(null); // Store the starting category for resuming
+const imageDisplayLimit = ref(100);
+const imagesToFetchIncrement = 100;
+const isFetchingMore = ref(false);
+const canFetchMore = ref(false);
+const visitedCategories = ref(new Set<string>());
+const initialCategoryTitle = ref<string | null>(null);
+const categoryQueue = ref<string[]>([]); // Queue for categories to process
 // --- End Infinite Scrolling State ---
 
-const selectedImageTitles = ref(new Set<string>()); // State for selected images (Set)
+const selectedImageTitles = ref(new Set<string>());
 
 // Helper function to get lowercased file extension
 const getFileExtension = (filename: string): string => {
@@ -209,144 +210,193 @@ const fetchItemDataFromYaml = async () => {
 // Helper function to introduce a delay
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// --- Refactored Fetching Logic ---
+// --- Refactored Fetching Logic (Iterative Queue-Based) ---
 
-// Recursive function to fetch category members
-const fetchCategory = async (categoryTitle: string) => {
-    // Check limit *before* fetching API
-    if (commonsImages.value.length >= imageDisplayLimit.value) {
-        console.log(`Pausing fetch for ${categoryTitle}, limit ${imageDisplayLimit.value} reached.`);
-        canFetchMore.value = true; // Indicate more might be available
-        return; // Pause
-    }
+// REMOVED: Recursive fetchCategory function
 
-    if (visitedCategories.value.has(categoryTitle)) {
-        console.log(`Skipping already visited category: ${categoryTitle}`);
-        return;
-    }
-    visitedCategories.value.add(categoryTitle);
-
-    const apiCategoryTitle = categoryTitle.startsWith('Category:') ? categoryTitle : `Category:${categoryTitle}`;
-    const commonsApiUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&list=categorymembers&cmtitle=${encodeURIComponent(apiCategoryTitle)}&cmtype=file|subcat&cmlimit=500&origin=*`;
-
-    console.log(`Fetching Commons category members from: ${commonsApiUrl}`);
-
-    try {
-        const response = await fetch(commonsApiUrl);
-        // ... existing response error handling (404 etc.) ...
-        const data = await response.json();
-        // ... existing warnings handling ...
-
-        if (data.query?.categorymembers) {
-            const members = data.query.categorymembers as CommonsMember[];
-            for (const member of members) {
-                // Check limit *inside* loop as well
-                if (commonsImages.value.length >= imageDisplayLimit.value) {
-                    console.log(`Reached image limit (${imageDisplayLimit.value}) while processing ${categoryTitle}.`);
-                    canFetchMore.value = true; // Set flag before returning
-                    return; // Stop processing members and prevent further recursion from this call
-                }
-
-                if (member.ns === 6) { // File
-                    const fileExtension = getFileExtension(member.title);
-                    if (IMAGE_FILE_EXTENSIONS.includes(fileExtension) && !commonsImages.value.some(img => img.title === member.title)) {
-                        commonsImages.value.push({
-                            title: member.title,
-                            thumbnailUrl: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(member.title)}?width=200`
-                        });
-                        await nextTick(); // Update UI immediately
-                    }
-                    // ... existing logging for skipped files ...
-                } else if (member.ns === 14) { // Category
-                    // Recursively fetch subcategory (limit check happens at the start of the recursive call)
-                    await fetchCategory(member.title);
-                    // Check if the recursive call paused us
-                    if (canFetchMore.value) {
-                        return; // Propagate the pause signal up
-                    }
-                }
-            }
-             // ... existing continuation comment ...
-        }
-        // ... existing API error/no query/no members handling ...
-    } catch (e: any) {
-      console.error(`Failed to fetch Commons category members for ${apiCategoryTitle}:`, e);
-      if (!commonsError.value) { // Set top-level error only once
-          commonsError.value = e.message || 'Unknown error loading Commons images.';
-      }
-      canFetchMore.value = false; // Stop trying on error
-      throw e; // Re-throw to be caught by runFetchCycle
-    }
-};
-
-// Function to run a fetch cycle (initial or subsequent)
+// Function to run a fetch cycle (initial or subsequent) using a queue
 const runFetchCycle = async () => {
-    if (!initialCategoryTitle.value) {
-        console.error("Cannot run fetch cycle without an initial category title.");
+    if (categoryQueue.value.length === 0 && !initialCategoryTitle.value) {
+        console.error("Cannot run fetch cycle without an initial category or items in the queue.");
+        isFetchingMore.value = false; // Ensure fetching stops
+        canFetchMore.value = false;
         return;
     }
+     // If queue is empty but we have an initial title (first run), add it.
+    if (categoryQueue.value.length === 0 && initialCategoryTitle.value) {
+         if (!visitedCategories.value.has(initialCategoryTitle.value)) {
+             categoryQueue.value.push(initialCategoryTitle.value);
+             console.log(`Initialized queue with: ${initialCategoryTitle.value}`);
+         } else {
+             console.log(`Initial category ${initialCategoryTitle.value} already visited, skipping queue init.`);
+         }
+    }
 
-    isFetchingMore.value = true; // Indicate fetching is active
-    canFetchMore.value = false; // Assume no more until fetchCategory pauses
 
-    console.log(`Running fetch cycle, starting from ${initialCategoryTitle.value}, limit ${imageDisplayLimit.value}`);
+    isFetchingMore.value = true;
+    // We assume we *might* be able to fetch more until the queue is exhausted *without* hitting the limit.
+    // This will be set correctly at the end of the loop.
+    canFetchMore.value = false;
+
+    console.log(`Running fetch cycle. Queue size: ${categoryQueue.value.length}, Limit: ${imageDisplayLimit.value}`);
 
     try {
-        await fetchCategory(initialCategoryTitle.value);
-        // If fetchCategory completed without throwing and without setting canFetchMore,
-        // it means we explored everything reachable within the current limit.
-        console.log(`Fetch cycle complete. Can fetch more: ${canFetchMore.value}. Total images: ${commonsImages.value.length}`);
+        while (categoryQueue.value.length > 0 && commonsImages.value.length < imageDisplayLimit.value) {
+            const currentCategoryTitle = categoryQueue.value.shift()!; // Dequeue
+
+            if (visitedCategories.value.has(currentCategoryTitle)) {
+                console.log(`Skipping already visited category from queue: ${currentCategoryTitle}`);
+                continue;
+            }
+            visitedCategories.value.add(currentCategoryTitle);
+            console.log(`Processing category: ${currentCategoryTitle}`);
+
+
+            const apiCategoryTitle = currentCategoryTitle.startsWith('Category:') ? currentCategoryTitle : `Category:${currentCategoryTitle}`;
+            const commonsApiUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&list=categorymembers&cmtitle=${encodeURIComponent(apiCategoryTitle)}&cmtype=file|subcat&cmlimit=500&origin=*`;
+
+            // Fetch members for the current category
+            try {
+                const response = await fetch(commonsApiUrl);
+                // Basic error check
+                 if (!response.ok) {
+                    if (response.status === 404) {
+                       console.warn(`Category not found on Commons: ${apiCategoryTitle}`);
+                       continue; // Skip this category
+                    }
+                    throw new Error(`Commons API error! status: ${response.status} for ${apiCategoryTitle}`);
+                 }
+                const data = await response.json();
+
+                // Warnings check
+                if (data.warnings) {
+                    console.warn('Commons API warnings:', data.warnings);
+                }
+
+                // Process members
+                if (data.query?.categorymembers) {
+                    const members = data.query.categorymembers as CommonsMember[];
+                    for (const member of members) {
+                        // Check limit *before* processing member
+                        if (commonsImages.value.length >= imageDisplayLimit.value) {
+                            console.log(`Limit (${imageDisplayLimit.value}) reached while processing members of ${currentCategoryTitle}.`);
+                            // Re-add the current category to the front if it wasn't fully processed? No, visitedCategories handles this.
+                            // The loop condition will break us out.
+                            break; // Stop processing members for this category
+                        }
+
+                        if (member.ns === 6) { // File
+                            const fileExtension = getFileExtension(member.title);
+                            if (IMAGE_FILE_EXTENSIONS.includes(fileExtension) && !commonsImages.value.some(img => img.title === member.title)) {
+                                commonsImages.value.push({
+                                    title: member.title,
+                                    thumbnailUrl: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(member.title)}?width=200`
+                                });
+                                await nextTick();
+                            }
+                        } else if (member.ns === 14) { // Subcategory
+                            // Enqueue only if not already visited (minor optimization)
+                            if (!visitedCategories.value.has(member.title)) {
+                                categoryQueue.value.push(member.title);
+                            }
+                        }
+                    } // End member loop
+                } else if (data.error) {
+                     console.error(`Commons API error for ${apiCategoryTitle}: ${data.error.code} - ${data.error.info}`);
+                     // Decide if we should stop everything or just skip this category
+                     continue; // Skip this category on API error
+                } else {
+                     console.log(`No members found or unexpected response for ${apiCategoryTitle}`);
+                }
+
+            } catch (fetchErr: any) {
+                console.error(`Failed to fetch or process members for ${currentCategoryTitle}:`, fetchErr);
+                // Decide if we should stop everything or just skip this category
+                commonsError.value = commonsError.value || fetchErr.message || 'Unknown error fetching category members.';
+                continue; // Skip this category on fetch error
+            }
+
+            // Check limit again after processing all members of a category
+             if (commonsImages.value.length >= imageDisplayLimit.value) {
+                 console.log(`Limit (${imageDisplayLimit.value}) reached after processing ${currentCategoryTitle}.`);
+                 break; // Stop processing queue
+             }
+
+        } // End while loop (queue processing)
+
+        // Determine if more can be fetched
+        if (commonsImages.value.length >= imageDisplayLimit.value && categoryQueue.value.length > 0) {
+            // We hit the limit, and there are still categories waiting in the queue
+            canFetchMore.value = true;
+            console.log(`Fetch cycle paused: Limit (${imageDisplayLimit.value}) reached. Queue size: ${categoryQueue.value.length}. Total images: ${commonsImages.value.length}`);
+        } else if (categoryQueue.value.length === 0) {
+             // Queue is empty, we've explored everything reachable
+             canFetchMore.value = false;
+             console.log(`Fetch cycle completed: Queue empty. Total images: ${commonsImages.value.length}`);
+        } else {
+             // Queue has items, but we didn't hit the limit (shouldn't happen with current logic, but safe fallback)
+             canFetchMore.value = false;
+             console.log(`Fetch cycle completed: Queue has items (${categoryQueue.value.length}) but limit (${imageDisplayLimit.value}) not reached. Total images: ${commonsImages.value.length}`);
+        }
+
     } catch (e: any) {
-        console.error('Error during fetch cycle execution:', e);
-        // commonsError should be set within fetchCategory's catch block
-        canFetchMore.value = false; // Ensure we stop on error
+        console.error('Error during iterative fetch cycle execution:', e);
+        commonsError.value = commonsError.value || e.message || 'Unknown error during fetch cycle.';
+        canFetchMore.value = false; // Stop on error
     } finally {
-        isFetchingMore.value = false; // Fetching attempt finished
+        isFetchingMore.value = false;
+        console.log(`Fetch cycle finally block. isFetchingMore: ${isFetchingMore.value}, canFetchMore: ${canFetchMore.value}`);
     }
 };
+
 
 // Function to set up and start the *initial* fetch
 const startInitialFetch = () => {
     if (!itemData.value?.category) {
-        console.log('No Commons category specified in item data.');
+        // ... (reset state as before) ...
         commonsImages.value = [];
         commonsError.value = null;
         canFetchMore.value = false;
         isFetchingMore.value = false;
         initialCategoryTitle.value = null;
         visitedCategories.value.clear();
+        categoryQueue.value = []; // Clear queue
+        selectedImageTitles.value.clear();
         return;
     }
     console.log(`Starting initial fetch for category: ${itemData.value.category}`);
 
-    commonsLoading.value = true; // Show initial loading indicator
+    commonsLoading.value = true;
     commonsError.value = null;
     commonsImages.value = [];
-    visitedCategories.value.clear(); // Reset visited for a new item
-    imageDisplayLimit.value = 100; // Reset limit
+    visitedCategories.value.clear();
+    categoryQueue.value = []; // Clear queue
+    imageDisplayLimit.value = 100;
     canFetchMore.value = false;
     isFetchingMore.value = false;
+    selectedImageTitles.value.clear();
 
     initialCategoryTitle.value = itemData.value.category.startsWith('Category:')
         ? itemData.value.category
         : `Category:${itemData.value.category}`;
 
+    // No need to add to queue here, runFetchCycle will do it if queue is empty
+
     runFetchCycle().finally(() => {
-        commonsLoading.value = false; // Hide initial loading indicator once first cycle finishes/pauses
+        commonsLoading.value = false;
     });
 };
 
 // --- End Refactored Fetching Logic ---
 
 // --- Infinite Scroll Handling ---
-
 const loadMoreImages = () => {
     if (!canFetchMore.value || isFetchingMore.value) {
-        return; // Don't fetch if not allowed or already fetching
+        return;
     }
     console.log('Scroll triggered: Loading more images...');
     imageDisplayLimit.value += imagesToFetchIncrement;
-    runFetchCycle(); // Continue fetching with the new limit
+    runFetchCycle(); // Continue fetching with the new limit (will process remaining queue)
 };
 
 const handleScroll = () => {
@@ -356,7 +406,6 @@ const handleScroll = () => {
     loadMoreImages();
   }
 };
-
 // --- End Infinite Scroll Handling ---
 
 // --- Image Selection ---
@@ -403,6 +452,7 @@ watch(itemData, (newItemData) => {
     isFetchingMore.value = false;
     initialCategoryTitle.value = null;
     visitedCategories.value.clear();
+    categoryQueue.value = []; // Clear queue
     selectedImageTitles.value.clear(); // Clear selected images
   }
 }, { immediate: false }); // Don't run immediately, wait for fetchItemDataFromYaml
