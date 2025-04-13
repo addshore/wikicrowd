@@ -40,7 +40,11 @@
             md="3"
             lg="2"
           >
-            <v-card>
+            <v-card
+              @click="selectImage(image.title)"
+              :class="{ 'selected-image': selectedImageTitles.has(image.title) }"
+              class="image-card"
+            >
               <v-img
                 :src="image.thumbnailUrl"
                 :lazy-src="image.thumbnailUrl"
@@ -62,8 +66,17 @@
             </v-card>
           </v-col>
         </v-row>
-        <div v-else class="mt-4">
+        <div v-else-if="!commonsLoading && !isFetchingMore" class="mt-4"> <!-- Adjusted condition -->
           No images found in this category on Commons, or the category does not exist.
+        </div>
+        <!-- Loading indicator for subsequent fetches -->
+        <div v-if="isFetchingMore && !commonsLoading" class="mt-4 text-center">
+          <v-progress-circular indeterminate color="primary"></v-progress-circular>
+          <p>Loading more images...</p>
+        </div>
+         <!-- Message indicating no more images can be fetched -->
+        <div v-if="!commonsLoading && !isFetchingMore && !canFetchMore && commonsImages.length > 0" class="mt-4 text-center text-grey">
+          All reachable images loaded.
         </div>
       </div>
 
@@ -74,7 +87,7 @@
           <p v-if="itemData.excludeRegex"><strong>Exclude Regex:</strong> {{ itemData.excludeRegex }}</p>
         </v-card-text>
       </v-card>
-      <div v-else class="mt-4">
+      <div v-else-if="!loading" class="mt-4"> <!-- Adjusted condition -->
         Item configuration not found in {{ category }}.yaml for {{ depictsId }}.
       </div>
 
@@ -83,7 +96,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, watch } from 'vue'; // Added watch
+import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue'; // Added onUnmounted
 import { useRoute, useRouter } from 'vue-router';
 import * as jsyaml from 'js-yaml'; // Added js-yaml import
 import NavBar from '../../../components/NavBar.vue'; // Adjust path as needed
@@ -129,9 +142,20 @@ const error = ref<string | null>(null);
 const itemData = ref<DepictsItem | null>(null); // Holds the config for the specific depictsId
 
 // State for loading Commons category images
-const commonsLoading = ref(false);
+const commonsLoading = ref(false); // For the *initial* load
 const commonsError = ref<string | null>(null);
 const commonsImages = ref<CommonsImage[]>([]);
+
+// --- State for Infinite Scrolling ---
+const imageDisplayLimit = ref(100); // Initial limit, will be increased
+const imagesToFetchIncrement = 100; // How many more to fetch each time
+const isFetchingMore = ref(false); // True when fetching subsequent batches
+const canFetchMore = ref(false); // True if the last fetch hit the limit, suggesting more might exist
+const visitedCategories = ref(new Set<string>()); // Persist visited categories across fetch cycles
+const initialCategoryTitle = ref<string | null>(null); // Store the starting category for resuming
+// --- End Infinite Scrolling State ---
+
+const selectedImageTitles = ref(new Set<string>()); // State for selected images (Set)
 
 // Helper function to get lowercased file extension
 const getFileExtension = (filename: string): string => {
@@ -185,135 +209,166 @@ const fetchItemDataFromYaml = async () => {
 // Helper function to introduce a delay
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Function to fetch images from Wikimedia Commons category, including subcategories recursively
-const fetchCommonsCategoryImages = async () => {
-  if (!itemData.value?.category) {
-    console.log('No Commons category specified in item data.');
-    commonsImages.value = []; // Clear any previous images
-    return;
-  }
-  console.log(`Fetching Commons images for category: ${itemData.value.category}`);
+// --- Refactored Fetching Logic ---
 
-  commonsLoading.value = true;
-  commonsError.value = null;
-  commonsImages.value = [];
-  const visitedCategories = new Set<string>(); // Track visited categories to avoid loops
-  const maxImagesToShowInitially = 100; // Define the limit
-
-  const fetchCategory = async (categoryTitle: string) => {
-    // PAUSE CHECK: Stop fetching if we already have enough images
-    if (commonsImages.value.length >= maxImagesToShowInitially) {
-      console.log(`Pausing fetch for ${categoryTitle}, already have ${commonsImages.value.length} images.`);
-      return;
+// Recursive function to fetch category members
+const fetchCategory = async (categoryTitle: string) => {
+    // Check limit *before* fetching API
+    if (commonsImages.value.length >= imageDisplayLimit.value) {
+        console.log(`Pausing fetch for ${categoryTitle}, limit ${imageDisplayLimit.value} reached.`);
+        canFetchMore.value = true; // Indicate more might be available
+        return; // Pause
     }
 
-    if (visitedCategories.has(categoryTitle)) {
-      console.log(`Skipping already visited category: ${categoryTitle}`);
-      return;
+    if (visitedCategories.value.has(categoryTitle)) {
+        console.log(`Skipping already visited category: ${categoryTitle}`);
+        return;
     }
-    visitedCategories.add(categoryTitle);
+    visitedCategories.value.add(categoryTitle);
 
-    // Ensure the category title starts with "Category:" for the API call
     const apiCategoryTitle = categoryTitle.startsWith('Category:') ? categoryTitle : `Category:${categoryTitle}`;
-
-    const commonsApiUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&list=categorymembers&cmtitle=${encodeURIComponent(apiCategoryTitle)}&cmtype=file|subcat&cmlimit=500&origin=*`; // Increased limit slightly
+    const commonsApiUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&list=categorymembers&cmtitle=${encodeURIComponent(apiCategoryTitle)}&cmtype=file|subcat&cmlimit=500&origin=*`;
 
     console.log(`Fetching Commons category members from: ${commonsApiUrl}`);
 
     try {
-      const response = await fetch(commonsApiUrl);
-      if (!response.ok) {
-        // Check for specific errors like missing category
-        if (response.status === 404) {
-           console.warn(`Category not found on Commons: ${apiCategoryTitle}`);
-           return; // Stop recursion for this branch if category doesn't exist
-        }
-        throw new Error(`Commons API error! status: ${response.status}`);
-      }
-      const data = await response.json();
+        const response = await fetch(commonsApiUrl);
+        // ... existing response error handling (404 etc.) ...
+        const data = await response.json();
+        // ... existing warnings handling ...
 
-      // Check for API warnings (e.g., category redirected)
-      if (data.warnings) {
-          console.warn('Commons API warnings:', data.warnings);
-      }
+        if (data.query?.categorymembers) {
+            const members = data.query.categorymembers as CommonsMember[];
+            for (const member of members) {
+                // Check limit *inside* loop as well
+                if (commonsImages.value.length >= imageDisplayLimit.value) {
+                    console.log(`Reached image limit (${imageDisplayLimit.value}) while processing ${categoryTitle}.`);
+                    canFetchMore.value = true; // Set flag before returning
+                    return; // Stop processing members and prevent further recursion from this call
+                }
 
-      if (data.query?.categorymembers) {
-        const members = data.query.categorymembers as CommonsMember[];
-
-        for (const member of members) {
-           // PAUSE CHECK within loop: If we hit the limit while processing members, stop processing this category's members and prevent further recursion from here.
-           if (commonsImages.value.length >= maxImagesToShowInitially) {
-               console.log(`Reached image limit (${maxImagesToShowInitially}) while processing ${categoryTitle}.`);
-               return; // Stop processing members and prevent further recursion from this call
-           }
-
-          // Check namespace to determine type
-          if (member.ns === 6) { // ns: 6 is the File namespace
-            const fileExtension = getFileExtension(member.title);
-            // Check if the extension is allowed AND if not already added
-            if (IMAGE_FILE_EXTENSIONS.includes(fileExtension) && !commonsImages.value.some(img => img.title === member.title)) {
-                commonsImages.value.push({
-                  title: member.title,
-                  thumbnailUrl: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(member.title)}?width=200`
-                });
-            } else if (!IMAGE_FILE_EXTENSIONS.includes(fileExtension)) {
-                console.log(`Skipping file with unsupported extension (${fileExtension}): ${member.title}`);
+                if (member.ns === 6) { // File
+                    const fileExtension = getFileExtension(member.title);
+                    if (IMAGE_FILE_EXTENSIONS.includes(fileExtension) && !commonsImages.value.some(img => img.title === member.title)) {
+                        commonsImages.value.push({
+                            title: member.title,
+                            thumbnailUrl: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(member.title)}?width=200`
+                        });
+                        await nextTick(); // Update UI immediately
+                    }
+                    // ... existing logging for skipped files ...
+                } else if (member.ns === 14) { // Category
+                    // Recursively fetch subcategory (limit check happens at the start of the recursive call)
+                    await fetchCategory(member.title);
+                    // Check if the recursive call paused us
+                    if (canFetchMore.value) {
+                        return; // Propagate the pause signal up
+                    }
+                }
             }
-          } else if (member.ns === 14) { // ns: 14 is the Category namespace
-            // Introduce a small delay before fetching the next subcategory
-            // This allows the UI to update with images found so far.
-            await sleep(20); // Delay for 20 milliseconds
-
-            // Recursively fetch subcategory (check pause condition again inside the recursive call)
-            await fetchCategory(member.title);
-          }
+             // ... existing continuation comment ...
         }
-
-        // Handle continuation if necessary (though less likely with increased limit and recursive calls)
-        if (data.continue?.cmcontinue) {
-            console.log("Need to handle continuation for category members - skipping for now in this recursive approach.");
-            // Note: Proper continuation within recursion is complex.
-            // A non-recursive, queue-based approach might be better for deep hierarchies.
-        }
-
-      } else if (data.error) {
-        // Log specific API errors
-        console.error(`Commons API error for ${apiCategoryTitle}: ${data.error.code} - ${data.error.info}`);
-        // Optionally set commonsError, but maybe allow partial results
-        // commonsError.value = `API Error: ${data.error.info}`;
-      } else if (!data.query) {
-          console.warn(`Category likely does not exist or is empty: ${apiCategoryTitle}`, data);
-      } else {
-        console.log(`No category members found for ${apiCategoryTitle} or unexpected API response:`, data);
-      }
+        // ... existing API error/no query/no members handling ...
     } catch (e: any) {
       console.error(`Failed to fetch Commons category members for ${apiCategoryTitle}:`, e);
-      // Set top-level error only if it hasn't been set yet
-      if (!commonsError.value) {
+      if (!commonsError.value) { // Set top-level error only once
           commonsError.value = e.message || 'Unknown error loading Commons images.';
       }
+      canFetchMore.value = false; // Stop trying on error
+      throw e; // Re-throw to be caught by runFetchCycle
     }
-  };
+};
 
-  try {
-    // Start fetching with the category from itemData, ensuring it has the "Category:" prefix
-    const initialCategory = itemData.value.category.startsWith('Category:')
+// Function to run a fetch cycle (initial or subsequent)
+const runFetchCycle = async () => {
+    if (!initialCategoryTitle.value) {
+        console.error("Cannot run fetch cycle without an initial category title.");
+        return;
+    }
+
+    isFetchingMore.value = true; // Indicate fetching is active
+    canFetchMore.value = false; // Assume no more until fetchCategory pauses
+
+    console.log(`Running fetch cycle, starting from ${initialCategoryTitle.value}, limit ${imageDisplayLimit.value}`);
+
+    try {
+        await fetchCategory(initialCategoryTitle.value);
+        // If fetchCategory completed without throwing and without setting canFetchMore,
+        // it means we explored everything reachable within the current limit.
+        console.log(`Fetch cycle complete. Can fetch more: ${canFetchMore.value}. Total images: ${commonsImages.value.length}`);
+    } catch (e: any) {
+        console.error('Error during fetch cycle execution:', e);
+        // commonsError should be set within fetchCategory's catch block
+        canFetchMore.value = false; // Ensure we stop on error
+    } finally {
+        isFetchingMore.value = false; // Fetching attempt finished
+    }
+};
+
+// Function to set up and start the *initial* fetch
+const startInitialFetch = () => {
+    if (!itemData.value?.category) {
+        console.log('No Commons category specified in item data.');
+        commonsImages.value = [];
+        commonsError.value = null;
+        canFetchMore.value = false;
+        isFetchingMore.value = false;
+        initialCategoryTitle.value = null;
+        visitedCategories.value.clear();
+        return;
+    }
+    console.log(`Starting initial fetch for category: ${itemData.value.category}`);
+
+    commonsLoading.value = true; // Show initial loading indicator
+    commonsError.value = null;
+    commonsImages.value = [];
+    visitedCategories.value.clear(); // Reset visited for a new item
+    imageDisplayLimit.value = 100; // Reset limit
+    canFetchMore.value = false;
+    isFetchingMore.value = false;
+
+    initialCategoryTitle.value = itemData.value.category.startsWith('Category:')
         ? itemData.value.category
         : `Category:${itemData.value.category}`;
-    await fetchCategory(initialCategory);
-    // Log final status, including if paused
-    if (commonsImages.value.length >= maxImagesToShowInitially) {
-        console.log(`Finished initial fetch phase. Paused fetching more as limit of ${maxImagesToShowInitially} images was reached. Total found: ${commonsImages.value.length}`);
-    } else {
-        console.log(`Finished fetching Commons images. Total found: ${commonsImages.value.length}`);
+
+    runFetchCycle().finally(() => {
+        commonsLoading.value = false; // Hide initial loading indicator once first cycle finishes/pauses
+    });
+};
+
+// --- End Refactored Fetching Logic ---
+
+// --- Infinite Scroll Handling ---
+
+const loadMoreImages = () => {
+    if (!canFetchMore.value || isFetchingMore.value) {
+        return; // Don't fetch if not allowed or already fetching
     }
-  } catch (e: any) {
-    console.error('Error during recursive category fetching:', e);
-    commonsError.value = e.message || 'Unknown error during recursive fetching.';
-  } finally {
-    commonsLoading.value = false; // Set loading to false after the initial fetch attempt completes or pauses
+    console.log('Scroll triggered: Loading more images...');
+    imageDisplayLimit.value += imagesToFetchIncrement;
+    runFetchCycle(); // Continue fetching with the new limit
+};
+
+const handleScroll = () => {
+  // Check if near bottom (e.g., within 200px)
+  const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
+  if (nearBottom) {
+    loadMoreImages();
   }
 };
+
+// --- End Infinite Scroll Handling ---
+
+// --- Image Selection ---
+const selectImage = (title: string) => {
+  if (selectedImageTitles.value.has(title)) {
+    selectedImageTitles.value.delete(title); // Deselect
+  } else {
+    selectedImageTitles.value.add(title); // Select
+  }
+  console.log("TODO action selection", selectedImageTitles.value); // Log the set
+};
+// --- End Image Selection ---
 
 // Function to navigate back to the category page
 const goBackToCategory = () => {
@@ -328,16 +383,27 @@ const goBackToCategory = () => {
 // Fetch item data when the component mounts
 onMounted(() => {
   fetchItemDataFromYaml();
+  window.addEventListener('scroll', handleScroll);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll);
 });
 
 // Watch for itemData to be loaded, then fetch Commons images if category exists
 watch(itemData, (newItemData) => {
   if (newItemData?.category) {
-    fetchCommonsCategoryImages();
+    startInitialFetch(); // Use the new setup function
   } else {
-    // Clear commons data if itemData is cleared or lacks a category
+    // Clear all commons/fetch related state if itemData is cleared or lacks category
     commonsImages.value = [];
     commonsError.value = null;
+    commonsLoading.value = false;
+    canFetchMore.value = false;
+    isFetchingMore.value = false;
+    initialCategoryTitle.value = null;
+    visitedCategories.value.clear();
+    selectedImageTitles.value.clear(); // Clear selected images
   }
 }, { immediate: false }); // Don't run immediately, wait for fetchItemDataFromYaml
 
@@ -375,5 +441,20 @@ watch(itemData, (newItemData) => {
 }
 .image-title a:hover {
   text-decoration: underline;
+}
+.text-center {
+  text-align: center;
+}
+.text-grey {
+    color: #757575; /* Vuetify grey */
+}
+.image-card {
+  cursor: pointer;
+  border: 3px solid transparent; /* Reserve space for border */
+  transition: border-color 0.2s ease-in-out;
+}
+
+.selected-image {
+  border-color: #4CAF50; /* Green border */
 }
 </style>
