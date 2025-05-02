@@ -8,4 +8,4 @@ exclude:
   - Category:Replicas of the Eiffel Tower
   - Category:Things named after the Eiffel Tower
   - Category:Views from the Eiffel Tower
-excludeRegex: "/(in art)/i"
+excludeRegex: "/(in art|names on)/i"
