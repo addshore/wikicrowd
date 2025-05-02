@@ -110,6 +110,10 @@ class GenerateDepictsQuestions implements ShouldQueue, ShouldBeUnique
                 $depictsJobs[] = $file;
             }
         }
+
+        // Randomize the order of the jobs
+        shuffle( $depictsJobs );
+
         foreach( $depictsJobs as $job ) {
             // Make sure that job is an object
             if( !is_object( $job ) ) {
