@@ -4,3 +4,10 @@
   category: Category:Bicycles
   exclude:
   excludeRegex: "/(Videos|art|drawings|Models|components|advertising|tools|statistics|aviation|chic|equipment|industry|logo|maintenance|manufacturing|museums|parking|pranks|recycling|shops|shirts|shows|tracks|transport of|history of)/i"
+
+- depictsId: Q750483
+  name: Recumbent bicycle
+  limit: 100
+  category: Category:Recumbent_bicycles
+  exclude:
+  excludeRegex: "/(Videos|art|drawings|Models|components|advertising|tools|statistics|aviation|chic|equipment|industry|logo|maintenance|manufacturing|museums|parking|pranks|recycling|shops|shirts|shows|tracks|transport of|history of)/i"
