@@ -8,4 +8,4 @@ exclude:
   - Category:Duck mascots
   - Category:Duck houses
   - Category:Duck hunting
-excludeRegex: "/(Videos|statues|sculpture|art|houses|decoys)/i"
+excludeRegex: "/(Videos|statues|sculpture|art|houses|decoys|slaughter)/i"
