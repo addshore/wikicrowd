@@ -1,0 +1,11 @@
+depictsId: Q25439
+name: Woodpecker (family of birds)
+limit: 250
+category: Category:Picidae
+# exclude:
+#   - Category:Duck warning signs
+#   - Category:Things named after ducks
+#   - Category:Duck mascots
+#   - Category:Duck houses
+#   - Category:Duck hunting
+excludeRegex: "/(Videos|statues|sculpture|art|houses|decoys)/i"
