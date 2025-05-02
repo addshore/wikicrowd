@@ -36,7 +36,13 @@ On first setup you'll need to create the databases.
 You can then generate a couple of questions (just exit the command early so it doesnt run forever)
 
 ```sh
-./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestions
+./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestions "Category:Bicycles" "" "/(Videos|art|drawings|Models|components|advertising|tools|statistics|aviation|chic|equipment|industry|logo|maintenance|manufacturing|museums|parking|pranks|recycling|shops|shirts|shows|tracks|transport of)/i" Q11442 "Bicycle (pedal-driven two-wheel)" 10
+```
+
+Or, to generate questions from only a single YAML file:
+
+```sh
+php ./src/artisan job:dispatchNow GenerateDepictsQuestions "" "" "" "" "" 0 "/full/path/to/your.yaml"
 ```
 
 Then find the site at http://localhost
