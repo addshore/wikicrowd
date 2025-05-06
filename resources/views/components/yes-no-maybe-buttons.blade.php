@@ -82,7 +82,7 @@ class WikiCrowdQuestionHandler {
         }
 
         try {
-            const response = await fetch(url, {
+            let response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -90,6 +90,23 @@ class WikiCrowdQuestionHandler {
                     'X-CSRF-TOKEN': this.csrfToken
                 }
             });
+
+            if (response.status === 429) {
+                const retryAfter = parseInt(response.headers.get('X-RateLimit-Reset')) * 1000;
+                const now = Date.now();
+                const delay = Math.max(0, retryAfter - now) || 1000; // Default to 1s if header missing or in the past
+                console.warn(`Rate limited. Retrying after ${delay}ms.`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                response = await fetch(url, { // Retry the request
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${this.apiToken}`,
+                        'X-CSRF-TOKEN': this.csrfToken
+                    }
+                });
+            }
+
             if (!response.ok) {
                 if(response.status === 404) {
                     console.warn('No more questions found from API or question not found.');
@@ -210,6 +227,30 @@ class WikiCrowdQuestionHandler {
                     question_id: questionToAnswer.id,
                     answer: answer
                 })
+            })
+            .then(async response => { // Added async here
+                if (response.status === 429) {
+                    const retryAfter = parseInt(response.headers.get('X-RateLimit-Reset')) * 1000;
+                    const now = Date.now();
+                    const delay = Math.max(0, retryAfter - now) || 1000; // Default to 1s
+                    console.warn(`Rate limited on submit. Retrying after ${delay}ms.`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    // Retry the request
+                    return fetch('/api/answers', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${this.apiToken}`,
+                            'X-CSRF-TOKEN': this.csrfToken
+                        },
+                        body: JSON.stringify({
+                            question_id: questionToAnswer.id,
+                            answer: answer
+                        })
+                    });
+                }
+                return response;
             })
             .then(response => {
                 if (!response.ok) {
