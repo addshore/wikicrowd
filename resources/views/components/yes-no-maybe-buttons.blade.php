@@ -12,8 +12,9 @@ class WikiCrowdQuestionHandler {
         this.preloadedQuestions = []; // Queue for preloaded question data objects
         this.seenQuestionIds = new Set(); // Use a Set for efficient add/check/delete and to store more history
         this.isFetching = false;
+        this.isFillingPreloadQueue = false; // For the fillPreloadQueue method
         this.maxPreload = 10;
-        this.maxSeenHistory = 30; // Keep a bit more history than preload buffer
+        this.maxSeenHistory = 100; // Keep a bit more history than preload buffer
         this.apiToken = this.getApiToken();
         this.csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
@@ -33,6 +34,7 @@ class WikiCrowdQuestionHandler {
 
         this.bindEvents();
         this.fillPreloadQueue(); // Start filling the preload queue
+        console.log(`WikiCrowdQuestionHandler: Initialized. Preloaded questions: ${this.preloadedQuestions.length}`);
     }
 
     getApiToken() {
@@ -64,25 +66,20 @@ class WikiCrowdQuestionHandler {
         });
     }
 
-    async fetchQuestion(questionId = null) {
-        if (!this.groupName || this.isFetching) {
+    async fetchQuestion() { // Removed nextQuestionId parameter
+        if (this.isFetching) {
+            console.warn("WikiCrowdQuestionHandler: fetchQuestion called while already fetching.");
             return null;
         }
         this.isFetching = true;
-
+        // Always fetch a random question for the given type and item_id
         let url = `/api/questions/${this.groupName}`;
-        if (questionId) {
-            url += `/${questionId}`;
-        }
-
-        // Prepare seen_ids for query parameters
         const seenIdsParam = Array.from(this.seenQuestionIds).join(',');
-        if (seenIdsParam) {
-            url += `?seen_ids=${encodeURIComponent(seenIdsParam)}`;
-        }
+        url += `?seen_ids=${encodeURIComponent(seenIdsParam)}`;
 
+        console.log(`WikiCrowdQuestionHandler: Fetching random question. URL: ${url}`);
         try {
-            let response = await fetch(url, {
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -90,121 +87,118 @@ class WikiCrowdQuestionHandler {
                     'X-CSRF-TOKEN': this.csrfToken
                 }
             });
-
-            if (response.status === 429) {
-                const retryAfter = parseInt(response.headers.get('X-RateLimit-Reset')) * 1000;
-                const now = Date.now();
-                const delay = Math.max(0, retryAfter - now) || 1000; // Default to 1s if header missing or in the past
-                console.warn(`Rate limited. Retrying after ${delay}ms.`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                response = await fetch(url, { // Retry the request
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${this.apiToken}`,
-                        'X-CSRF-TOKEN': this.csrfToken
-                    }
-                });
-            }
-
             if (!response.ok) {
-                if(response.status === 404) {
-                    console.warn('No more questions found from API or question not found.');
-                    if (this.preloadedQuestions.length === 0 && !this.currentQuestionData) {
-                         this.displayNoMoreQuestions();
-                    }
-                } else {
-                    console.error('Failed to fetch question:', response.status, await response.text());
-                }
+                console.error(`WikiCrowdQuestionHandler: Error fetching question. Status: ${response.status}, URL: ${url}`);
+                // No specific nextQuestionId to check for 404 against anymore
+                this.isFetching = false;
                 return null;
             }
             const data = await response.json();
-            return data; // API returns { question: {}, next_question: {} }
-        } catch (error) {
-            console.error('Error fetching question:', error);
-            return null;
-        } finally {
             this.isFetching = false;
+            if (!data.question) {
+                console.log("WikiCrowdQuestionHandler: Fetched data, but no question object found.", data);
+            }
+            return data;
+        } catch (error) {
+            console.error('WikiCrowdQuestionHandler: Exception during fetchQuestion:', error);
+            this.isFetching = false;
+            return null;
         }
     }
 
     async fillPreloadQueue() {
-        if (this.isFetching) return;
+        if (this.isFillingPreloadQueue) {
+            console.log("WikiCrowdQuestionHandler: fillPreloadQueue is already in progress.");
+            return;
+        }
+        this.isFillingPreloadQueue = true;
+        console.log(`WikiCrowdQuestionHandler: fillPreloadQueue START. Current preload: ${this.preloadedQuestions.length}/${this.maxPreload}. Seen: ${this.seenQuestionIds.size}`);
 
         while (this.preloadedQuestions.length < this.maxPreload) {
-            if (this.isFetching) break; // Check again in case a fetch started
-
-            let questionToFetchId = null;
-            // If queue is not empty, use the next_question_id of the last preloaded item
-            if (this.preloadedQuestions.length > 0) {
-                const lastPreloaded = this.preloadedQuestions[this.preloadedQuestions.length - 1];
-                // The API now returns next_question object directly
-                if (lastPreloaded.next_question_for_preload && !this.seenQuestionIds.has(lastPreloaded.next_question_for_preload.id)) {
-                     questionToFetchId = lastPreloaded.next_question_for_preload.id;
-                }
+            if (this.isFetching) { // If a fetchQuestion call is globally active
+                console.log("WikiCrowdQuestionHandler: fillPreloadQueue - fetchQuestion is active, pausing loop.");
+                break;
             }
-            // If no specific next ID, fetch a random one (that hasn't been seen)
-            // The API handles seen_ids, so passing null for questionId works.
 
-            const fetchedData = await this.fetchQuestion(questionToFetchId);
+            // Always fetch a random question
+            console.log(`WikiCrowdQuestionHandler: fillPreloadQueue - Attempting fetch for a random question.`);
+            let fetchedData = await this.fetchQuestion(); // No argument passed
 
             if (fetchedData && fetchedData.question) {
-                if (!this.seenQuestionIds.has(fetchedData.question.id)) {
+                let newQuestionPushedToPreload = false;
+
+                // Process main question from fetch
+                if (!this.seenQuestionIds.has(fetchedData.question.id) && !this.preloadedQuestions.find(q => q.id === fetchedData.question.id)) {
+                    this.addSeenId(fetchedData.question.id); // Mark seen BEFORE adding
                     this.preloadedQuestions.push(fetchedData.question);
-                    this.addSeenId(fetchedData.question.id);
                     this.preloadImage(fetchedData.question.properties?.img_url);
-                    // Store the next_question from this fetch to guide the next iteration
-                    if(fetchedData.next_question && !this.seenQuestionIds.has(fetchedData.next_question.id)) {
-                        // Add to preloadedQuestions directly if not full, otherwise it will be picked up next
-                        if (this.preloadedQuestions.length < this.maxPreload && !this.preloadedQuestions.find(q => q.id === fetchedData.next_question.id)) {
-                            this.preloadedQuestions.push(fetchedData.next_question);
-                            this.addSeenId(fetchedData.next_question.id);
-                            this.preloadImage(fetchedData.next_question.properties?.img_url);
-                        } else if (this.preloadedQuestions.length > 0) {
-                            // Tag the last added question with its potential next, to be used if questionToFetchId was null
-                             this.preloadedQuestions[this.preloadedQuestions.length-1].next_question_for_preload = fetchedData.next_question;
-                        }
-                    }
-                } else if (fetchedData.next_question && !this.seenQuestionIds.has(fetchedData.next_question.id)) {
-                    // If the main fetched question was a duplicate but its next_question is new
-                     if (this.preloadedQuestions.length < this.maxPreload && !this.preloadedQuestions.find(q => q.id === fetchedData.next_question.id)) {
+                    newQuestionPushedToPreload = true;
+                    console.log(`WikiCrowdQuestionHandler: Added Q ${fetchedData.question.id} (random) to preload. New size: ${this.preloadedQuestions.length}`);
+                } else {
+                    console.log(`WikiCrowdQuestionHandler: Q ${fetchedData.question.id} (random) already seen/in preload.`);
+                }
+
+                // Process next_question from fetch, if available and if we still need questions
+                // This part remains useful as the random fetch might still return a 'next_question' hint
+                // which can be a candidate for the *next* preloading cycle if it's not the same as the one just fetched.
+                if (fetchedData.next_question && this.preloadedQuestions.length < this.maxPreload) {
+                    if (!this.seenQuestionIds.has(fetchedData.next_question.id) && !this.preloadedQuestions.find(q => q.id === fetchedData.next_question.id)) {
+                        this.addSeenId(fetchedData.next_question.id); // Mark seen BEFORE adding
                         this.preloadedQuestions.push(fetchedData.next_question);
-                        this.addSeenId(fetchedData.next_question.id);
                         this.preloadImage(fetchedData.next_question.properties?.img_url);
+                        newQuestionPushedToPreload = true; // Count this as a new question for the loop break condition
+                        console.log(`WikiCrowdQuestionHandler: Added next_Q ${fetchedData.next_question.id} (from random fetch's hint) to preload. New size: ${this.preloadedQuestions.length}`);
+                    } else {
+                         console.log(`WikiCrowdQuestionHandler: next_Q ${fetchedData.next_question.id} (from random fetch's hint) already seen/in preload.`);
                     }
                 }
+                
+                // Remove the logic for setting .next_question_for_preload as we are not using specific IDs for fetching anymore.
+                // The 'next_question' from the payload is now directly added to the queue if valid and space permits.
+
+                if (!newQuestionPushedToPreload && this.preloadedQuestions.length < this.maxPreload) {
+                    console.log(`WikiCrowdQuestionHandler: fillPreloadQueue - Fetch successful (random) but no new questions added (likely all seen/duplicates). Breaking loop.`);
+                    break;
+                }
             } else {
-                // No more questions could be fetched or an error occurred
+                console.log(`WikiCrowdQuestionHandler: fillPreloadQueue - Fetch failed or no question data (random).`);
                 if (this.preloadedQuestions.length === 0 && !this.currentQuestionData?.id) {
                     this.displayNoMoreQuestions();
                 }
-                break; // Stop trying if API returns null or error
+                break; // Stop trying for this cycle
             }
         }
+
+        console.log(`WikiCrowdQuestionHandler: fillPreloadQueue END. Preload: ${this.preloadedQuestions.length}/${this.maxPreload}.`);
+        this.isFillingPreloadQueue = false;
     }
 
     submitAnswerAndLoadNext(answer) {
         const questionToAnswer = this.currentQuestionData;
+        console.log(`WikiCrowdQuestionHandler: Submitting answer '${answer}' for question ${questionToAnswer?.id}. Preload queue size before: ${this.preloadedQuestions.length}`);
 
         // 1. Immediately update UI to the next preloaded question
         if (this.preloadedQuestions.length > 0) {
             this.currentQuestionData = this.preloadedQuestions.shift(); // Get next from queue
+            console.log(`WikiCrowdQuestionHandler: Shifted question ${this.currentQuestionData.id} from preload queue. New queue size: ${this.preloadedQuestions.length}`);
             this.renderQuestion(this.currentQuestionData);
             this.addSeenId(this.currentQuestionData.id); // Ensure it's marked as seen upon display
         } else {
             // Preload buffer empty, try to fetch one directly for display
             this.currentQuestionData = null; // Clear current while fetching
             this.renderQuestion(null); // Show loading state / clear old question
-            console.log("Preload buffer empty, fetching next question directly...");
-            this.fetchQuestion(null).then(data => {
+            console.log("WikiCrowdQuestionHandler: Preload buffer empty, fetching next random question directly...");
+            this.fetchQuestion().then(data => { // Fetch a random question
                 if (data && data.question) {
                     this.currentQuestionData = data.question;
                     this.renderQuestion(this.currentQuestionData);
                     this.addSeenId(this.currentQuestionData.id);
+                    console.log(`WikiCrowdQuestionHandler: Fetched question ${this.currentQuestionData.id} directly. Preload queue size: ${this.preloadedQuestions.length}`);
                     if (data.next_question && !this.seenQuestionIds.has(data.next_question.id) && this.preloadedQuestions.length < this.maxPreload) {
                         this.preloadedQuestions.push(data.next_question);
                         this.addSeenId(data.next_question.id);
                         this.preloadImage(data.next_question.properties?.img_url);
+                        console.log(`WikiCrowdQuestionHandler: Added next_question ${data.next_question.id} to preload queue from direct fetch. Queue size: ${this.preloadedQuestions.length}`);
                     }
                 } else {
                     this.displayNoMoreQuestions();
