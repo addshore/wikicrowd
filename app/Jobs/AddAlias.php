@@ -51,7 +51,8 @@ class AddAlias implements ShouldQueue
 
         if($user->token === null || $user->token_secret === null) {
             // TODO deal with this?
-            die("No token for user (must be logged out)");
+            \Log::error("No token for user (must be logged out)");
+            return;
         }
 
         $mwAuth = new \Addwiki\Mediawiki\Api\Client\Auth\OAuthOwnerConsumer(
@@ -70,7 +71,8 @@ class AddAlias implements ShouldQueue
 
         $item = $wbServices->newItemLookup()->getItemForId(new ItemId($itemIdString));
         if($item === null) {
-            die("Item not found");
+            \Log::error("Item not found");
+            return;
         }
 
         if ( $item->getAliasGroups()->hasGroupForLanguage($inUseLanguage) ) {
@@ -87,6 +89,7 @@ class AddAlias implements ShouldQueue
 
         // Stop if label or alias exists
         if(in_array(strtolower($question->properties['suggestion']), $existing)) {
+            \Log::info("Alias or label already exists for suggestion: " . $question->properties['suggestion']);
             return;
         }
 
@@ -102,7 +105,8 @@ class AddAlias implements ShouldQueue
 
         $success = $result['success'];
         if(!$success) {
-            die("Failed to add alias");
+            \Log::error("Failed to add alias");
+            return;
         }
 
         Edit::create([

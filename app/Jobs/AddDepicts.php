@@ -57,7 +57,8 @@ class AddDepicts implements ShouldQueue
 
         if($user->token === null || $user->token_secret === null) {
             // TODO deal with this?
-            die("No token for user (must be logged out)");
+            \Log::error("No token for user (must be logged out)");
+            return;
         }
 
         // And write to some mw instance
@@ -83,7 +84,7 @@ class AddDepicts implements ShouldQueue
         $entity = $wbServices->newEntityLookup()->getEntity( $mid );
         if($entity === null) {
             // TODO could still create statements for this condition...
-            echo "MediaInfo entity not found\n";
+            \Log::error("MediaInfo entity not found");
             return;
         }
         $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $depictsValue->getSerialization() );
@@ -111,8 +112,7 @@ class AddDepicts implements ShouldQueue
         // TODO code reuse section end
 
         if($foundDepicts !== false) {
-            echo "Already has {$foundDepicts} depicts" . PHP_EOL;
-
+            \Log::info("Already has {$foundDepicts} depicts");
             return;
         } else {
             $wbServices->newStatementCreator()->create(

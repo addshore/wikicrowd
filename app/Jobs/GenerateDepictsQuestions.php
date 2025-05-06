@@ -1,4 +1,4 @@
-    <?php
+<?php
 
     namespace App\Jobs;
 
@@ -126,12 +126,12 @@
             foreach( $depictsJobs as $job ) {
                 // Make sure that job is an object
                 if( !is_object( $job ) ) {
-                    echo "Job is not an object\n";
+                    \Log::info("Job is not an object");
                     continue;
                 }
                 // Make sure it has the required fields
                 if( !isset( $job->category ) || !isset( $job->depictsId ) || !isset( $job->name ) || !isset( $job->limit ) ) {
-                    echo "Job is missing required fields\n";
+                    \Log::info("Job is missing required fields");
                     continue;
                 }
 
@@ -160,9 +160,9 @@
                 $query->doesntHave('answer');
                 }])->first()->unanswered;
             $this->got = $depictGroupCount + $depictRefineGroupCount;
-            echo "Already got $this->got questions\n";
+            \Log::info("Already got $this->got questions");
             if($this->got >= $this->limit) {
-                echo "Already got enough questions\n";
+                \Log::info("Already got enough questions");
                 return;
             }
 
@@ -175,25 +175,25 @@
             $traverser = $mwServices->newCategoryTraverser();
             $traverser->addCallback( CategoryTraverser::CALLBACK_CATEGORY, function( Page $member, Page $rootCat ) {
                 if( $this->got >= $this->limit ) {
-                    echo "Limit reached\n";
+                    \Log::info("Limit reached");
                     return false;
                 }
                 $memberText = $member->getPageIdentifier()->getTitle()->getText();
                 $rootText = $rootCat->getPageIdentifier()->getTitle()->getText();
                 if(in_array($memberText, $this->ignoreCategories)) {
-                    echo "Ignoring text match $memberText\n";
+                    \Log::info("Ignoring text match $memberText");
                     return false;
                 }
                 if($this->ignoreCategoriesRegex !== "" && preg_match($this->ignoreCategoriesRegex, $memberText)) {
-                    echo "Ignoring regex match $memberText\n";
+                    \Log::info("Ignoring regex match $memberText");
                     return false;
                 }
-                echo "Processing: " . $memberText . ", Parent was: " . $rootText . "\n";
+                \Log::info("Processing: " . $memberText . ", Parent was: " . $rootText);
             } );
             $traverser->addCallback( CategoryTraverser::CALLBACK_PAGE, function( Page $member, Page $rootCat ) {
                 // Terrible limiting, but the only way to do it right now..
                 if( $this->got >= $this->limit ) {
-                    echo "Limit reached\n";
+                    \Log::info("Limit reached");
                     return;
                 }
                 $pageIdentifier = $member->getPageIdentifier();
@@ -203,7 +203,7 @@
                 }
                 // Skip anything that is not an image
                 if( !in_array( $this->getFileExtensionFromName( $pageIdentifier->getTitle()->getText() ), self::IMAGE_FILE_EXTENSIONS ) ) {
-                    echo "Non image\n";
+                    \Log::info("Non image");
                     return;
                 }
                 // Skip pages we already generated a question for of any depicts type
@@ -212,7 +212,7 @@
                         ->exists()
                     ) {
                     // question already found
-                    echo "Question exists\n";
+                    \Log::info("Question exists");
                     return;
                 }
                 $this->processFilePage( $pageIdentifier );
@@ -312,7 +312,7 @@
             $entity = $commonsWbServices->newEntityLookup()->getEntity( $mid );
             if($entity === null) {
                 // TODO could still create statements for this condition...
-                echo "MediaInfo entity not found\n";
+                \Log::error("MediaInfo entity not found");
                 return false;
             }
 
@@ -346,35 +346,35 @@
             }
 
             if($foundDepicts['exact'] > 0) {
-                echo "Exact depicts found\n";
+                \Log::info("Exact depicts found");
                 return false;
             }
             if($foundDepicts['moreSpecific'] > 0) {
-                echo "More specific depicts found\n";
+                \Log::info("More specific depicts found");
                 return false;
             }
 
             $thumbUrl = $this->getThumbUrl( $filePageIdentifier );
             if($thumbUrl===null) {
-                echo "ERROR: Failed getting thumb url: " . $filePageIdentifier->getTitle()->getText() . PHP_EOL;
+                \Log::error("ERROR: Failed getting thumb url: " . $filePageIdentifier->getTitle()->getText());
                 return false;
             }
 
             if($foundDepicts['lessSpecific'] > 0) {
                 if($foundDepicts['lessSpecific'] !== 1) {
-                    echo "BAIL: I'm scared, as multiple less specific statements were found...\n";
+                    \Log::info("BAIL: I'm scared, as multiple less specific statements were found...");
                     return false;
                 }
 
                 $wikidataWbServices = $wmFactory->newWikibaseFactoryForDomain( self::WIKIDATA );
                 $lessSpecificItem = $wikidataWbServices->newItemLookup()->getItemForId( $lessSpecificValue );
                 if(!$lessSpecificItem) {
-                    echo "ERROR: Failed to get less specific item\n";
+                    \Log::error("ERROR: Failed to get less specific item");
                     return false;
                 }
                 // TODO don't harcode to en?
                 if(!$lessSpecificItem->getLabels()->hasTermForLanguage( 'en' )) {
-                    echo "ERROR: Less specific item has no label in English\n";
+                    \Log::error("ERROR: Less specific item has no label in English");
                     return false;
                 }
                 $lessSpecificItemLabel = $lessSpecificItem->getLabels()->getByLanguage( 'en' );
@@ -393,7 +393,7 @@
                     ]
                 ]);
                 $this->got++;
-                echo "=D Depict Refine question added for " . $mid->getSerialization() . "!" . PHP_EOL;
+                \Log::info("=D Depict Refine question added for " . $mid->getSerialization() . "!");
 
                 return true;
             }
@@ -411,7 +411,7 @@
                 ]
             ]);
             $this->got++;
-            echo "=D Depict Add question added for " . $mid->getSerialization() . "!" . PHP_EOL;
+            \Log::info("=D Depict Add question added for " . $mid->getSerialization() . "!");
             return true;
         }
 

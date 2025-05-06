@@ -57,7 +57,8 @@ class SwapDepicts implements ShouldQueue
 
         if($user->token === null || $user->token_secret === null) {
             // TODO deal with this?
-            die("No token for user (must be logged out)");
+            \Log::error("No token for user (must be logged out)");
+            return;
         }
 
         // And write to some mw instance
@@ -84,7 +85,7 @@ class SwapDepicts implements ShouldQueue
         $entity = $wbServices->newEntityLookup()->getEntity( $mid );
         if($entity === null) {
             // TODO could still create statements for this condition...
-            echo "MediaInfo entity not found\n";
+            \Log::error("MediaInfo entity not found");
             return;
         }
         $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $depictsValue->getSerialization() );
@@ -120,16 +121,16 @@ class SwapDepicts implements ShouldQueue
         }
 
         if($foundDepicts['new-exact'] > 0) {
-            echo "Exact new depicts found\n";
+            \Log::info("Exact new depicts found");
             return;
         }
         if($foundDepicts['new-moreSpecific'] > 0) {
-            echo "More specific depicts already found\n";
+            \Log::info("More specific depicts already found");
             return;
         }
 
         if($foundDepicts['old-exact'] !== 1) {
-            echo "BAIL: Not found exactly 1 of the depicts that we are looking for\n";
+            \Log::info("BAIL: Not found exactly 1 of the depicts that we are looking for");
             return;
         }
 
