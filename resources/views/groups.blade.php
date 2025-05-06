@@ -82,5 +82,9 @@
                 </div>
             </div>
         </div>
+        <div id="vue-hello-world" class="mt-8">
+            <hello-world></hello-world>
+        </div>
+        <script src="{{ mix('js/app.js') }}"></script>
     </body>
 </html>

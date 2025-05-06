@@ -16,6 +16,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.20",
         "laravel/tinker": "^2.8",
+        "laravel/ui": "^4.6",
         "mxl/laravel-job": "^1.2",
         "nesbot/carbon": "^3.0",
         "symfony/yaml": "^6.0",
