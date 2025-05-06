@@ -1,0 +1,3 @@
+[submodule "local-packages/laravel-socialite-mediawiki"]
+	path = local-packages/laravel-socialite-mediawiki
+	url = https://git.sr.ht/~taavi/laravel-socialite-mediawiki
