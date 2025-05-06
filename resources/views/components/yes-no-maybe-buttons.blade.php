@@ -1,245 +1,353 @@
-<div id="dynamic-yes-no-maybe-buttons">
-    <button data-answer="yes" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" title="Press 1 to execute">Yes [1]</button>
-    <button data-answer="no" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded ml-2" title="Press 2 to execute">No [2]</button>
-    <button data-answer="skip" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2" title="Press 3 to execute">Skip [3]</button>
+<div class="py-2 flex justify-center pt-8 sm:justify-start sm:pt-0">
+    <button data-answer="yes" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2">Yes (1)</button>
+    <button data-answer="no" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mr-2">No (2)</button>
+    <button data-answer="skip" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Skip (3)</button>
 </div>
 
 <script>
 class WikiCrowdQuestionHandler {
-    constructor() {
-        this.questionContainer = document.getElementById('question-container');
-        this.questionContent = document.getElementById('question-content');
-        this.noMoreQuestionsDiv = document.getElementById('no-more-questions');
-        this.buttonsDiv = document.getElementById('dynamic-yes-no-maybe-buttons');
+    constructor(groupName, initialCurrentQuestionId, initialNextQuestionId, initialCurrentQuestionData, initialNextQuestionData) {
+        this.groupName = groupName;
+        this.currentQuestionData = initialCurrentQuestionData; // Full data for the initially displayed question
+        this.preloadedQuestions = []; // Queue for preloaded question data objects
+        this.seenQuestionIds = new Set(); // Use a Set for efficient add/check/delete and to store more history
+        this.isFetching = false;
+        this.maxPreload = 10;
+        this.maxSeenHistory = 30; // Keep a bit more history than preload buffer
+        this.apiToken = this.getApiToken();
         this.csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        this.currentQuestionData = null;
-        this.nextQuestionData = null;
+        // Initialize with server-provided data
+        if (this.currentQuestionData && this.currentQuestionData.id) {
+            this.addSeenId(this.currentQuestionData.id);
+            this.renderQuestion(this.currentQuestionData); // Render initial question
+        }
+
+        if (initialNextQuestionData && initialNextQuestionData.id) {
+            if (!this.seenQuestionIds.has(initialNextQuestionData.id)) {
+                this.preloadedQuestions.push(initialNextQuestionData);
+                this.addSeenId(initialNextQuestionData.id);
+                this.preloadImage(initialNextQuestionData.properties?.img_url);
+            }
+        }
 
         this.bindEvents();
-        this.loadInitialQuestion();
+        this.fillPreloadQueue(); // Start filling the preload queue
+    }
+
+    getApiToken() {
+        return window.apiToken || null;
+    }
+
+    addSeenId(id) {
+        if (!id) return;
+        this.seenQuestionIds.add(id);
+        // Trim the set if it grows too large, removing oldest entries (Sets are ordered by insertion)
+        if (this.seenQuestionIds.size > this.maxSeenHistory) {
+            const oldestId = this.seenQuestionIds.values().next().value;
+            this.seenQuestionIds.delete(oldestId);
+        }
     }
 
     bindEvents() {
-        this.buttonsDiv.addEventListener('click', (event) => {
-            if (event.target.tagName === 'BUTTON') {
-                const answer = event.target.dataset.answer;
+        document.querySelectorAll('[data-answer]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const answer = e.target.dataset.answer;
                 this.submitAnswerAndLoadNext(answer);
-            }
+            });
         });
 
-        document.addEventListener('keypress', (evt) => {
-            let charCode = evt.keyCode || evt.which;
-            let character = String.fromCharCode(charCode);
-            const answer = this.actionMapping(character);
-            if (answer) {
-                this.submitAnswerAndLoadNext(answer);
-            }
+        document.addEventListener('keypress', (e) => {
+            if (e.key === '1') this.submitAnswerAndLoadNext('yes');
+            if (e.key === '2') this.submitAnswerAndLoadNext('no');
+            if (e.key === '3') this.submitAnswerAndLoadNext('skip');
         });
     }
 
-    actionMapping(character) {
-        switch (character) {
-            case '1': return 'yes';
-            case '2': return 'no';
-            case '3': return 'skip';
-            default: return false;
+    async fetchQuestion(questionId = null) {
+        if (!this.groupName || this.isFetching) {
+            return null;
         }
-    }
+        this.isFetching = true;
 
-    async loadInitialQuestion() {
-        const initialQuestionId = this.questionContainer.dataset.currentQuestionId;
-        const initialNextQuestionId = this.questionContainer.dataset.nextQuestionId;
-        const groupName = this.questionContainer.dataset.groupName;
-
-        if (initialQuestionId) {
-            // Fetch the initial question data (which might include the next question already)
-            // This assumes the initial page load already has the first question details rendered
-            // and we primarily need to ensure `nextQuestionData` is populated for the *second* question load.
-            this.currentQuestionData = {
-                id: initialQuestionId,
-                // We'd ideally have the full initial question object if passed from PHP
-                // For now, we'll rely on the initially rendered HTML for the first question
-            };
-            if (initialNextQuestionId) {
-                 // If nextId is present, fetch it to have it ready
-                await this.fetchQuestion(groupName, initialNextQuestionId, true); // true to store as next
-            } else {
-                // If no nextId, try to fetch any next question for the group
-                await this.fetchQuestion(groupName, null, true);
-            }
-        } else if (groupName) {
-            // No initial question, try to load the first one for the group
-            await this.fetchQuestion(groupName, null, false); // false to store as current
-        }
-    }
-
-    async fetchQuestion(groupName, questionId = null, isNext = false) {
-        if (!groupName) return;
-        let url = `/api/questions/${groupName}`;
+        let url = `/api/questions/${this.groupName}`;
         if (questionId) {
             url += `/${questionId}`;
         }
 
+        // Prepare seen_ids for query parameters
+        const seenIdsParam = Array.from(this.seenQuestionIds).join(',');
+        if (seenIdsParam) {
+            url += `?seen_ids=${encodeURIComponent(seenIdsParam)}`;
+        }
+
         try {
             const response = await fetch(url, {
+                method: 'GET',
                 headers: {
                     'Accept': 'application/json',
-                    'Authorization': `Bearer ${this.getApiToken()}` // Assuming a global function or variable for token
+                    'Authorization': `Bearer ${this.apiToken}`,
+                    'X-CSRF-TOKEN': this.csrfToken
                 }
             });
             if (!response.ok) {
-                if (response.status === 404) {
-                    if (!isNext) this.displayNoMoreQuestions();
-                     this.nextQuestionData = null; // No more questions
+                if(response.status === 404) {
+                    console.warn('No more questions found from API or question not found.');
+                    if (this.preloadedQuestions.length === 0 && !this.currentQuestionData) {
+                         this.displayNoMoreQuestions();
+                    }
                 } else {
-                    console.error('Error fetching question:', response.statusText);
+                    console.error('Failed to fetch question:', response.status, await response.text());
                 }
-                return;
+                return null;
             }
             const data = await response.json();
-            if (isNext) {
-                this.nextQuestionData = data.question ? data.question : (data.next_question ? data.next_question : null); 
-                if(data.next_question && data.question && data.question.id == questionId) { // if specific ID was requested for next, and it also has a next
-                    this.preloadImage(data.next_question.properties.img_url, 'prefetch-next-image');
-                } else if (this.nextQuestionData) {
-                     this.preloadImage(this.nextQuestionData.properties.img_url, 'prefetch-next-image');
-                }
-            } else {
-                this.currentQuestionData = data.question;
-                this.nextQuestionData = data.next_question;
-                this.renderQuestion(this.currentQuestionData);
-                if (this.nextQuestionData) {
-                    this.preloadImage(this.nextQuestionData.properties.img_url, 'prefetch-next-image');
-                }
-            }
+            return data; // API returns { question: {}, next_question: {} }
         } catch (error) {
-            console.error('Failed to fetch question:', error);
+            console.error('Error fetching question:', error);
+            return null;
+        } finally {
+            this.isFetching = false;
         }
     }
 
-    async submitAnswerAndLoadNext(answer) {
-        if (!this.currentQuestionData || !this.currentQuestionData.id) return;
+    async fillPreloadQueue() {
+        if (this.isFetching) return;
 
-        const questionIdToSubmit = this.currentQuestionData.id;
+        while (this.preloadedQuestions.length < this.maxPreload) {
+            if (this.isFetching) break; // Check again in case a fetch started
 
-        // Display next question immediately if available
-        if (this.nextQuestionData) {
-            this.currentQuestionData = this.nextQuestionData;
+            let questionToFetchId = null;
+            // If queue is not empty, use the next_question_id of the last preloaded item
+            if (this.preloadedQuestions.length > 0) {
+                const lastPreloaded = this.preloadedQuestions[this.preloadedQuestions.length - 1];
+                // The API now returns next_question object directly
+                if (lastPreloaded.next_question_for_preload && !this.seenQuestionIds.has(lastPreloaded.next_question_for_preload.id)) {
+                     questionToFetchId = lastPreloaded.next_question_for_preload.id;
+                }
+            }
+            // If no specific next ID, fetch a random one (that hasn't been seen)
+            // The API handles seen_ids, so passing null for questionId works.
+
+            const fetchedData = await this.fetchQuestion(questionToFetchId);
+
+            if (fetchedData && fetchedData.question) {
+                if (!this.seenQuestionIds.has(fetchedData.question.id)) {
+                    this.preloadedQuestions.push(fetchedData.question);
+                    this.addSeenId(fetchedData.question.id);
+                    this.preloadImage(fetchedData.question.properties?.img_url);
+                    // Store the next_question from this fetch to guide the next iteration
+                    if(fetchedData.next_question && !this.seenQuestionIds.has(fetchedData.next_question.id)) {
+                        // Add to preloadedQuestions directly if not full, otherwise it will be picked up next
+                        if (this.preloadedQuestions.length < this.maxPreload && !this.preloadedQuestions.find(q => q.id === fetchedData.next_question.id)) {
+                            this.preloadedQuestions.push(fetchedData.next_question);
+                            this.addSeenId(fetchedData.next_question.id);
+                            this.preloadImage(fetchedData.next_question.properties?.img_url);
+                        } else if (this.preloadedQuestions.length > 0) {
+                            // Tag the last added question with its potential next, to be used if questionToFetchId was null
+                             this.preloadedQuestions[this.preloadedQuestions.length-1].next_question_for_preload = fetchedData.next_question;
+                        }
+                    }
+                } else if (fetchedData.next_question && !this.seenQuestionIds.has(fetchedData.next_question.id)) {
+                    // If the main fetched question was a duplicate but its next_question is new
+                     if (this.preloadedQuestions.length < this.maxPreload && !this.preloadedQuestions.find(q => q.id === fetchedData.next_question.id)) {
+                        this.preloadedQuestions.push(fetchedData.next_question);
+                        this.addSeenId(fetchedData.next_question.id);
+                        this.preloadImage(fetchedData.next_question.properties?.img_url);
+                    }
+                }
+            } else {
+                // No more questions could be fetched or an error occurred
+                if (this.preloadedQuestions.length === 0 && !this.currentQuestionData?.id) {
+                    this.displayNoMoreQuestions();
+                }
+                break; // Stop trying if API returns null or error
+            }
+        }
+    }
+
+    submitAnswerAndLoadNext(answer) {
+        const questionToAnswer = this.currentQuestionData;
+
+        // 1. Immediately update UI to the next preloaded question
+        if (this.preloadedQuestions.length > 0) {
+            this.currentQuestionData = this.preloadedQuestions.shift(); // Get next from queue
             this.renderQuestion(this.currentQuestionData);
-            // Fetch the *new* next question
-            this.fetchQuestion(this.questionContainer.dataset.groupName, null, true);
+            this.addSeenId(this.currentQuestionData.id); // Ensure it's marked as seen upon display
         } else {
-            // No next question readily available, fetch one (might show no more questions)
-            await this.fetchQuestion(this.questionContainer.dataset.groupName, null, false);
+            // Preload buffer empty, try to fetch one directly for display
+            this.currentQuestionData = null; // Clear current while fetching
+            this.renderQuestion(null); // Show loading state / clear old question
+            console.log("Preload buffer empty, fetching next question directly...");
+            this.fetchQuestion(null).then(data => {
+                if (data && data.question) {
+                    this.currentQuestionData = data.question;
+                    this.renderQuestion(this.currentQuestionData);
+                    this.addSeenId(this.currentQuestionData.id);
+                    if (data.next_question && !this.seenQuestionIds.has(data.next_question.id) && this.preloadedQuestions.length < this.maxPreload) {
+                        this.preloadedQuestions.push(data.next_question);
+                        this.addSeenId(data.next_question.id);
+                        this.preloadImage(data.next_question.properties?.img_url);
+                    }
+                } else {
+                    this.displayNoMoreQuestions();
+                }
+                this.fillPreloadQueue(); // Try to refill buffer
+            });
         }
 
-        // Submit answer in the background
-        try {
-            await fetch('/api/answers', {
+        // 2. Submit the answer for the *previous* question in the background
+        if (questionToAnswer && questionToAnswer.id) {
+            fetch('/api/answers', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': this.csrfToken,
-                    'Authorization': `Bearer ${this.getApiToken()}`
+                    'Authorization': `Bearer ${this.apiToken}`,
+                    'X-CSRF-TOKEN': this.csrfToken
                 },
                 body: JSON.stringify({
-                    question_id: questionIdToSubmit,
+                    question_id: questionToAnswer.id,
                     answer: answer
                 })
-            });
-            // console.log('Answer submitted for:', questionIdToSubmit);
-        } catch (error) {
-            console.error('Failed to submit answer:', error);
-            // Handle submission error (e.g., retry or notify user)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    console.error('Failed to submit answer:', response.status, response.statusText);
+                    // Handle failed submission, e.g., retry or notify user
+                }
+                // console.log('Answer submitted for:', questionToAnswer.id);
+            })
+            .catch(error => console.error('Error submitting answer:', error));
+        } else {
+            // console.log("No question was displayed, so no answer submitted.");
         }
+
+        // 3. Ensure the preload queue is being refilled
+        this.fillPreloadQueue();
     }
 
     renderQuestion(questionData) {
-        if (!questionData || !this.questionContent) {
-            this.displayNoMoreQuestions();
+        const questionContent = document.getElementById('question-content');
+        const noMoreQuestionsDiv = document.getElementById('no-more-questions');
+
+        if (!questionData || !questionData.id) { // Handles initial load if no question or end of questions
+            if (questionContent) questionContent.style.display = 'none';
+            if (noMoreQuestionsDiv && this.preloadedQuestions.length === 0) { // Only show if truly no more
+                 noMoreQuestionsDiv.style.display = 'block';
+            }
+            // Update data attribute even if no question
+            document.getElementById('question-container').dataset.currentQuestionId = '';
             return;
         }
-        this.questionContent.style.display = 'block';
-        if(this.noMoreQuestionsDiv) this.noMoreQuestionsDiv.style.display = 'none';
 
-        // Update question text and links (assuming IDs exist in image-focus.blade.php)
+        if (questionContent) questionContent.style.display = 'block';
+        if (noMoreQuestionsDiv) noMoreQuestionsDiv.style.display = 'none';
+
+        document.getElementById('question-container').dataset.currentQuestionId = questionData.id;
+
+        // Update image
+        const imgEl = document.getElementById('current-image');
+        const imgLinkEl = document.getElementById('current-image-commons-link');
+        if (imgEl && questionData.properties?.img_url) {
+            imgEl.src = questionData.properties.img_url;
+        } else if (imgEl) {
+            imgEl.src = ''; // Clear if no image
+        }
+        if (imgLinkEl && questionData.properties?.mediainfo_id) {
+            imgLinkEl.href = `https://commons.wikimedia.org/wiki/Special:EntityData/${questionData.properties.mediainfo_id}`;
+        }
+
+
+        // Update depicts information
+        const oldDepictsIdEl = document.getElementById('current-old-depicts-id');
+        const oldDepictsNameEl = document.getElementById('current-old-depicts-name');
+        const oldDepictsLink = document.getElementById('current-old-depicts-link');
         const depictsNameEl = document.getElementById('current-depicts-name');
         const depictsIdEl = document.getElementById('current-depicts-id');
         const depictsLinkEl = document.getElementById('current-depicts-link');
 
-        if (depictsNameEl) depictsNameEl.textContent = questionData.properties.depicts_name;
-        if (depictsIdEl) depictsIdEl.textContent = questionData.properties.depicts_id;
-        if (depictsLinkEl) depictsLinkEl.href = `https://www.wikidata.org/wiki/${questionData.properties.depicts_id}`;
+        // This logic needs to adapt based on whether old_depicts_id exists, similar to Blade
+        const oldDepictsContainer = oldDepictsLink?.closest('.flex.justify-center.pt-8'); // Find parent container to hide/show
+        const mainQuestionTextContainer = depictsNameEl?.closest('.flex.justify-center.pt-8');
 
-        const oldDepictsContainer = document.getElementById('current-old-depicts-link')?.closest('.flex.justify-center.pt-8');
-        if (questionData.properties.old_depicts_id) {
-            if(oldDepictsContainer) oldDepictsContainer.style.display = 'flex';
-            document.getElementById('current-old-depicts-id').textContent = questionData.properties.old_depicts_id;
-            document.getElementById('current-old-depicts-name').textContent = questionData.properties.old_depicts_name;
-            document.getElementById('current-old-depicts-link').href = `https://www.wikidata.org/wiki/${questionData.properties.old_depicts_id}`;
+
+        if (questionData.properties?.old_depicts_id) {
+            if(oldDepictsContainer) oldDepictsContainer.style.display = 'block'; // or flex etc.
+            if(oldDepictsIdEl) oldDepictsIdEl.textContent = questionData.properties.old_depicts_id;
+            if(oldDepictsNameEl) oldDepictsNameEl.textContent = questionData.properties.old_depicts_name;
+            if(oldDepictsLink) oldDepictsLink.href = `https://www.wikidata.org/wiki/${questionData.properties.old_depicts_id}`;
+
+            if(mainQuestionTextContainer) {
+                 // Reword the question text slightly if old_depicts_id is present
+                mainQuestionTextContainer.querySelector('.text-lg.leading-7').innerHTML =
+                    `Does this image actually clearly depict "<span id="current-depicts-name">${questionData.properties.depicts_name}</span>" (<a id="current-depicts-link" href="https://www.wikidata.org/wiki/${questionData.properties.depicts_id}" target="_blank"><span id="current-depicts-id">${questionData.properties.depicts_id}</span></a>)?`;
+            }
+
         } else {
             if(oldDepictsContainer) oldDepictsContainer.style.display = 'none';
+             if(mainQuestionTextContainer) {
+                mainQuestionTextContainer.querySelector('.text-lg.leading-7').innerHTML =
+                    `Does this image clearly depict "<span id="current-depicts-name">${questionData.properties.depicts_name}</span>" (<a id="current-depicts-link" href="https://www.wikidata.org/wiki/${questionData.properties.depicts_id}" target="_blank"><span id="current-depicts-id">${questionData.properties.depicts_id}</span></a>)?`;
+            }
         }
+        // Always update the main depicts part
+        if(depictsNameEl) depictsNameEl.textContent = questionData.properties.depicts_name;
+        if(depictsIdEl) depictsIdEl.textContent = questionData.properties.depicts_id;
+        if(depictsLinkEl) depictsLinkEl.href = `https://www.wikidata.org/wiki/${questionData.properties.depicts_id}`;
 
-        // Update image
-        const imageEl = document.getElementById('current-image');
-        const imageCommonsLinkEl = document.getElementById('current-image-commons-link');
-        if (imageEl) imageEl.src = questionData.properties.img_url;
-        if (imageCommonsLinkEl) imageCommonsLinkEl.href = `https://commons.wikimedia.org/wiki/Special:EntityData/${questionData.properties.mediainfo_id}`;
 
-        // Update prefetch for current image (which is now the one displayed)
-        this.preloadImage(questionData.properties.img_url, 'prefetch-current-image');
+        // Prefetch image for the *next* item in the preloaded queue, if any
+        if (this.preloadedQuestions.length > 0 && this.preloadedQuestions[0].properties?.img_url) {
+            this.preloadImage(this.preloadedQuestions[0].properties.img_url);
+        }
+    }
 
-        // Update data attributes on container
-        this.questionContainer.dataset.currentQuestionId = questionData.id;
-        this.questionContainer.dataset.nextQuestionId = this.nextQuestionData ? this.nextQuestionData.id : '';
+    preloadImage(url) {
+        if (!url) return;
+        // Using Image object for preloading is simpler than managing <link> tags for many images
+        const img = new Image();
+        img.src = url;
+        // console.log('Prefetching image:', url);
     }
 
     displayNoMoreQuestions() {
-        if(this.questionContent) this.questionContent.style.display = 'none';
-        if(this.noMoreQuestionsDiv) {
-            this.noMoreQuestionsDiv.style.display = 'block';
-        } else {
-            // Fallback if the div isn't on the page for some reason
-            const container = document.getElementById('question-container');
-            if(container) container.innerHTML = '<div class="flex justify-center pt-8 sm:justify-start sm:pt-0"><div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">No more questions available in this group. <a href="/" class="underline">Go back to groups</a>.</div></div>';
-        }
-    }
-
-    preloadImage(url, linkId) {
-        let link = document.getElementById(linkId);
-        if (!link) {
-            link = document.createElement('link');
-            link.id = linkId;
-            link.rel = 'prefetch';
-            document.head.appendChild(link);
-        }
-        link.href = url;
-    }
-
-    getApiToken() {
-        // Attempt to get token from the api-docs page if available, or a global var
-        // This is a placeholder: implement proper token retrieval for your app
-        if (typeof window.apiToken !== 'undefined') {
-            return window.apiToken;
-        }
-        // Fallback or more robust token retrieval mechanism
-        // For example, if you store it in localStorage or a cookie after login
-        // const token = localStorage.getItem('api_token');
-        // if (token) return token;
-        // If you have it in a meta tag (less ideal for Bearer tokens but possible)
-        // const metaToken = document.querySelector('meta[name="api-token"]');
-        // if (metaToken) return metaToken.getAttribute('content');
-        return null; // Or a default/guest token if your API supports it
+        const questionContent = document.getElementById('question-content');
+        const noMoreQuestionsDiv = document.getElementById('no-more-questions');
+        if (questionContent) questionContent.style.display = 'none';
+        if (noMoreQuestionsDiv) noMoreQuestionsDiv.style.display = 'block';
+        console.log("No more questions available.");
+        this.currentQuestionData = null; // Ensure no stale data
     }
 }
 
-// Initialize the handler
 document.addEventListener('DOMContentLoaded', () => {
-    // Pass initial question and next question data if available from Blade
-    new WikiCrowdQuestionHandler();
-});
+    const container = document.getElementById('question-container');
+    if (container) {
+        const groupName = container.dataset.groupName;
+        const initialCurrentId = container.dataset.currentQuestionId; // This is from Blade $qu
+        const initialNextId = container.dataset.nextQuestionId; // This is from Blade $next
 
+        // initialCurrentQuestionData and initialNextQuestionData are expected to be set globally
+        // by the parent Blade view (e.g., image-focus.blade.php) like so:
+        // window.initialQuestionData = someJsonEncodedInitialQuestion;
+        // window.initialNextQuestionData = someJsonEncodedInitialNextQuestion;
+
+        // Then access them here:
+        const initialCurrentQuestionData = window.initialQuestionData || null;
+        const initialNextQuestionData = window.initialNextQuestionData || null;
+
+
+        if (groupName) {
+            new WikiCrowdQuestionHandler(groupName, initialCurrentId, initialNextId, initialCurrentQuestionData, initialNextQuestionData);
+        } else if (!initialCurrentQuestionData && !initialNextQuestionData) {
+            // If there was no initial $qu (e.g. no questions at all for the group)
+            // The handler might try to fetch, or display "no questions" if fetch also fails.
+             const noMoreQuestionsDiv = document.getElementById('no-more-questions');
+             if(noMoreQuestionsDiv) noMoreQuestionsDiv.style.display = 'block';
+             const questionContent = document.getElementById('question-content');
+             if(questionContent) questionContent.style.display = 'none';
+        }
+    }
+});
 </script>
