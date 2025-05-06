@@ -111,7 +111,8 @@ class AddDepicts implements ShouldQueue
         // TODO code reuse section end
 
         if($foundDepicts !== false) {
-            echo "Already has ${foundDepicts} depicts" . PHP_EOL;
+            echo "Already has {$foundDepicts} depicts" . PHP_EOL;
+
             return;
         } else {
             $wbServices->newStatementCreator()->create(
@@ -140,7 +141,7 @@ class AddDepicts implements ShouldQueue
                 "https://query.wikidata.org/sparql",
                 PrefixSets::WIKIDATA
             ))->newWikibaseQueryService();
-            $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279*|wdt:P279/wdt:P279* wd:${itemId} }" );
+            $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279*|wdt:P279/wdt:P279* wd:{$itemId} }" );
 
             $ids = [];
             foreach ( $result['results']['bindings'] as $binding ) {
