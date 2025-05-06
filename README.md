@@ -42,7 +42,7 @@ You can then generate a couple of questions (just exit the command early so it d
 Or, to generate questions from only a single YAML file:
 
 ```sh
-php ./src/artisan job:dispatchNow GenerateDepictsQuestions "" "" "" "" "" 0 "/full/path/to/your.yaml"
+./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestions "" "" "" "" "" 0 "/var/www/html/spec/depicts/animal/redpanda.yml"
 ```
 
 Then find the site at http://localhost
