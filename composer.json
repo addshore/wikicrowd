@@ -12,11 +12,12 @@
         "addwiki/wikibase-query": "~3.1@dev",
         "addwiki/wikimedia": "~3.1@dev",
         "guzzlehttp/guzzle": "^7.0.1",
-        "laravel/framework": "^11.0",
+        "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.20",
         "laravel/tinker": "^2.8",
         "mxl/laravel-job": "^1.2",
+        "nesbot/carbon": "^3.0",
         "symfony/yaml": "^6.0",
         "taavi/laravel-socialite-mediawiki": "*"
     },
@@ -28,7 +29,7 @@
         "nunomaduro/collision": "^8.1",
         "php-parallel-lint/php-console-highlighter": "^1.0",
         "php-parallel-lint/php-parallel-lint": "^1.3",
-        "phpunit/phpunit": "^10.0"
+        "phpunit/phpunit": "^11.0"
     },
     "autoload": {
         "psr-4": {
