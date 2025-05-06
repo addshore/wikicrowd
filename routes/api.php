@@ -2,6 +2,9 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\QuestionGroupController;
+use App\Http\Controllers\Api\QuestionController;
+use App\Http\Controllers\Api\AnswerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,8 +19,11 @@ use Illuminate\Support\Facades\Route;
 
 // Route::post('token', [\App\Http\Controllers\ApiAuthController::class, 'requestToken']);
 
-Route::get('/groups', [\App\Http\Controllers\QuestionGroupController::class, 'getTopLevelGroups'])->name('groups');
+Route::get('/groups', [QuestionGroupController::class, 'index'])->name('api.groups.index');
 
-Route::middleware('auth:sanctum')
-    ->get('/questions/{groupName}', [\App\Http\Controllers\QuestionController::class, 'getGroupUnanswered'])
-    ->where('groupName', '(.*)');
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/questions/{groupName}/{desiredId?}', [QuestionController::class, 'getGroupQuestions'])
+        ->where('groupName', '(.*)')
+        ->name('api.questions.show');
+    Route::post('/answers', [AnswerController::class, 'store'])->name('api.answers.store');
+});

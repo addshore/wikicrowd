@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Question;
 use App\Models\QuestionGroup;
+use Illuminate\Support\Facades\Auth;
 
 class QuestionController extends Controller
 {
@@ -24,10 +25,15 @@ class QuestionController extends Controller
     }
 
     private function displayQuestionView($question, $nextQuestion) {
+        $apiToken = null;
+        if (Auth::check()) {
+            $user = Auth::user();
+            $apiToken = $user->createToken('question-page-token', ['submit-answers'])->plainTextToken;
+        }
         return view($question->group->layout, [
-            // TODO don't ignore groups
             'qu' => $question,
             'next' => $nextQuestion,
+            'apiToken' => $apiToken,
         ]);
     }
 

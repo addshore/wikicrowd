@@ -45,6 +45,17 @@ class OAuthUserController extends Controller
         }
 
         Auth::login($user, false);
+
+        // Create a Sanctum token for the user after login
+        // You can define specific abilities (permissions) for the token if needed
+        // For example, ['read', 'write'] or a custom ability like ['submit-answers']
+        // If this token is intended for general API access from your frontend,
+        // you might want to give it broad but appropriate permissions.
+        // Let's name the token 'frontend-api-token'
+        // Revoke any existing tokens of the same name to ensure only one is active, if desired.
+        $user->tokens()->where('name', 'frontend-api-token')->delete();
+        $user->createToken('frontend-api-token', ['api-access']); // Added 'api-access' as an example ability
+
         return redirect()->intended();
     }
 

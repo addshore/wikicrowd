@@ -76,6 +76,11 @@
                             / <a target="_blank" href="https://commons.wikimedia.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2&hidebyothers=1">Your edits</a>
                         @endauth
                     </p>
+                    <p>
+                        <a href="{{ route('api.docs') }}">API Documentation</a>
+                    </p>
+                </div>
             </div>
+        </div>
     </body>
 </html>
