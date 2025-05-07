@@ -114,6 +114,26 @@ class QuestionController extends Controller
             $seenIds = array_filter(array_map('intval', $seenIdsInput));
         }
 
+        $count = intval($request->input('count', 0));
+        $group = QuestionGroup::where('name', '=', $groupName)->first();
+        if (!$group) {
+            return response()->json(['message' => 'Question group not found'], 404);
+        }
+
+        if ($count > 0) {
+            // Batch mode: return up to $count unanswered questions, skipping seenIds
+            $questions = Question::where('question_group_id', '=', $group->id)
+                ->doesntHave('answer')
+                ->when(count($seenIds) > 0, function ($query) use ($seenIds) {
+                    return $query->whereNotIn('id', $seenIds);
+                })
+                ->with('group.parentGroup')
+                ->inRandomOrder()
+                ->limit($count)
+                ->get();
+            return response()->json(['questions' => $questions]);
+        }
+
         $question = null;
         $nextQuestion = null;
 

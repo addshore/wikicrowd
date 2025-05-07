@@ -99,39 +99,64 @@ export default {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const answerMode = ref('yes');
 
-    const fetchNextImages = async (count = 4) => {
+    // Batch for progressive fill
+    const batch = ref([]);
+    const BATCH_SIZE = 100;
+
+    // Helper to move from batch to images
+    function fillImagesFromBatch(count) {
+      let added = 0;
+      while (batch.value.length > 0 && added < count) {
+        const q = batch.value.shift();
+        if (!seenIds.value.includes(q.id)) {
+          images.value.push(q);
+          seenIds.value.push(q.id);
+          added++;
+        }
+      }
+      return added;
+    }
+
+    // Fetch a batch and fill images
+    const fetchBatchAndFill = async (count) => {
       if (allLoaded.value || isFetchingMore.value) return;
       isFetchingMore.value = true;
-      let fetched = 0;
-      while (fetched < count && !allLoaded.value) {
-        let url = `/api/questions/${groupName}`;
-        if (seenIds.value.length > 0) {
-          url += `?seen_ids=${encodeURIComponent(seenIds.value.join(','))}`;
-        }
-        const headers = { 'Accept': 'application/json' };
-        if (apiToken) headers['Authorization'] = `Bearer ${apiToken}`;
-        try {
-          const response = await fetch(url, { headers });
-          if (!response.ok) {
-            allLoaded.value = true;
-            break;
-          }
-          const data = await response.json();
-          if (data && data.question && data.question.id && !seenIds.value.includes(data.question.id)) {
-            images.value.push(data.question);
-            seenIds.value.push(data.question.id);
-            fetched++;
-          } else {
-            allLoaded.value = true;
-            break;
-          }
-        } catch (e) {
+      let url = `/api/questions/${groupName}?count=${BATCH_SIZE}`;
+      if (seenIds.value.length > 0) {
+        url += `&seen_ids=${encodeURIComponent(seenIds.value.join(','))}`;
+      }
+      const headers = { 'Accept': 'application/json' };
+      if (apiToken) headers['Authorization'] = `Bearer ${apiToken}`;
+      try {
+        const response = await fetch(url, { headers });
+        if (!response.ok) {
           allLoaded.value = true;
-          break;
+          isFetchingMore.value = false;
+          return;
         }
+        const data = await response.json();
+        if (data && Array.isArray(data.questions)) {
+          batch.value.push(...data.questions);
+          if (batch.value.length === 0) allLoaded.value = true;
+          fillImagesFromBatch(count);
+        } else {
+          allLoaded.value = true;
+        }
+      } catch (e) {
+        allLoaded.value = true;
       }
       isFetchingMore.value = false;
       loading.value = false;
+    };
+
+    // Replace fetchNextImages to use batch logic
+    const fetchNextImages = async (count = 4) => {
+      if (allLoaded.value) return;
+      // Try to fill from batch first
+      const added = fillImagesFromBatch(count);
+      if (added < count) {
+        await fetchBatchAndFill(count - added);
+      }
     };
 
     const handleScroll = () => {
@@ -192,7 +217,7 @@ export default {
           timers.delete(id);
         }, 10000);
         timers.set(id, timer);
-      }
+    }
     };
 
     onMounted(() => {
