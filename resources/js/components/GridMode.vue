@@ -23,10 +23,16 @@
           @click="answerMode = 'no'"
         >NO</button>
         <button
-          class="px-4 py-2 rounded-r font-bold bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2"
+          class="px-4 py-2 rounded-l rounded-t bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2"
           @click="$emit('disable-grid')"
           style="margin-left: 12px;"
-        >Back to Focus/One</button>
+        >Single Mode</button>
+        <button
+          class="px-4 py-2 bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2 rounded"
+          @click="clearAnswered"
+        >
+          Clear Done
+        </button>
       </div>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -229,8 +235,12 @@ export default {
           timers.delete(id);
         }, 10000);
         timers.set(id, timer);
-    }
+      }
     };
+
+    function clearAnswered() {
+      images.value = images.value.filter(img => !answered.value.has(img.id));
+    }
 
     onMounted(() => {
       // Estimate how many images are needed to fill the viewport, plus 2 extra rows for preloading
@@ -254,6 +264,7 @@ export default {
       allLoaded,
       loading,
       isFetchingMore,
+      clearAnswered,
     };
   },
 };
