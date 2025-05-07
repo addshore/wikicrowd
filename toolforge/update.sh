@@ -2,6 +2,7 @@
 
 # Get latest code
 git -C ~/src pull --recurse-submodules
+git -C ~/src submodule sync
 git -C ~/src submodule update --init --recursive
 
 # Install dependencies & prep files
