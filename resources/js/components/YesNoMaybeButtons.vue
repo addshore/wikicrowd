@@ -50,6 +50,8 @@ export default {
       if (this.loading) return;
       this.answer = ans;
       this.loading = true;
+      // Emit immediately before waiting for fetch
+      this.$emit('answered', ans);
       try {
         await fetch('/api/answers', {
           method: 'POST',
@@ -64,7 +66,6 @@ export default {
             answer: ans
           })
         });
-        this.$emit('answered', ans);
       } catch (e) {
         alert('Failed to submit answer.');
       }

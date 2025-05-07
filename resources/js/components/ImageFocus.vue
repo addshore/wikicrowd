@@ -24,7 +24,7 @@
         (<a id="current-depicts-link" :href="depictsLink" target="_blank"><span id="current-depicts-id">{{ question.properties.depicts_id }}</span></a>)?
       </p>
     </div>
-    <YesNoMaybeButtons :question-id="question.id" @answered="onAnswered" />
+    <YesNoMaybeButtons :key="question.id" :question-id="question.id" @answered="onAnswered" />
     <button
       class="ml-2 px-4 py-2 bg-gray-200 text-gray-700 rounded border border-gray-300 hover:bg-gray-300"
       @click="$emit('open-grid')"
@@ -48,12 +48,19 @@ export default {
   data() {
     return {
       question: null,
+      questionQueue: [], // queue of questions
       groupName: document.getElementById('question-container')?.dataset.groupName || null,
-      loading: false
+      loading: false,
+      prefetchedImageUrls: new Set(), // track prefetched images
+      knownQuestionIds: new Set(), // track known questions
     };
   },
   mounted() {
-    this.fetchNextQuestion();
+    this.prefetchQuestions(10).then(() => {
+      if (!this.question && this.questionQueue.length > 0) {
+        this.showNextQuestion();
+      }
+    });
   },
   computed: {
     commonsLink() {
@@ -73,29 +80,62 @@ export default {
     }
   },
   methods: {
-    async fetchNextQuestion() {
+    async prefetchQuestions(n) {
+      // Only fetch if we need more
+      if (this.loading || (this.questionQueue.length >= n)) return;
       this.loading = true;
+      let seenIds = Array.from(this.knownQuestionIds);
+      if (this.question) seenIds.unshift(this.question.id);
       let url = `/api/questions/${this.groupName}`;
-      if (this.question) {
-        url += `?seen_ids=${this.question.id}`;
+      if (seenIds.length) {
+        url += `?seen_ids=${seenIds.join(',')}`;
       }
       const headers = { 'Accept': 'application/json' };
       if (window.apiToken) headers['Authorization'] = `Bearer ${window.apiToken}`;
       try {
-        const response = await fetch(url, { headers });
-        if (!response.ok) {
-          this.question = null;
-          return;
+        const response = await fetch(url + `?count=${n - this.questionQueue.length}` , { headers });
+        if (response.ok) {
+          const data = await response.json();
+          let newQuestions = [];
+          if (data.questions && Array.isArray(data.questions)) {
+            newQuestions = data.questions.filter(q => !this.knownQuestionIds.has(q.id));
+          } else if (data.question && !this.knownQuestionIds.has(data.question.id)) {
+            newQuestions = [data.question];
+          }
+          newQuestions.forEach(q => this.knownQuestionIds.add(q.id));
+          this.questionQueue.push(...newQuestions);
+          this.prefetchImages();
+          // If no question is currently shown, show the first one
+          if (!this.question && this.questionQueue.length > 0) {
+            this.showNextQuestion();
+          }
         }
-        const data = await response.json();
-        this.question = data.question || null;
-      } catch (e) {
-        this.question = null;
-      }
+      } catch (e) {}
       this.loading = false;
     },
-    onAnswered() {
-      this.fetchNextQuestion();
+    prefetchImages() {
+      // Prefetch next 3 images, but only if not already prefetched
+      for (let i = 0; i < 3 && i < this.questionQueue.length; i++) {
+        const imgUrl = this.questionQueue[i].properties.img_url;
+        if (imgUrl && !this.prefetchedImageUrls.has(imgUrl)) {
+          const img = new window.Image();
+          img.src = imgUrl;
+          this.prefetchedImageUrls.add(imgUrl);
+        }
+      }
+    },
+    showNextQuestion() {
+      if (this.questionQueue.length > 0) {
+        this.question = this.questionQueue.shift();
+        this.prefetchQuestions(10);
+        this.prefetchImages();
+      } else {
+        this.question = null;
+        this.prefetchQuestions(10);
+      }
+    },
+    onAnswered(ans) {
+      this.showNextQuestion();
     }
   }
 };
