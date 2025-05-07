@@ -23,7 +23,9 @@ class Kernel extends ConsoleKernel
         // And a heavy job which actually generates them...
 
         // GenerateDepictsQuestions
-        $depictsYamlDir =__DIR__ . '/../../spec/';
+        echo "Generating depicts questions for schedule jobs...\n";
+        $depictsYamlDir = realpath(__DIR__ . '/../../spec/');
+        echo "Looking for depicts yaml files in $depictsYamlDir\n";
         $depictsYamlFiles = $this->getRecursiveYamlFilesInDirectory( $depictsYamlDir );
         $depictsJobs = [];
         foreach( $depictsYamlFiles as $file ) {
@@ -37,7 +39,8 @@ class Kernel extends ConsoleKernel
         foreach( $depictsJobs as $job ) {
             // Make sure that job is an object
             if( !is_object( $job ) ) {
-                echo "Job is not an object\n";
+                echo "Job is not an object, skipping\n";
+                print_r($job);
                 continue;
             }
             // Make sure it has the required fields
@@ -48,8 +51,8 @@ class Kernel extends ConsoleKernel
             $schedule->job(
                 new GenerateDepictsQuestions(
                     $job->category,
-                    implode('|||', $job->exclude ?: []),
-                    $job->excludeRegex ?: "",
+                    implode('|||', isset($job->exclude) ? $job->exclude : []),
+                    isset($job->excludeRegex) ? $job->excludeRegex : "",
                     $job->depictsId,
                     $job->name,
                     $job->limit

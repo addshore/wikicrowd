@@ -3,6 +3,7 @@
   command: php /data/project/wikicrowd/src/artisan queue:work --queue=high,default,low --tries=3
   continuous: true
   emails: all
+  replicas: 3
 - name: schedule
   image: php8.2
   command: php /data/project/wikicrowd/src/artisan schedule:work
