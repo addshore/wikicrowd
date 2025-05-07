@@ -33,6 +33,15 @@
         >
           Clear Done
         </button>
+        <label class="flex items-center ml-4 cursor-pointer select-none">
+          <input type="checkbox" v-model="autoSave" class="mr-1" />
+          Auto Save
+        </label>
+        <button
+          v-if="!autoSave && pendingAnswers.length > 0"
+          class="ml-2 px-3 py-1 bg-blue-600 text-white rounded font-bold border border-blue-700 hover:bg-blue-700"
+          @click="saveAllPending"
+        >Save Now ({{ pendingAnswers.length }})</button>
       </div>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -116,6 +125,8 @@ export default {
     const apiToken = window.apiToken || null;
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const answerMode = ref('yes');
+    const autoSave = ref(true);
+    const pendingAnswers = ref([]); // {id, mode}
 
     // Batch for progressive fill
     const batch = ref([]);
@@ -187,14 +198,13 @@ export default {
       }
     };
 
-    const sendAnswer = async (image) => {
-      // Mark as answered immediately for UI feedback
+    const sendAnswer = async (image, modeOverride = null) => {
       answered.value.add(image.id);
-      answeredMode[image.id] = selectedMode[image.id] || answerMode.value;
+      answeredMode[image.id] = modeOverride || selectedMode[image.id] || answerMode.value;
       selected.value.delete(image.id);
       delete selectedMode[image.id];
       try {
-        const response = await fetch('/api/answers', {
+        await fetch('/api/answers', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -207,34 +217,68 @@ export default {
             answer: answeredMode[image.id]
           })
         });
-        if (!response.ok) {
-          console.error('Failed to submit answer:', response.status, response.statusText);
-        }
       } catch (error) {
-        console.error('Error submitting answer:', error);
+        // handle error
+      }
+    };
+
+    const saveAllPending = async () => {
+      if (pendingAnswers.value.length === 0) return;
+      // Use bulk API
+      try {
+        await fetch('/api/answers/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...(apiToken ? { 'Authorization': `Bearer ${apiToken}` } : {}),
+            'X-CSRF-TOKEN': csrfToken
+          },
+          body: JSON.stringify({
+            answers: pendingAnswers.value.map(({id, mode}) => ({
+              question_id: id,
+              answer: mode
+            }))
+          })
+        });
+        // Mark as answered in UI
+        for (const {id, mode} of pendingAnswers.value) {
+          answered.value.add(id);
+          answeredMode[id] = mode;
+          selected.value.delete(id);
+          delete selectedMode[id];
+        }
+        pendingAnswers.value = [];
+      } catch (e) {
+        // handle error
       }
     };
 
     const toggleSelect = (id) => {
-      if (answered.value.has(id)) return; // Don't allow interaction if already answered
+      if (answered.value.has(id)) return;
       if (selected.value.has(id)) {
-        // Unselect and clear timer
         selected.value.delete(id);
         if (timers.has(id)) {
           clearTimeout(timers.get(id));
           timers.delete(id);
         }
         delete selectedMode[id];
+        // Remove from pending if present
+        pendingAnswers.value = pendingAnswers.value.filter(a => a.id !== id);
       } else {
-        // Select and start timer
         selected.value.add(id);
         selectedMode[id] = answerMode.value;
         const image = images.value.find(img => img.id === id);
-        const timer = setTimeout(() => {
-          sendAnswer(image);
-          timers.delete(id);
-        }, 10000);
-        timers.set(id, timer);
+        if (autoSave.value) {
+          const timer = setTimeout(() => {
+            sendAnswer(image);
+            timers.delete(id);
+          }, 10000);
+          timers.set(id, timer);
+        } else {
+          // Add to pending
+          pendingAnswers.value.push({id, mode: answerMode.value});
+        }
       }
     };
 
@@ -272,6 +316,9 @@ export default {
       loading,
       isFetchingMore,
       clearAnswered,
+      autoSave,
+      pendingAnswers,
+      saveAllPending,
     };
   },
 };

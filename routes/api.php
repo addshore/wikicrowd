@@ -26,4 +26,5 @@ Route::middleware('auth:sanctum')->group(function () {
         ->where('groupName', '(.*)')
         ->name('api.questions.show');
     Route::post('/answers', [AnswerController::class, 'store'])->name('api.answers.store');
+    Route::post('/answers/bulk', [\App\Http\Controllers\Api\AnswerController::class, 'bulkStore']);
 });

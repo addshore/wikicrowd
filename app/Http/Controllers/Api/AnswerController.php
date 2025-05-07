@@ -72,4 +72,54 @@ class AnswerController extends Controller
             'answer' => $storedAnswer
         ], 201);
     }
+
+    /**
+     * Store multiple answers in bulk.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function bulkStore(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'answers' => 'required|array|min:1',
+            'answers.*.question_id' => 'required|exists:App\\Models\\Question,id',
+            'answers.*.answer' => 'required|in:yes,no,skip',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'The given data was invalid.', 'errors' => $validator->errors()], 422);
+        }
+
+        $user = Auth::user();
+        $createdAnswers = [];
+        foreach ($request->input('answers') as $answerData) {
+            $question = Question::with('group.parentGroup')->find($answerData['question_id']);
+            if (!$question) continue;
+            $storedAnswer = Answer::create([
+                'question_id' => $question->id,
+                'user_id' => $user->id,
+                'answer' => $answerData['answer'],
+            ]);
+            $createdAnswers[] = $storedAnswer;
+            if ($answerData['answer'] === 'yes') {
+                if ($question->group && $question->group->parentGroup) {
+                    $parentGroupName = $question->group->parentGroup->name;
+                    if ($parentGroupName === 'depicts') {
+                        dispatch(new AddDepicts($storedAnswer->id));
+                    } elseif ($parentGroupName === 'depicts-refine') {
+                        dispatch(new SwapDepicts($storedAnswer->id));
+                    } elseif ($parentGroupName === 'aliases') {
+                        dispatch(new AddAlias($storedAnswer->id));
+                    }
+                } else {
+                    \Log::warning("Question {$question->id} is missing group or parentGroup information. Answer ID: {$storedAnswer->id}");
+                }
+            }
+        }
+        return response()->json([
+            'message' => 'Bulk answers submitted successfully.',
+            'answers' => $createdAnswers
+        ], 201);
+    }
 }
