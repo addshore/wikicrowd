@@ -6,15 +6,15 @@
       :disabled="loading"
     >Yes (1)</button>
     <button
-      :class="['bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mr-2', answer === 'no' ? 'ring-4 ring-red-300' : '']"
+      :class="['bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2', answer === 'skip' ? 'ring-4 ring-blue-300' : '']"
+      @click="submit('skip')"
+      :disabled="loading"
+    >Skip (e)</button>
+    <button
+      :class="['bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded', answer === 'no' ? 'ring-4 ring-red-300' : '']"
       @click="submit('no')"
       :disabled="loading"
     >No (2)</button>
-    <button
-      :class="['bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded', answer === 'skip' ? 'ring-4 ring-blue-300' : '']"
-      @click="submit('skip')"
-      :disabled="loading"
-    >Skip (3)</button>
   </div>
 </template>
 
@@ -44,7 +44,7 @@ export default {
       if (this.loading) return;
       if (e.key === '1') this.submit('yes');
       if (e.key === '2') this.submit('no');
-      if (e.key === '3') this.submit('skip');
+      if (e.key.toLowerCase() === 'e') this.submit('skip');
     },
     async submit(ans) {
       if (this.loading) return;
