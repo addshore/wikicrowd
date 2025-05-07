@@ -7,10 +7,10 @@
 backend: kubernetes
 
 # Set Kubernetes cpu limit (--cpu=...)
-#cpu: 500m
+cpu: 1000m
 
 # Set Kubernetes memory limit (--mem=...)
-#mem: 512Mi
+mem: 1024Mi
 
 # Set ReplicaSet size for a Kubernetes deployment (--replicas=...)
 #replicas: 2

@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Get latest code
-git -C ~/src pull
+git -C ~/src pull --recurse-submodules
+git -C ~/src submodule update --init --recursive
 
 # Install dependencies & prep files
 webservice php8.2 shell -- composer install --no-dev --ignore-platform-reqs --working-dir=./src
 webservice node18 shell -- npm --prefix src install
-webservice node18 shell -- npm --prefix src run dev
 webservice node18 shell -- npm --prefix src run production
 
 # Copy files to correct location
@@ -21,7 +21,5 @@ cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
 cp ~/src/toolforge/service.template ~/service.template
 webservice php8.2 restart
 
-# Re apply k8s Deployments
-kubectl delete -f ~/deployment.yaml
-cp ~/src/toolforge/deployment.yaml ~/deployment.yaml
-kubectl create --validate=true -f ~/deployment.yaml
+# Udpate jobs
+toolforge jobs load ~/src/toolforge/jobs.yaml
