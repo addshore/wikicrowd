@@ -45,10 +45,12 @@
         <img
           :src="image.properties.img_url"
           :alt="`Image ${image.id}`"
-          class="object-contain align-top w-full h-56"
+          class="object-contain align-top w-full h-[22vw] min-h-[180px] max-h-[320px]"
           style="object-position:top"
         />
-        <div class="image-title px-2 py-1 text-xs text-center truncate bg-white bg-opacity-80 absolute bottom-0 left-0 w-full">
+        <div class="image-title px-2 py-1 text-xs text-center truncate bg-white bg-opacity-80 absolute bottom-0 left-0 w-full"
+          @click.stop
+        >
           <a :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + image.properties?.mediainfo_id" target="_blank">{{ image.properties?.mediainfo_id || image.id }}</a>
         </div>
         <div v-if="answered.has(image.id)" class="absolute inset-0 flex items-center justify-center bg-opacity-60 pointer-events-none"

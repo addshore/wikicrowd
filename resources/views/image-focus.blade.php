@@ -48,7 +48,7 @@
                                 @endif
                                 <div class="py-2 flex justify-center pt-8 sm:justify-start sm:pt-0">
                                     <x-yes-no-maybe-buttons :quId="$qu->id" :nextId="$next->id ?? null" />
-                                    <button class="ml-2 px-2 py-2 bg-gray-300 text-white rounded" @click="gridMode = true">Enable Grid Mode</button>
+                                    <button class="ml-2 px-2 py-2 bg-gray-300 text-white rounded" @click="gridMode = true">Try Grid Mode</button>
                                 </div>
 
                                 <div class="flex flex-row justify-center items-start" style="max-height:800px;max-width:800px;">
