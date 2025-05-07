@@ -5,8 +5,9 @@ git -C ~/src pull
 
 # Install dependencies & prep files
 webservice php8.2 shell -- composer install --no-dev --ignore-platform-reqs --working-dir=./src
-webservice node12 shell -- npm --prefix src install
-webservice node12 shell -- npm --prefix src run production
+webservice node18 shell -- npm --prefix src install
+webservice node18 shell -- npm --prefix src run dev
+webservice node18 shell -- npm --prefix src run production
 
 # Copy files to correct location
 rsync -av --delete --exclude 'storage/framework/*' --exclude 'node_modules/*' -exclude '.git/*' ~/src/ ~/public_html
