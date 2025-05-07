@@ -426,8 +426,8 @@
                         'titles' => $filePageIdentifier->getTitle()->getText(),
                         'prop' => 'imageinfo',
                         'iiprop' => 'url',
-                        'iiurlwidth' => '800',
-                        'iiurlheight' => '800',
+                        'iiurlwidth' => '960',
+                        'iiurlheight' => '960',
                         'format' => 'json',
                     ]
                 ));
