@@ -11,7 +11,7 @@ app.mount('#vue-hello-world');
 const imageFocusApp = createApp({
     data() {
         return {
-            gridMode: false
+            gridMode: window.location.hash === '#grid'
         }
     },
     components: {
