@@ -113,8 +113,20 @@ class QuestionGroupController extends Controller
 
     public function showTopLevelGroups()
     {
+        $groups = $this->getTopLevelGroups();
+        // For each subGroup, fetch an example unanswered question (with image)
+        foreach ($groups as $group) {
+            foreach ($group->subGroups as $subGroup) {
+                $example = \App\Models\Question::where('question_group_id', $subGroup->id)
+                    ->doesntHave('answer')
+                    ->whereNotNull('properties->img_url')
+                    ->inRandomOrder()
+                    ->first();
+                $subGroup->example_question = $example;
+            }
+        }
         return view('groups', [
-            'groups' => $this->getTopLevelGroups(),
+            'groups' => $groups,
             'stats' => [
                 'questions' => \App\Models\Question::count(),
                 'answers' => \App\Models\Answer::count(),

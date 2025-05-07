@@ -35,11 +35,21 @@
                         <?php endif; ?>
 
                         @forelse ($group->subGroups as $subGroup)
-                        <div class="ml-12">
-                            <div class="mt-2 text-gray-600 dark:text-gray-400 text-sm">
-                                <a href="{{ url('/questions/' . $subGroup->name) }}" class="text-sm text-gray-700 dark:text-gray-500 underline">{{$subGroup->display_name}}</a>
-                                <span>({{$subGroup->unanswered}})</span>
-                            </div>
+                        <div class="inline-block align-top m-4 w-64 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow">
+                            <a href="{{ url('/questions/' . $subGroup->name) }}" class="block">
+                                @if($subGroup->example_question && $subGroup->example_question->properties['img_url'] ?? false)
+                                    <img src="{{ $subGroup->example_question->properties['img_url'] }}" alt="Example image for {{ $subGroup->display_name }}" class="w-full h-40 object-cover rounded-t-lg" loading="lazy" />
+                                @else
+                                    <div class="w-full h-40 flex items-center justify-center bg-gray-200 text-gray-400 rounded-t-lg">No image</div>
+                                @endif
+                                <div class="p-4">
+                                    <div class="font-semibold text-lg text-gray-900 dark:text-white mb-1">{{$subGroup->display_name}}</div>
+                                    @if($subGroup->display_description)
+                                        <div class="text-sm text-gray-700 dark:text-gray-300 mb-2">{{$subGroup->display_description}}</div>
+                                    @endif
+                                    <div class="text-xs text-gray-500">Unanswered: {{$subGroup->unanswered}}</div>
+                                </div>
+                            </a>
                         </div>
                         @empty
                         @endif
