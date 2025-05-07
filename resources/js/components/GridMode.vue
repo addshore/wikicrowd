@@ -5,15 +5,40 @@
       <span class="text-blue-700">"{{ images[0]?.properties?.depicts_name || '...' }}"</span>
       <span v-if="images[0]?.properties?.depicts_id"> ({{ images[0].properties.depicts_id }})</span>?
     </h2>
+    <small>
+        Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.
+    </small>
+    <div class="flex justify-center mb-4">
+      <button
+        :class="['px-4 py-2 rounded-l font-bold', answerMode === 'yes' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
+        @click="answerMode = 'yes'"
+      >YES</button>
+      <button
+        :class="['px-4 py-2 font-bold', answerMode === 'skip' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']"
+        @click="answerMode = 'skip'"
+      >SKIP</button>
+      <button
+        :class="['px-4 py-2 rounded-r font-bold', answerMode === 'no' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700']"
+        @click="answerMode = 'no'"
+      >NO</button>
+    </div>
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
       <div v-for="image in images" :key="image.id"
         @click="!answered.has(image.id) && toggleSelect(image.id)"
         :class="[
           'relative rounded overflow-hidden transition-all',
           answered.has(image.id)
-            ? 'border-4 border-green-500 cursor-default opacity-80'
+            ? (
+                answeredMode[image.id] === 'no' ? 'border-4 border-red-500 cursor-default opacity-80' :
+                answeredMode[image.id] === 'skip' ? 'border-4 border-blue-500 cursor-default opacity-80' :
+                'border-4 border-green-500 cursor-default opacity-80'
+              )
             : selected.has(image.id)
-              ? 'border-4 border-green-500 cursor-pointer'
+              ? (
+                  selectedMode[image.id] === 'no' ? 'border-4 border-red-500 cursor-pointer' :
+                  selectedMode[image.id] === 'skip' ? 'border-4 border-blue-500 cursor-pointer' :
+                  'border-4 border-green-500 cursor-pointer'
+                )
               : 'border-4 border-transparent cursor-pointer'
         ]"
       >
@@ -26,10 +51,23 @@
         <div class="image-title px-2 py-1 text-xs text-center truncate bg-white bg-opacity-80 absolute bottom-0 left-0 w-full">
           <a :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + image.properties?.mediainfo_id" target="_blank">{{ image.properties?.mediainfo_id || image.id }}</a>
         </div>
-        <div v-if="answered.has(image.id)" class="absolute inset-0 flex items-center justify-center bg-green-500 bg-opacity-60 pointer-events-none">
-          <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
+        <div v-if="answered.has(image.id)" class="absolute inset-0 flex items-center justify-center bg-opacity-60 pointer-events-none"
+          :class="answeredMode[image.id] === 'no' ? 'bg-red-500' : answeredMode[image.id] === 'skip' ? 'bg-blue-500' : 'bg-green-500'">
+          <template v-if="answeredMode[image.id] === 'no'">
+            <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </template>
+          <template v-else-if="answeredMode[image.id] === 'skip'">
+            <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24">
+              <text x="12" y="20" text-anchor="middle" font-size="18" font-family="Arial" dy="-2">?</text>
+            </svg>
+          </template>
+          <template v-else>
+            <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </template>
         </div>
         <div v-else-if="selected.has(image.id)" class="absolute inset-0 pointer-events-none"></div>
       </div>
@@ -52,9 +90,12 @@ export default {
     const selected = ref(new Set());
     const answered = ref(new Set());
     const timers = reactive(new Map());
+    const answeredMode = reactive({});
+    const selectedMode = reactive({});
     const groupName = document.getElementById('question-container')?.dataset.groupName;
     const apiToken = window.apiToken || null;
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const answerMode = ref('yes');
 
     const fetchNextImages = async (count = 4) => {
       if (allLoaded.value || isFetchingMore.value) return;
@@ -104,7 +145,9 @@ export default {
     const sendAnswer = async (image) => {
       // Mark as answered immediately for UI feedback
       answered.value.add(image.id);
+      answeredMode[image.id] = selectedMode[image.id] || answerMode.value;
       selected.value.delete(image.id);
+      delete selectedMode[image.id];
       try {
         const response = await fetch('/api/answers', {
           method: 'POST',
@@ -116,7 +159,7 @@ export default {
           },
           body: JSON.stringify({
             question_id: image.id,
-            answer: 'yes'
+            answer: answeredMode[image.id]
           })
         });
         if (!response.ok) {
@@ -136,9 +179,11 @@ export default {
           clearTimeout(timers.get(id));
           timers.delete(id);
         }
+        delete selectedMode[id];
       } else {
         // Select and start timer
         selected.value.add(id);
+        selectedMode[id] = answerMode.value;
         const image = images.value.find(img => img.id === id);
         const timer = setTimeout(() => {
           sendAnswer(image);
@@ -163,6 +208,9 @@ export default {
       selected,
       answered,
       toggleSelect,
+      answerMode,
+      answeredMode,
+      selectedMode,
     };
   },
 };
