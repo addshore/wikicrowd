@@ -11,7 +11,7 @@ webservice node18 shell -- npm --prefix src install
 webservice node18 shell -- npm --prefix src run production
 
 # Copy files to correct location
-rsync -av --delete --exclude 'storage/framework/*' --exclude 'node_modules/*' -exclude '.git/*' ~/src/ ~/public_html
+rsync -av --delete --exclude 'storage/framework/*' --exclude 'storage/logs/*' --exclude 'node_modules/*' -exclude '.git/*' ~/src/ ~/public_html
 
 # migrate in case there are database changes
 # Note: This will prompt the user to run the migrations... (just incase bad things get in???)
