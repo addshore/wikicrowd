@@ -22,43 +22,7 @@
                 {{-- Question content will be dynamically inserted here by JavaScript --}}
                 @if ($qu)
                     <div id="image-focus-vue-root">
-                        <template v-if="!gridMode">
-                            <div id="question-content">
-                                @if ( array_key_exists('old_depicts_id',$qu->properties) )
-                                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">This image currently depicts
-                                        <a id="current-old-depicts-link" href="https://www.wikidata.org/wiki/{{$qu->properties['old_depicts_id']}}" target="_blank">
-                                        <span id="current-old-depicts-id">{{ $qu->properties['old_depicts_id'] }}</span> <u id="current-old-depicts-name">{{ $qu->properties['old_depicts_name'] }}</u>
-                                        </a>
-                                    </div>
-                                </div>
-                                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image actually clearly depict
-                                        "<span id="current-depicts-name">{{ $qu->properties['depicts_name'] }}</span>"
-                                        (<a id="current-depicts-link" href="https://www.wikidata.org/wiki/{{$qu->properties['depicts_id']}}" target="_blank"><span id="current-depicts-id">{{ $qu->properties['depicts_id'] }}</span></a>)?
-                                    </div>
-                                </div>
-                                @else
-                                <div class="flex justify-center pt-8 sm:justify-start sm:pt-0">
-                                    <div class="text-lg leading-7 font-semibold text-gray-900 dark:text-white">Does this image clearly depict
-                                        "<span id="current-depicts-name">{{ $qu->properties['depicts_name'] }}</span>"
-                                        (<a id="current-depicts-link" href="https://www.wikidata.org/wiki/{{$qu->properties['depicts_id']}}" target="_blank"><span id="current-depicts-id">{{ $qu->properties['depicts_id'] }}</span></a>)?
-                                    </div>
-                                </div>
-                                @endif
-                                <div class="py-2 flex justify-center pt-8 sm:justify-start sm:pt-0">
-                                    <x-yes-no-maybe-buttons :quId="$qu->id" :nextId="$next->id ?? null" />
-                                    <button class="ml-2 px-2 py-2 bg-gray-300 text-white rounded" @click="gridMode = true">Try Grid Mode</button>
-                                </div>
-
-                                <div class="flex flex-row justify-center items-start" style="max-height:800px;max-width:800px;">
-                                    <a id="current-image-commons-link" href="https://commons.wikimedia.org/wiki/Special:EntityData/{{ $qu->properties['mediainfo_id'] }}" target="_blank">
-                                        <img id="current-image" class="object-contain align-top" style="object-position:top" src="{{ $qu->properties['img_url'] }}"></img>
-                                    </a>
-                                </div>
-                            </div>
-                        </template>
-                        <template v-else>
+                        <template v-if="gridMode">
                             <grid-mode @disable-grid="gridMode = false" />
                         </template>
                     </div>

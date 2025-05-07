@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4">
+  <div class="p-4 max-w-[90vw] mx-auto">
     <div class="sticky top-0 z-20 bg-white bg-opacity-95 pb-2 mb-2 shadow">
       <h2 class="text-xl font-bold mb-2">
         Which images clearly depict
