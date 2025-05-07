@@ -13,15 +13,15 @@
         <button
           :class="['px-2 py-1 text-sm rounded-l font-bold', answerMode === 'yes' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
           @click="answerMode = 'yes'"
-        >YES</button>
+        >YES (1)</button>
         <button
           :class="['px-2 py-1 text-sm font-bold', answerMode === 'skip' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']"
           @click="answerMode = 'skip'"
-        >SKIP</button>
+        >SKIP (e)</button>
         <button
           :class="['px-2 py-1 text-sm rounded-r font-bold', answerMode === 'no' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700']"
           @click="answerMode = 'no'"
-        >NO</button>
+        >NO (2)</button>
         <button
           class="px-2 py-1 text-sm rounded-l rounded-t bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2"
           @click="$emit('disable-grid')"
@@ -250,6 +250,13 @@ export default {
       const initialCount = (rows + 2) * columns; // Preload 2 extra rows
       fetchNextImages(initialCount);
       window.addEventListener('scroll', handleScroll);
+      // Keyboard shortcuts for answer mode
+      window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.key === '1') answerMode.value = 'yes';
+        if (e.key === '2') answerMode.value = 'no';
+        if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
+      });
     });
 
     return {
