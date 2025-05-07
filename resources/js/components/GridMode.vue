@@ -76,6 +76,11 @@
         <div v-else-if="selected.has(image.id)" class="absolute inset-0 pointer-events-none"></div>
       </div>
     </div>
+    <div class="flex justify-center mt-6" v-if="!allLoaded && !loading && !isFetchingMore">
+      <button class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded shadow" @click="fetchNextImages(10)">
+        Load More
+      </button>
+    </div>
     <button class="mt-4 px-4 py-2 bg-gray-300 text-white rounded" @click="$emit('disable-grid')">Disable Grid Mode</button>
   </div>
 </template>
@@ -240,6 +245,10 @@ export default {
       answerMode,
       answeredMode,
       selectedMode,
+      fetchNextImages,
+      allLoaded,
+      loading,
+      isFetchingMore,
     };
   },
 };
