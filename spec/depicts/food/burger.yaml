@@ -1,7 +1,5 @@
-depictsId: Q6663
-name: Burger (Hamburger)
+depictsId: Q111981894
+name: Burger
 limit: 1000
-category: Category:Hamburgers
-exclude:
-  - Category:Vegan food
+category: Category:Burgers
 excludeRegex: "/(Audio|menus|presses|restaurants|in art|vendors)/i"
