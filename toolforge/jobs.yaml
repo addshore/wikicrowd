@@ -4,8 +4,10 @@
   continuous: true
   emails: all
   replicas: 3
+  no-filelog: true
 - name: schedule
   image: php8.2
   command: php /data/project/wikicrowd/src/artisan schedule:work
   continuous: true
   emails: all
+  no-filelog: true
