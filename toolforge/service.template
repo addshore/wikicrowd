@@ -13,7 +13,7 @@ cpu: 1000m
 mem: 1024Mi
 
 # Set ReplicaSet size for a Kubernetes deployment (--replicas=...)
-#replicas: 2
+replicas: 2
 
 # Runtime type
 # See "Supported webservice types" in `webservice --help` output for valid values.
