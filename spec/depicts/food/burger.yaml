@@ -1,6 +1,6 @@
 depictsId: Q6663
 name: Burger (Hamburger)
-limit: 250
+limit: 1000
 category: Category:Hamburgers
 exclude:
   - Category:Vegan food

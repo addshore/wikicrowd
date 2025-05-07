@@ -1,6 +1,6 @@
 - depictsId: Q870
   name: Train
-  limit: 250
+  limit: 1000
   category: Category:Trains
   exclude:
   - Category:Steam locomotives
@@ -9,7 +9,7 @@
 
 - depictsId: Q171043
   name: Steam locomotive / train
-  limit: 250
+  limit: 1000
   category: Category:Steam locomotives
   exclude:
   - Category:Curiosities of Locomotive Design

@@ -1,6 +1,6 @@
 depictsId: Q3736439
 name: Duck
-limit: 250
+limit: 1000
 category: Category:Ducks
 exclude:
   - Category:Duck warning signs

@@ -1,6 +1,6 @@
 depictsId: Q146
 name: House cat / Common cat
-limit: 250
+limit: 1000
 category: Category:Felis silvestris catus
 exclude:
   - Category:Cats in ancient Egypt

@@ -1,7 +1,7 @@
 
 - depictsId: Q7291
   name: Badminton
-  limit: 250
+  limit: 1000
   category: Category:Parabadminton
   exclude:
   - Category:Books about badminton
@@ -25,7 +25,7 @@
 
 - depictsId: Q18629677
   name: Para badminton
-  limit: 250
+  limit: 1000
   category: Category:Parabadminton
   exclude:
   excludeRegex: "/(Videos)/i"

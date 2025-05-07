@@ -1,6 +1,6 @@
 depictsId: Q12888135
 name: Candle
-limit: 250
+limit: 1000
 category: Category:Candles
 exclude:
 excludeRegex: "/(Videos)/i"

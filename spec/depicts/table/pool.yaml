@@ -1,6 +1,6 @@
 depictsId: Q862732
 name: Pool table
-limit: 250
+limit: 1000
 category: Category:Pool tables
 exclude:
 excludeRegex: "/(Videos)/i"

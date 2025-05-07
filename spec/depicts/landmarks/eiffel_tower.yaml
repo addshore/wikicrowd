@@ -1,6 +1,6 @@
 depictsId: Q243
 name: Eiffel Tower
-limit: 500
+limit: 1000
 category: Category:Eiffel Tower
 exclude:
   - Category:Eiffel Tower and communications

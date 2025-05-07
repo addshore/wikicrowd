@@ -1,27 +1,27 @@
 - depictsId: Q34486
   name: Helicopter
-  limit: 250
+  limit: 1000
   category: Category:Views of helicopters
   exclude:
   excludeRegex: "/(Videos|art|drawings|Models|components|landing gear|views from|Orthophotos|Insignia|Emblems)/i"
 
 - depictsId: Q206592
   name: Jet Aircraft
-  limit: 250
+  limit: 1000
   category: Category:Aircraft with jet engines
   exclude:
   excludeRegex: "/(Videos|art|drawings|Models|components|landing gear|views from|Orthophotos|Insignia|Emblems)/i"
 
 - depictsId: Q115940
   name: Seaplane
-  limit: 250
+  limit: 1000
   category: Category:Seaplanes
   exclude:
   excludeRegex: "/(Videos|art|drawings|Models|engines|components|landing gear|views from|Orthophotos)/i"
 
 - depictsId: Q2165278
   name: Glider
-  limit: 250
+  limit: 1000
   category: Category:Gliders
   exclude:
   - Category:Motorgliders
@@ -29,7 +29,7 @@
 
 - depictsId: Q133585
   name: Airship
-  limit: 250
+  limit: 1000
   category: Category:Airships
   exclude:
   - Category:Airship technology

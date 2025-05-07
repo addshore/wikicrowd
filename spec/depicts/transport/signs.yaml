@@ -1,6 +1,6 @@
 - depictsId: Q250429
   name: Stop sign
-  limit: 100
+  limit: 200
   category: Category:Stop signs
   exclude:
   - Category:Diagrams of stop signs

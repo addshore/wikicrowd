@@ -1,6 +1,6 @@
 depictsId: Q861934
 name: Mousepad
-limit: 250
+limit: 1000
 category: Category:Mousepads
 exclude:
 excludeRegex: "/(Videos)/i"

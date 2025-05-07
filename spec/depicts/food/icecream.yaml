@@ -1,6 +1,6 @@
 depictsId: Q13233
 name: Icecream (frozen dessert)
-limit: 250
+limit: 1000
 category: Category:Ice cream
 # Worked down from the top category a level or 2 deciding what shouldn't be included
 exclude:

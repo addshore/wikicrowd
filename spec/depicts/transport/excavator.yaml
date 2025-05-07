@@ -1,6 +1,6 @@
 - depictsId: Q182661
   name: Excavator
-  limit: 250
+  limit: 1000
   category: Category:Excavators
   exclude:
   excludeRegex: "/(Videos|art|drawings|Models|components|advertising|tools|statistics|aviation|chic|equipment|industry|logo|maintenance|manufacturing|museums|parking|pranks|recycling|shops|shirts|shows|tracks|transport of|history of)/i"

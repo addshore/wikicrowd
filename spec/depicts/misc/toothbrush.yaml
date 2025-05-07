@@ -1,13 +1,13 @@
 - depictsId: Q134205
   name: Toothbrush
-  limit: 250
+  limit: 1000
   category: Category:Toothbrushes
   exclude:
     - Category:Electric toothbrushes
   excludeRegex: "/(Videos)/i"
 - depictsId: Q979744
   name: Electric Toothbrush
-  limit: 250
+  limit: 1000
   category: Category:Electric toothbrushes
   exclude:
     - Category:Disassembled electric toothbrushes

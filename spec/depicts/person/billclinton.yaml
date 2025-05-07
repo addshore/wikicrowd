@@ -1,6 +1,6 @@
 depictsId: Q1124
 name: Bill Clinton
-limit: 250
+limit: 1000
 category: Category:Bill Clinton
 exclude:
   - Category:Clinton Foundation

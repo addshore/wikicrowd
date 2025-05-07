@@ -1,5 +1,5 @@
 depictsId: Q41960
 name: Red Pandas (Ailurus fulgens)
-limit: 250
+limit: 1000
 category: Category:Ailuridae
 excludeRegex: "/(Videos|statues|sculpture|art|houses|skull|decoys| map )/i"

@@ -1,48 +1,48 @@
 - depictsId: Q2356340
   name: Ball (rhythmic gymnastics)
-  limit: 100
+  limit: 200
   category: Category:Rhythmic gymnastics
   exclude:
   excludeRegex: "/(Videos)/i"
 
 - depictsId: Q15103818
   name: Clubs (rhythmic gymnastics)
-  limit: 100
+  limit: 200
   category: Category:Rhythmic gymnastics
   exclude:
   excludeRegex: "/(Videos)/i"
   
 - depictsId: Q2553153
   name: Hoop (rhythmic gymnastics)
-  limit: 100
+  limit: 200
   category: Category:Rhythmic gymnastics
   exclude:
   excludeRegex: "/(Videos)/i"
   
 - depictsId: Q748773
   name: Ribbon (rhythmic gymnastics)
-  limit: 100
+  limit: 200
   category: Category:Rhythmic gymnastics
   exclude:
   excludeRegex: "/(Videos)/i"
   
 - depictsId: Q635343
   name: Ropes (rhythmic gymnastics)
-  limit: 100
+  limit: 200
   category: Category:Rhythmic gymnastics
   exclude:
   excludeRegex: "/(Videos)/i"
   
 - depictsId: Q55605393
   name: Biathlon rifle
-  limit: 100
+  limit: 200
   category: Category:Biathlon
   exclude:
   excludeRegex: "/(Videos)/i"
 
 - depictsId: Q12252328
   name: Association football ball
-  limit: 100
+  limit: 200
   category: Category:Association football
   exclude:
   excludeRegex: "/(Videos)/i"
