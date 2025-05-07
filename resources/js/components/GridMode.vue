@@ -1,26 +1,28 @@
 <template>
   <div class="p-4">
-    <h2 class="text-xl font-bold mb-4">
-      Which images clearly depict
-      <span class="text-blue-700">"{{ images[0]?.properties?.depicts_name || '...' }}"</span>
-      <span v-if="images[0]?.properties?.depicts_id"> ({{ images[0].properties.depicts_id }})</span>?
-    </h2>
-    <small>
+    <div class="sticky top-0 z-20 bg-white bg-opacity-95 pb-2 mb-2 shadow">
+      <h2 class="text-xl font-bold mb-2">
+        Which images clearly depict
+        <span class="text-blue-700">"{{ images[0]?.properties?.depicts_name || '...' }}"</span>
+        <span v-if="images[0]?.properties?.depicts_id"> ({{ images[0].properties.depicts_id }})</span>?
+      </h2>
+      <small>
         Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.
-    </small>
-    <div class="flex justify-center mb-4">
-      <button
-        :class="['px-4 py-2 rounded-l font-bold', answerMode === 'yes' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
-        @click="answerMode = 'yes'"
-      >YES</button>
-      <button
-        :class="['px-4 py-2 font-bold', answerMode === 'skip' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']"
-        @click="answerMode = 'skip'"
-      >SKIP</button>
-      <button
-        :class="['px-4 py-2 rounded-r font-bold', answerMode === 'no' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700']"
-        @click="answerMode = 'no'"
-      >NO</button>
+      </small>
+      <div class="flex justify-center mt-2 mb-2">
+        <button
+          :class="['px-4 py-2 rounded-l font-bold', answerMode === 'yes' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
+          @click="answerMode = 'yes'"
+        >YES</button>
+        <button
+          :class="['px-4 py-2 font-bold', answerMode === 'skip' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']"
+          @click="answerMode = 'skip'"
+        >SKIP</button>
+        <button
+          :class="['px-4 py-2 rounded-r font-bold', answerMode === 'no' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700']"
+          @click="answerMode = 'no'"
+        >NO</button>
+      </div>
     </div>
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
       <div v-for="image in images" :key="image.id"
