@@ -22,6 +22,11 @@
           :class="['px-4 py-2 rounded-r font-bold', answerMode === 'no' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700']"
           @click="answerMode = 'no'"
         >NO</button>
+        <button
+          class="px-4 py-2 rounded-r font-bold bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2"
+          @click="$emit('disable-grid')"
+          style="margin-left: 12px;"
+        >Back to Focus/One</button>
       </div>
     </div>
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">

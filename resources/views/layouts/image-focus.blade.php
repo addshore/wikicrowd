@@ -36,4 +36,23 @@
     </div>
 
     <x-yes-no-maybe-buttons />
+
+    <script>
+    // Ensure WikiCrowdQuestionHandler is initialized after all DOM is rendered
+    window.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            const container = document.getElementById('question-container');
+            if (container) {
+                const groupName = container.dataset.groupName;
+                const initialCurrentId = container.dataset.currentQuestionId;
+                const initialNextId = container.dataset.nextQuestionId;
+                const initialCurrentQuestionData = window.initialQuestionData || null;
+                const initialNextQuestionData = window.initialNextQuestionData || null;
+                if (groupName) {
+                    new WikiCrowdQuestionHandler(groupName, initialCurrentId, initialNextId, initialCurrentQuestionData, initialNextQuestionData);
+                }
+            }
+        }, 0);
+    });
+    </script>
 </div>

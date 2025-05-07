@@ -52,11 +52,14 @@ class WikiCrowdQuestionHandler {
     }
 
     bindEvents() {
-        document.querySelectorAll('[data-answer]').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const answer = e.target.dataset.answer;
+        // Use event delegation for robustness
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-answer]');
+            if (btn) {
+                const answer = btn.dataset.answer;
+                console.log('Button clicked:', answer);
                 this.submitAnswerAndLoadNext(answer);
-            });
+            }
         });
 
         document.addEventListener('keypress', (e) => {
