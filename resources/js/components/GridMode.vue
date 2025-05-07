@@ -196,11 +196,11 @@ export default {
     };
 
     onMounted(() => {
-      // Estimate how many images are needed to fill the viewport
+      // Estimate how many images are needed to fill the viewport, plus 2 extra rows for preloading
       const imageHeight = 250; // px, including padding/margin
-      const rows = Math.ceil(window.innerHeight / imageHeight);
       const columns = 5; // max columns in grid
-      const initialCount = rows * columns;
+      const rows = Math.ceil(window.innerHeight / imageHeight);
+      const initialCount = (rows + 2) * columns; // Preload 2 extra rows
       fetchNextImages(initialCount);
       window.addEventListener('scroll', handleScroll);
     });
