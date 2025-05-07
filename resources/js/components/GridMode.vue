@@ -44,7 +44,7 @@
         >Save Now ({{ pendingAnswers.length }})</button>
       </div>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
       <div v-for="image in images" :key="image.id"
         @click="!answered.has(image.id) && toggleSelect(image.id)"
         :class="[

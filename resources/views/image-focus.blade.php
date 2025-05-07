@@ -18,7 +18,7 @@
         <div class="relative flex items-top justify-center min-h-screen bg-gray-100 dark:bg-gray-900 sm:items-center py-4 sm:pt-0">
             <x-top-right-navbar/>
 
-            <div id="question-container" class="max-w-6xl mx-auto sm:px-6 lg:px-8" data-group-name="{{ $qu->group->name ?? '' }}" data-current-question-id="{{ $qu->id ?? '' }}" data-next-question-id="{{ $next->id ?? '' }}">
+            <div id="question-container" class="max-w-full mx-auto sm:px-6 lg:px-16" data-group-name="{{ $qu->group->name ?? '' }}" data-current-question-id="{{ $qu->id ?? '' }}" data-next-question-id="{{ $next->id ?? '' }}">
                 {{-- Question content will be dynamically inserted here by JavaScript --}}
                 @if ($qu)
                     <div id="image-focus-vue-root">
