@@ -11,24 +11,24 @@
       </small>
       <div class="flex justify-center mt-2 mb-2">
         <button
-          :class="['px-4 py-2 rounded-l font-bold', answerMode === 'yes' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
+          :class="['px-2 py-1 text-sm rounded-l font-bold', answerMode === 'yes' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
           @click="answerMode = 'yes'"
         >YES</button>
         <button
-          :class="['px-4 py-2 font-bold', answerMode === 'skip' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']"
+          :class="['px-2 py-1 text-sm font-bold', answerMode === 'skip' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']"
           @click="answerMode = 'skip'"
         >SKIP</button>
         <button
-          :class="['px-4 py-2 rounded-r font-bold', answerMode === 'no' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700']"
+          :class="['px-2 py-1 text-sm rounded-r font-bold', answerMode === 'no' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700']"
           @click="answerMode = 'no'"
         >NO</button>
         <button
-          class="px-4 py-2 rounded-l rounded-t bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2"
+          class="px-2 py-1 text-sm rounded-l rounded-t bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2"
           @click="$emit('disable-grid')"
           style="margin-left: 12px;"
         >Single Mode</button>
         <button
-          class="px-4 py-2 bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2 rounded"
+          class="px-2 py-1 text-sm bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2 rounded"
           @click="clearAnswered"
         >
           Clear Done
