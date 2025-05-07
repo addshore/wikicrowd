@@ -1,17 +1,17 @@
 <template>
   <div class="py-2 flex justify-center pt-8 sm:justify-start sm:pt-0">
     <button
-      :class="['bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2', answer === 'yes' ? 'ring-4 ring-green-300' : '']"
+      :class="['bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2', answer === 'yes' ? 'ring-4 ring-green-300' : '', loading ? 'opacity-50 pointer-events-none grayscale' : '']"
       @click="submit('yes')"
       :disabled="loading"
     >Yes (1)</button>
     <button
-      :class="['bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2', answer === 'skip' ? 'ring-4 ring-blue-300' : '']"
+      :class="['bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2', answer === 'skip' ? 'ring-4 ring-blue-300' : '', loading ? 'opacity-50 pointer-events-none grayscale' : '']"
       @click="submit('skip')"
       :disabled="loading"
     >Skip (e)</button>
     <button
-      :class="['bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded', answer === 'no' ? 'ring-4 ring-red-300' : '']"
+      :class="['bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded', answer === 'no' ? 'ring-4 ring-red-300' : '', loading ? 'opacity-50 pointer-events-none grayscale' : '']"
       @click="submit('no')"
       :disabled="loading"
     >No (2)</button>
