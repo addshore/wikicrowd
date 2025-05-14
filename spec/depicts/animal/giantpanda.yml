@@ -2,4 +2,4 @@ depictsId: Q33602
 name: Giant Pandas (Ailuropoda melanoleuca)
 limit: 5000
 category: Category:Ailuropoda melanoleuca
-excludeRegex: "/(Videos|statues|sculpture|art|houses|skull|decoys| map )/i"
+excludeRegex: "/(Videos|statues|sculpture|art|houses|skull|decoys| map | named after )/i"
