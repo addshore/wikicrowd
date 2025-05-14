@@ -1,0 +1,5 @@
+depictsId: Q22364
+name: Chipmunk (Tamias)
+limit: 5000
+category: Category:Tamias
+excludeRegex: "/(Videos|statues|sculpture|art|houses|skull|decoys| map )/i"
