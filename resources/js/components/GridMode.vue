@@ -64,7 +64,19 @@
         Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.
       </small>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+    
+    <!-- Loading message -->
+    <div v-if="loading" class="flex justify-center items-center py-8">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+      <span class="text-gray-600">Loading images...</span>
+    </div>
+    
+    <!-- No images message -->
+    <div v-else-if="!loading && images.length === 0" class="text-center py-8">
+      <div class="text-gray-500 text-lg">No images available to review.</div>
+    </div>
+    
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
       <div v-for="image in images" :key="image.id"
         @click="!answered.has(image.id) && toggleSelect(image.id)"
         :class="[
@@ -295,6 +307,7 @@ export default {
           added++;
         }
       }
+      console.log(`fillImagesFromBatch: added ${added} images, ${images.value.length} total, ${batch.value.length} remaining in batch`);
       return added;
     }
 
@@ -311,11 +324,17 @@ export default {
       try {
         const response = await fetchWithRetry(url, { headers });
         const data = await response.json();
+        console.log(`fetchBatchAndFill: received ${data?.questions?.length || 0} questions`);
         if (data && Array.isArray(data.questions)) {
           batch.value.push(...data.questions);
-          if (batch.value.length === 0) allLoaded.value = true;
+          // If we got no questions or fewer than expected, we've reached the end
+          if (data.questions.length === 0) {
+            console.log('fetchBatchAndFill: no more questions available, setting allLoaded=true');
+            allLoaded.value = true;
+          }
           fillImagesFromBatch(count);
         } else {
+          console.log('fetchBatchAndFill: invalid response, setting allLoaded=true');
           allLoaded.value = true;
         }
       } catch (e) {
@@ -330,10 +349,13 @@ export default {
     const fetchNextImages = async (count = 4) => {
       if (allLoaded.value) return;
       const added = fillImagesFromBatch(count);
-      if (added < count) {
+      if (added < count && !allLoaded.value) {
         await fetchBatchAndFill(count - added);
       }
-      ensureViewportFilled();
+      // Use setTimeout to prevent infinite recursion
+      setTimeout(() => {
+        ensureViewportFilled();
+      }, 100);
     };
 
     const PRELOAD_SCROLL_THRESHOLD = 800; // px from bottom to start preloading next images
@@ -351,7 +373,14 @@ export default {
 
     // Helper: after images load, if viewport is not filled, load more
     const ensureViewportFilled = () => {
-      if (allLoaded.value || loading.value) return;
+      if (allLoaded.value || loading.value || isFetchingMore.value) return;
+      
+      // Prevent infinite loops by checking if we have any images to show
+      if (images.value.length === 0 && batch.value.length === 0) {
+        loading.value = false;
+        return;
+      }
+      
       const visible = window.innerHeight;
       const pageHeight = document.documentElement.scrollHeight;
       // If page is not scrollable, load more images
@@ -394,7 +423,12 @@ export default {
         const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${encodeURIComponent(cat)}&gcmtype=file&gcmlimit=30&prop=imageinfo|pageprops&iiprop=url&iiurlwidth=300&format=json&origin=*`;
         const resp = await fetchWithRetry(url);
         const data = await resp.json();
-        if (!data.query || !data.query.pages) throw new Error('No images found in category');
+        if (!data.query || !data.query.pages) {
+          console.log('No images found in category');
+          allLoaded.value = true;
+          loading.value = false;
+          return;
+        }
         let rawImages = Object.values(data.query.pages).map(p => {
           let mediainfo_id = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
           if (!mediainfo_id && p.title && p.title.startsWith('File:')) {
@@ -413,6 +447,8 @@ export default {
           };
         }).filter(img => img.properties.img_url);
 
+        console.log(`Found ${rawImages.length} raw images in category`);
+
         // --- Filter out images that already depict the QID or a more specific one ---
         // 1. Get all relevant QIDs (target + subclasses/instances)
         const qidSet = await fetchSubclassesAndInstances(props.manualQid);
@@ -427,9 +463,13 @@ export default {
           // If any depicted QID is in the set, filter out
           return !depicted.some(qid => qidSet.has(qid));
         });
+        
+        console.log(`After filtering, ${images.value.length} images remain`);
         allLoaded.value = true;
       } catch (e) {
+        console.error('Error fetching manual images:', e);
         error = e.message || 'Failed to load images';
+        allLoaded.value = true;
       } finally {
         loading.value = false;
       }
@@ -645,14 +685,22 @@ export default {
     // On mount, if manualMode, fetch manual images
     onMounted(() => {
       if (props.manualMode) {
-        fetchManualImages().then(ensureViewportFilled);
+        fetchManualImages().then(() => {
+          setTimeout(() => {
+            ensureViewportFilled();
+          }, 100);
+        });
       } else {
         // Estimate how many images are needed to fill the viewport, plus 2 extra rows for preloading
         const imageHeight = 250; // px, including padding/margin
         const columns = 5; // max columns in grid
         const rows = Math.ceil(window.innerHeight / imageHeight);
-        const initialCount = (rows + 2) * columns; // Preload 2 extra rows
-        fetchNextImages(initialCount).then(ensureViewportFilled);
+        const initialCount = Math.max(1, (rows + 2) * columns); // Ensure at least 1 image
+        fetchNextImages(initialCount).then(() => {
+          setTimeout(() => {
+            ensureViewportFilled();
+          }, 100);
+        });
         window.addEventListener('scroll', handleScroll);
         // Keyboard shortcuts for answer mode
         window.addEventListener('keydown', (e) => {
