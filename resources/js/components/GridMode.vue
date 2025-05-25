@@ -84,14 +84,35 @@
               : 'border-4 border-transparent cursor-pointer'
         ]"
       >
-        <img
-          :src="image.properties.img_url"
-          :alt="`Image ${image.id}`"
-          draggable="false"
-          class="object-contain align-top w-full h-[22vw] min-h-[180px] max-h-[320px]"
-          style="object-position:top"
-          @error="handleImgError(image)"
-        />
+        <div class="relative w-full h-[22vw] min-h-[180px] max-h-[320px] bg-gray-100">
+          <!-- Loading spinner -->
+          <div v-if="!imageLoadingStates[image.id] || imageLoadingStates[image.id] === 'loading'" 
+               class="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+          
+          <!-- Error state -->
+          <div v-if="imageLoadingStates[image.id] === 'error'" 
+               class="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <div class="text-center text-gray-500">
+              <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span class="text-sm">Failed to load</span>
+            </div>
+          </div>
+          
+          <img
+            :src="image.properties.img_url"
+            :alt="`Image ${image.id}`"
+            draggable="false"
+            class="object-contain align-top w-full h-full"
+            style="object-position:top"
+            @load="handleImgLoad(image)"
+            @error="handleImgError(image)"
+            @loadstart="markImageLoading(image)"
+          />
+        </div>
         
         <!-- Magnifying glass icon -->
         <button 
@@ -220,6 +241,49 @@ export default {
     const imageRetries = reactive({});
     const MAX_IMAGE_RETRIES = 3;
 
+    // Track image loading states and backoff
+    const imageLoadingStates = reactive({});
+    const fetchRetryCount = ref(0);
+    const MAX_FETCH_RETRIES = 5;
+
+    // Exponential backoff utility
+    const exponentialBackoff = (retryCount) => {
+      return Math.min(1000 * Math.pow(2, retryCount), 30000); // Max 30 seconds
+    };
+
+    // Fetch with retry and exponential backoff
+    const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
+      try {
+        const response = await fetch(url, options);
+        
+        if (response.status === 429) {
+          if (retryCount < MAX_FETCH_RETRIES) {
+            const delay = exponentialBackoff(retryCount);
+            console.log(`Rate limited (429), retrying in ${delay}ms (attempt ${retryCount + 1})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchWithRetry(url, options, retryCount + 1);
+          } else {
+            throw new Error('Max retries exceeded for rate limiting');
+          }
+        }
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        return response;
+      } catch (error) {
+        if (retryCount < MAX_FETCH_RETRIES && error.name === 'TypeError') {
+          // Network error, retry
+          const delay = exponentialBackoff(retryCount);
+          console.log(`Network error, retrying in ${delay}ms (attempt ${retryCount + 1})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return fetchWithRetry(url, options, retryCount + 1);
+        }
+        throw error;
+      }
+    };
+
     // Helper to move from batch to images
     function fillImagesFromBatch(count) {
       let added = 0;
@@ -245,12 +309,7 @@ export default {
       const headers = { 'Accept': 'application/json' };
       if (apiToken) headers['Authorization'] = `Bearer ${apiToken}`;
       try {
-        const response = await fetch(url, { headers });
-        if (!response.ok) {
-          allLoaded.value = true;
-          isFetchingMore.value = false;
-          return;
-        }
+        const response = await fetchWithRetry(url, { headers });
         const data = await response.json();
         if (data && Array.isArray(data.questions)) {
           batch.value.push(...data.questions);
@@ -260,6 +319,7 @@ export default {
           allLoaded.value = true;
         }
       } catch (e) {
+        console.error('Failed to fetch images after retries:', e);
         allLoaded.value = true;
       }
       isFetchingMore.value = false;
@@ -332,7 +392,7 @@ export default {
       try {
         const cat = props.manualCategory.trim().replace(/^Category:/, '');
         const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${encodeURIComponent(cat)}&gcmtype=file&gcmlimit=30&prop=imageinfo|pageprops&iiprop=url&iiurlwidth=300&format=json&origin=*`;
-        const resp = await fetch(url);
+        const resp = await fetchWithRetry(url);
         const data = await resp.json();
         if (!data.query || !data.query.pages) throw new Error('No images found in category');
         let rawImages = Object.values(data.query.pages).map(p => {
@@ -562,7 +622,20 @@ export default {
             imgElement.src = image.properties.img_url + '?retry=' + imageRetries[image.id];
           }
         }, 1000 * retryCount);
+      } else {
+        // Mark as failed to load
+        imageLoadingStates[image.id] = 'error';
       }
+    };
+
+    // Handle successful image load
+    const handleImgLoad = (image) => {
+      imageLoadingStates[image.id] = 'loaded';
+    };
+
+    // Mark image as loading when it starts
+    const markImageLoading = (image) => {
+      imageLoadingStates[image.id] = 'loading';
     };
 
     // On mount, if manualMode, fetch manual images
@@ -643,6 +716,9 @@ export default {
       sendAnswer: sendAnswerToUse,
       onSaveClickHandler,
       handleImgError,
+      handleImgLoad,
+      markImageLoading,
+      imageLoadingStates,
       showFullscreen,
       fullscreenImage,
       fullscreenImageUrl,
