@@ -29,6 +29,14 @@ Route::get('/', function () {
 
 Route::get('/groups', [QuestionGroupController::class, 'showTopLevelGroups'])->name('groups');
 
+Route::middleware('auth:sanctum')->get('/questions/depicts/custom', function () {
+    if (!Auth::check()) {
+        return redirect('/login');
+    }
+    $apiToken = Auth::user()->createToken('custom-grid', ['submit-answers'])->plainTextToken;
+    return view('questions.depicts-custom', ['apiToken' => $apiToken]);
+});
+
 Route::middleware('auth:sanctum')->get('/questions/{groupName}/{desiredId?}', [QuestionController::class, 'showGroupDesiredOrUnanswered'])
     ->where('groupName', '([^\/]*\/[^\/]*)');
 
@@ -79,4 +87,8 @@ Route::middleware('auth:sanctum')->name('answers')->post('/answers', function (R
         return redirect('/questions/' . $question->group->name . '/' . $next);
     }
     return redirect('/questions/' . $question->group->name);
+});
+
+Route::middleware('auth:sanctum')->get('/manual-question-grid', function () {
+    return view('manual-question-grid');
 });

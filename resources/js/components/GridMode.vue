@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4 max-w-[90vw] mx-auto">
+  <div class="p-4 w-full max-w-none mx-auto">
     <div class="sticky top-0 z-20 bg-white bg-opacity-95 pb-2 mb-2 shadow">
       <h2 class="text-xl font-bold mb-2 flex flex-col items-center">
         <p class="text-lg leading-7 text-gray-500 mb-1">
@@ -121,7 +121,12 @@ import WikidataDescription from './WikidataDescription.vue';
 export default {
   name: 'GridMode',
   components: { WikidataLabel, WikidataDescription },
-  setup() {
+  props: {
+    manualCategory: { type: String, default: '' },
+    manualQid: { type: String, default: '' },
+    manualMode: { type: Boolean, default: false }
+  },
+  setup(props, { emit }) {
     const images = ref([]);
     const seenIds = ref([]);
     const allLoaded = ref(false);
@@ -233,6 +238,73 @@ export default {
       }
     };
 
+    // If manualMode, fetch images from Commons API instead of API
+    async function fetchManualImages() {
+      loading.value = true;
+      let error = '';
+      images.value = [];
+      try {
+        const cat = props.manualCategory.trim().replace(/^Category:/, '');
+        const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${encodeURIComponent(cat)}&gcmtype=file&gcmlimit=30&prop=imageinfo|pageprops&iiprop=url&iiurlwidth=300&format=json&origin=*`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (!data.query || !data.query.pages) throw new Error('No images found in category');
+        images.value = Object.values(data.query.pages).map(p => {
+          // Try to get the correct M-ID from pageprops if available
+          let mediainfo_id = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
+          if (!mediainfo_id && p.title && p.title.startsWith('File:')) {
+            // fallback: use 'M' + pageid
+            mediainfo_id = 'M' + p.pageid;
+          }
+          return {
+            id: mediainfo_id || ('M' + p.pageid),
+            properties: {
+              mediainfo_id: mediainfo_id || ('M' + p.pageid),
+              img_url: p.imageinfo?.[0]?.url,
+              depicts_id: props.manualQid,
+              manual: true,
+              category: props.manualCategory
+            },
+            title: p.title
+          };
+        }).filter(img => img.properties.img_url);
+        allLoaded.value = true;
+      } catch (e) {
+        error = e.message || 'Failed to load images';
+      } finally {
+        loading.value = false;
+      }
+    }
+
+    // Override sendAnswer for manual mode
+    const sendAnswerManual = async (image, modeOverride = null) => {
+      answered.value.add(image.id);
+      answeredMode[image.id] = modeOverride || selectedMode[image.id] || answerMode.value;
+      selected.value.delete(image.id);
+      delete selectedMode[image.id];
+      try {
+        await fetch('/api/manual-question/answer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...(apiToken ? { 'Authorization': `Bearer ${apiToken}` } : {}),
+            'X-CSRF-TOKEN': csrfToken
+          },
+          body: JSON.stringify({
+            category: props.manualCategory,
+            qid: props.manualQid,
+            mediainfo_id: image.properties.mediainfo_id, // always Mxxx
+            img_url: image.properties.img_url,
+            answer: answeredMode[image.id],
+            manual: true
+          })
+        });
+      } catch (error) {
+        // handle error
+      }
+    };
+
     const saveAllPending = async () => {
       if (pendingAnswers.value.length === 0) return;
       // Use bulk API
@@ -282,7 +354,8 @@ export default {
         const image = images.value.find(img => img.id === id);
         if (autoSave.value) {
           const timer = setTimeout(() => {
-            sendAnswer(image);
+            // Always use the correct sendAnswer function for the current mode
+            (props.manualMode ? sendAnswerManual : sendAnswer)(image);
             timers.delete(id);
           }, 10000);
           timers.set(id, timer);
@@ -293,27 +366,35 @@ export default {
       }
     };
 
-    function clearAnswered() {
+    const clearAnswered = () => {
       images.value = images.value.filter(img => !answered.value.has(img.id));
     }
 
+    // On mount, if manualMode, fetch manual images
     onMounted(() => {
-      // Estimate how many images are needed to fill the viewport, plus 2 extra rows for preloading
-      const imageHeight = 250; // px, including padding/margin
-      const columns = 5; // max columns in grid
-      const rows = Math.ceil(window.innerHeight / imageHeight);
-      const initialCount = (rows + 2) * columns; // Preload 2 extra rows
-      fetchNextImages(initialCount);
-      window.addEventListener('scroll', handleScroll);
-      // Keyboard shortcuts for answer mode
-      window.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        if (e.key === '1') answerMode.value = 'yes';
-        if (e.key === '2') answerMode.value = 'no';
-        if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
-      });
+      if (props.manualMode) {
+        fetchManualImages();
+      } else {
+        // Estimate how many images are needed to fill the viewport, plus 2 extra rows for preloading
+        const imageHeight = 250; // px, including padding/margin
+        const columns = 5; // max columns in grid
+        const rows = Math.ceil(window.innerHeight / imageHeight);
+        const initialCount = (rows + 2) * columns; // Preload 2 extra rows
+        fetchNextImages(initialCount);
+        window.addEventListener('scroll', handleScroll);
+        // Keyboard shortcuts for answer mode
+        window.addEventListener('keydown', (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+          if (e.key === '1') answerMode.value = 'yes';
+          if (e.key === '2') answerMode.value = 'no';
+          if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
+        });
+      }
     });
 
+    // Use sendAnswerManual if manualMode
+    const sendAnswerToUse = props.manualMode ? sendAnswerManual : sendAnswer;
+    console.log('[GridMode] manualMode:', props.manualMode, 'Using', props.manualMode ? '/api/manual-question/answer' : '/api/answers');
     return {
       images,
       selected,
@@ -330,6 +411,7 @@ export default {
       autoSave,
       pendingAnswers,
       saveAllPending,
+      sendAnswer: sendAnswerToUse,
     };
   },
 };

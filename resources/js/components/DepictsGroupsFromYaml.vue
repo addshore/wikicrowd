@@ -63,74 +63,81 @@
       <span class="block mt-2 text-sm text-gray-600">All questions should already regenerate every 6 hours...</span>
       <span class="block mt-2 text-sm text-gray-600">
         If you have made changes to the YAML file, you can regenerate questions here.</span>
-      <div v-if="mergedQuestions.length">
-        <table class="min-w-full text-sm border">
-          <thead>
-            <tr class="bg-gray-100">
-              <th class="p-2 border">Name</th>
-              <th class="p-2 border">Depicts</th>
-              <th class="p-2 border">Categories</th>
-              <th class="p-2 border">Unanswered</th>
-              <th class="p-2 border">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="q in mergedQuestions" :key="q.id">
-              <td class="p-2 border">{{ q.name }}
-              </td>
-              <td class="p-2 border">
-                <template v-if="q.depictsId">
-                  <a :href="getWikidataUrl(q.depictsId)" target="_blank" class="text-blue-700 hover:underline font-mono">
-                    {{ q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1') }}
-                  </a>
-                  <span class="ml-1">(<WikidataLabel :qid="q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')" :fallback="q.name" />)</span>
-                  <div class="text-xs text-gray-600 mt-1">
-                    <WikidataDescription :qid="q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')" />
-                  </div>
-                </template>
-                <template v-else>-</template>
-              </td>
-              <td class="p-2 border">
-                <template v-if="q.categories && q.categories.length">
-                  <span v-for="(cat, idx) in q.categories" :key="cat">
-                    <a :href="getCategoryUrl(cat)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(cat) }}</a><span v-if="idx < q.categories.length - 1">, </span>
-                  </span>
-                </template>
-                <template v-else>-</template>
-              </td>
-              <td class="p-2 border text-center">
-                <span v-if="typeof q.unanswered === 'number'">{{ q.unanswered }}</span>
-                <template v-if="q.refinementUnanswered">
-                  <span class="ml-2 text-yellow-800">+ {{ q.refinementUnanswered }} refinements</span>
-                </template>
-                <span v-else-if="typeof q.unanswered !== 'number'">-</span>
-              </td>
-              <td class="p-2 border">
-                <div class="flex gap-2">
-                  <button
-                    class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                    @click="regenerateJob(q)"
-                    :disabled="regenerating[q.id]"
-                  >
-                    <span v-if="regenerating[q.id]">Regenerating...</span>
-                    <span v-else>Regenerate</span>
-                  </button>
-                  <button
-                    v-if="typeof q.unanswered === 'number' && q.unanswered > 0"
-                    class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-                    @click="clearUnanswered(q)"
-                    :disabled="clearing[q.id] || clearing.__allDisabled"
-                  >
-                    <span v-if="clearing[q.id]">Clearing...</span>
-                    <span v-else>Clear</span>
-                  </button>
+    </div>
+    <div v-if="mergedQuestions.length">
+      <table class="min-w-full text-sm border">
+        <thead>
+          <tr class="bg-gray-100">
+            <th class="p-2 border">Name</th>
+            <th class="p-2 border">Depicts</th>
+            <th class="p-2 border">Categories</th>
+            <th class="p-2 border">Unanswered</th>
+            <th class="p-2 border">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="q in mergedQuestions" :key="q.id">
+            <td class="p-2 border">{{ q.name }}
+            </td>
+            <td class="p-2 border">
+              <template v-if="q.depictsId">
+                <a :href="getWikidataUrl(q.depictsId)" target="_blank" class="text-blue-700 hover:underline font-mono">
+                  {{ q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1') }}
+                </a>
+                <span class="ml-1">(<WikidataLabel :qid="q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')" :fallback="q.name" />)</span>
+                <div class="text-xs text-gray-600 mt-1">
+                  <WikidataDescription :qid="q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')" />
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-else class="text-gray-500">No YAML questions found.</div>
+              </template>
+              <template v-else>-</template>
+            </td>
+            <td class="p-2 border">
+              <template v-if="q.categories && q.categories.length">
+                <span v-for="(cat, idx) in q.categories" :key="cat">
+                  <a :href="getCategoryUrl(cat)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(cat) }}</a><span v-if="idx < q.categories.length - 1">, </span>
+                </span>
+              </template>
+              <template v-else>-</template>
+            </td>
+            <td class="p-2 border text-center">
+              <span v-if="typeof q.unanswered === 'number'">{{ q.unanswered }}</span>
+              <template v-if="q.refinementUnanswered">
+                <span class="ml-2 text-yellow-800">+ {{ q.refinementUnanswered }} refinements</span>
+              </template>
+              <span v-else-if="typeof q.unanswered !== 'number'">-</span>
+            </td>
+            <td class="p-2 border">
+              <div class="flex gap-2">
+                <button
+                  class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                  @click="regenerateJob(q)"
+                  :disabled="regenerating[q.id]"
+                >
+                  <span v-if="regenerating[q.id]">Regenerating...</span>
+                  <span v-else>Regenerate</span>
+                </button>
+                <button
+                  v-if="typeof q.unanswered === 'number' && q.unanswered > 0"
+                  class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                  @click="clearUnanswered(q)"
+                  :disabled="clearing[q.id] || clearing.__allDisabled"
+                >
+                  <span v-if="clearing[q.id]">Clearing...</span>
+                  <span v-else>Clear</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div v-else class="text-gray-500">No YAML questions found.</div>
+    <!-- Custom grid link under table -->
+    <div class="mt-12 border-t pt-8">
+      <h3 class="text-lg font-semibold mb-2">Custom Grid</h3>
+      <a href="/questions/depicts/custom" class="inline-block bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">
+        Go to Custom Grid
+      </a>
     </div>
   </div>
 </template>

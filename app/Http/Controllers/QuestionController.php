@@ -10,17 +10,42 @@ class QuestionController extends Controller
 {
 
     private function getGroupUnanswered($groupName) {
-        $question = Question::where('question_group_id', '=', QuestionGroup::where('name','=',$groupName)->first()->id)->doesntHave('answer')->with('group')->inRandomOrder()->first();
+        $group = QuestionGroup::where('name','=',$groupName)->first();
+        if (!$group) {
+            return null;
+        }
+        $question = Question::where('question_group_id', '=', $group->id)
+            ->doesntHave('answer')
+            ->with('group')
+            ->inRandomOrder()
+            ->first();
         return $question ? $question : null;
     }
 
     private function getGroupDesiredIdUnanswered($groupName, $desiredId) {
-        $question = Question::where('question_group_id', '=', QuestionGroup::where('name','=',$groupName)->first()->id)->doesntHave('answer')->with('group')->where('id', '=', $desiredId)->first();
+        $group = QuestionGroup::where('name','=',$groupName)->first();
+        if (!$group) {
+            return null;
+        }
+        $question = Question::where('question_group_id', '=', $group->id)
+            ->doesntHave('answer')
+            ->with('group')
+            ->where('id', '=', $desiredId)
+            ->first();
         return $question ? $question : null;
     }
 
     private function getGroupNotIdUnanswered($groupName, $notId) {
-        $question = Question::where('question_group_id', '=', QuestionGroup::where('name','=',$groupName)->first()->id)->doesntHave('answer')->with('group')->where('id', '!=', $notId)->inRandomOrder()->first();
+        $group = QuestionGroup::where('name','=',$groupName)->first();
+        if (!$group) {
+            return null;
+        }
+        $question = Question::where('question_group_id', '=', $group->id)
+            ->doesntHave('answer')
+            ->with('group')
+            ->where('id', '!=', $notId)
+            ->inRandomOrder()
+            ->first();
         return $question ? $question : null;
     }
 
