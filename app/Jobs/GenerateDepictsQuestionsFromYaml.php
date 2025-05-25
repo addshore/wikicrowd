@@ -112,11 +112,16 @@ class GenerateDepictsQuestionsFromYaml implements ShouldQueue
                 $val = $q->excludeRegex;
                 if (is_string($val) && isset($excludeRegexes[$val])) {
                     $excludeRegex = $excludeRegexes[$val];
+                    \Log::info("Using named excludeRegex '{$val}' resolved to '{$excludeRegex}' for question: " . (isset($q->name) ? $q->name : ''));
                 } else {
                     $excludeRegex = $val;
+                    \Log::info("Using direct excludeRegex '{$excludeRegex}' for question: " . (isset($q->name) ? $q->name : ''));
                 }
             } elseif (isset($q->excludeRegexes)) {
                 $excludeRegex = $q->excludeRegexes;
+                \Log::info("Using excludeRegexes array for question: " . (isset($q->name) ? $q->name : ''));
+            } else {
+                \Log::info("No excludeRegex set for question: " . (isset($q->name) ? $q->name : ''));
             }
             $exclude = isset($q->exclude) ? (is_array($q->exclude) ? $q->exclude : [$q->exclude]) : [];
             $exclude = array_filter($exclude, function($e) { return $e !== null && $e !== ''; });
