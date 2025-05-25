@@ -95,7 +95,7 @@
          * @return void
          */
         public function handle() {
-            // If we were constructed with values, handle this one instacne
+            // If we were constructed with values, handle this one instance
             // Otherwise, query the YAML and run each job
             if ($this->depictItemId !== "") {
                 $this->handleOne();
@@ -113,12 +113,37 @@
             $depictsJobs = [];
             foreach( $depictsYamlFiles as $file ) {
                 $file = Yaml::parse(file_get_contents($file), Yaml::PARSE_OBJECT_FOR_MAP);
+                if ( $file === false ) {
+                    \Log::error("Failed to parse YAML file: " . $file);
+                    continue;
+                }
+                if ($file === null ) {
+                    \Log::error("YAML file is empty or invalid: " . $file);
+                    continue;
+                }
                 if( is_array( $file ) ) {
                     $depictsJobs = array_merge( $depictsJobs, $file );
                 } else {
                     $depictsJobs[] = $file;
                 }
             }
+
+            // Remove .all.yml from the list of jobs if it exists
+            $depictsJobs = array_filter( $depictsJobs, function( $job ) {
+                return !isset( $job->all ) || !$job->all;
+            } );
+
+            var_dump( $depictsJobs );
+
+            // Sort the jobs
+            usort( $depictsJobs, function( $a, $b ) {
+                // Sort by category first
+                return strcmp( $a->category, $b->category );
+            } );
+            // Then write them back into a new file called "all.yml"
+            $allYamlFile = __DIR__ . '/../../spec/depicts/.all.yml';
+            file_put_contents( $allYamlFile, Yaml::dump( $depictsJobs, 10, 2, Yaml::DUMP_OBJECT_AS_MAP ) );
+            \Log::info("Wrote all jobs to: " . $allYamlFile);
 
             // Randomize the order of the jobs
             shuffle( $depictsJobs );
