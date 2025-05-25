@@ -1,14 +1,24 @@
 <template>
   <div class="p-4 max-w-[90vw] mx-auto">
     <div class="sticky top-0 z-20 bg-white bg-opacity-95 pb-2 mb-2 shadow">
-      <h2 class="text-xl font-bold mb-2">
-        Which images clearly depict
-        <span class="text-blue-700">"{{ images[0]?.properties?.depicts_name || '...' }}"</span>
-        <span v-if="images[0]?.properties?.depicts_id"> ({{ images[0].properties.depicts_id }})</span>?
+      <h2 class="text-xl font-bold mb-2 flex flex-col items-center">
+        <p class="text-lg leading-7 text-gray-500 mb-1">
+          Does this image clearly depict
+        </p>
+        <div v-if="images[0]?.properties?.depicts_id" class="text-lg font-semibold flex items-center mb-1">
+          <a
+            :href="'https://www.wikidata.org/wiki/' + images[0].properties.depicts_id"
+            target="_blank"
+            class="mr-2 text-blue-600 hover:underline"
+          >
+            {{ images[0].properties.depicts_id }}
+          </a>
+          <span class="ml-1">(<WikidataLabel :qid="images[0].properties.depicts_id" :fallback="images[0].properties.depicts_name" />)</span>
+        </div>
+        <div v-if="images[0]?.properties?.depicts_id" class="text-gray-600 text-sm mt-1">
+          <WikidataDescription :qid="images[0].properties.depicts_id" />
+        </div>
       </h2>
-      <small>
-        Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.
-      </small>
       <div class="flex justify-center mt-2 mb-2">
         <button
           :class="['px-2 py-1 text-sm rounded-l font-bold', answerMode === 'yes' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
@@ -43,6 +53,10 @@
           @click="saveAllPending"
         >Save Now ({{ pendingAnswers.length }})</button>
       </div>
+
+      <small>
+        Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.
+      </small>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
       <div v-for="image in images" :key="image.id"
@@ -107,9 +121,12 @@
 
 <script>
 import { ref, onMounted, reactive } from 'vue';
+import WikidataLabel from './WikidataLabel.vue';
+import WikidataDescription from './WikidataDescription.vue';
 
 export default {
   name: 'GridMode',
+  components: { WikidataLabel, WikidataDescription },
   setup() {
     const images = ref([]);
     const seenIds = ref([]);

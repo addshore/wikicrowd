@@ -5,23 +5,29 @@
         <img :id="'current-image'" :src="question.properties.img_url" alt="Current Question Image" class="max-w-full md:max-w-lg lg:max-w-xl xl:max-w-2xl max-h-[60vh] rounded-lg shadow-lg" />
       </a>
     </div>
+    <div class="flex flex-col items-center mt-4 mb-2" v-if="question && question.properties.depicts_id">
+      <p class="text-lg leading-7 text-gray-500">
+        Does this image clearly depict
+      </p>
+      <div class="text-lg font-semibold flex items-center">
+        <a
+          :href="depictsLink"
+          target="_blank"
+          class="mr-2 text-blue-600 hover:underline"
+        >
+          {{ question.properties.depicts_id }}
+        </a>
+        <span class="ml-1">(<WikidataLabel :qid="question.properties.depicts_id" :fallback="question.properties.depicts_name" />)</span>
+      </div>
+      <div class="text-gray-600 text-sm mt-1">
+        <WikidataDescription :qid="question.properties.depicts_id" />
+      </div>
+    </div>
     <div v-if="question.properties.old_depicts_id" class="flex justify-center pt-8">
       <p class="text-lg leading-7 text-gray-500">
         This image was previously said to depict
         <span id="current-old-depicts-name">{{ question.properties.old_depicts_name }}</span>
         (<a id="current-old-depicts-link" :href="oldDepictsLink" target="_blank"><span id="current-old-depicts-id">{{ question.properties.old_depicts_id }}</span></a>).
-      </p>
-    </div>
-    <div class="flex justify-center pt-8">
-      <p class="text-lg leading-7 text-gray-500">
-        <span v-if="question.properties.old_depicts_id">
-          Does this image actually clearly depict
-        </span>
-        <span v-else>
-          Does this image clearly depict
-        </span>
-        <span id="current-depicts-name">"{{ question.properties.depicts_name }}"</span>
-        (<a id="current-depicts-link" :href="depictsLink" target="_blank"><span id="current-depicts-id">{{ question.properties.depicts_id }}</span></a>)?
       </p>
     </div>
     <YesNoMaybeButtons :key="question.id" :question-id="question.id" @answered="onAnswered" />
@@ -41,10 +47,12 @@
 
 <script>
 import YesNoMaybeButtons from './YesNoMaybeButtons.vue';
+import WikidataLabel from './WikidataLabel.vue';
+import WikidataDescription from './WikidataDescription.vue';
 
 export default {
   name: 'ImageFocus',
-  components: { YesNoMaybeButtons },
+  components: { YesNoMaybeButtons, WikidataLabel, WikidataDescription },
   data() {
     return {
       question: null,
