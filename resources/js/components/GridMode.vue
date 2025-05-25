@@ -161,7 +161,7 @@
         <div v-else-if="selected.has(image.id)" class="absolute inset-0 pointer-events-none"></div>
       </div>
     </div>
-    <div class="flex justify-center mt-6" v-if="!allLoaded && !loading && !isFetchingMore">
+    <div class="flex justify-center mt-6" v-if="!allLoaded && !loading && !isFetchingMore && !manualMode">
       <button class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded shadow" @click="fetchNextImages(10)">
         Load More
       </button>
@@ -203,6 +203,11 @@
           </a>
         </div>
       </div>
+    </div>
+
+    <!-- Always show Loading... under the grid if loading or (manualMode and recursion ongoing) -->
+    <div v-if="loading || (manualMode && !allLoaded)" class="text-center py-4">
+      <span class="text-gray-600">Loading more images, please wait...</span>
     </div>
   </div>
 </template>
@@ -450,6 +455,10 @@ export default {
     // Recursive function to fetch images and push to UI as soon as found
     async function fetchImagesRecursivelyAndPush(categoryName, visitedCategories, depth, maxDepth, onImagePushed) {
       if (depth >= maxDepth) return;
+      // Log category being iterated
+      console.log('[CustomGrid] Iterating category:', categoryName);
+      // Sleep 2 seconds before starting each new category
+      await new Promise(resolve => setTimeout(resolve, 2000));
       const normalizedCat = categoryName.replace(/^Category:/, '');
       const fullCatName = `Category:${normalizedCat}`;
       if (visitedCategories.has(fullCatName)) return;
@@ -473,6 +482,8 @@ export default {
             mediainfo_id = 'M' + p.pageid;
           }
           if (p.imageinfo?.[0]?.url) {
+            // Log image being iterated
+            console.log('[CustomGrid] Iterating image:', p.title, mediainfo_id || ('M' + p.pageid));
             images.value.push({
               id: mediainfo_id || ('M' + p.pageid),
               properties: {
@@ -488,6 +499,26 @@ export default {
             // Hide loading spinner as soon as any images are found
             if (loading.value && images.value.length > 0) {
               loading.value = false;
+            }
+            // If too many images are loaded below the fold, pause until user scrolls
+            const visible = window.innerHeight;
+            const pageHeight = document.documentElement.scrollHeight;
+            // Improved: also check if user is already at the bottom
+            const scrollY = window.scrollY || window.pageYOffset;
+            const atBottom = (scrollY + visible + 10) >= pageHeight;
+            if (pageHeight > visible + 1200 && !atBottom) {
+              await new Promise(resolve => {
+                function onScroll() {
+                  const scrollY2 = window.scrollY || window.pageYOffset;
+                  const pageHeight2 = document.documentElement.scrollHeight;
+                  // Resume if user scrolls within 1000px of bottom or is at bottom
+                  if (scrollY2 + visible + 1000 >= pageHeight2 || (scrollY2 + visible + 10) >= pageHeight2) {
+                    window.removeEventListener('scroll', onScroll);
+                    resolve();
+                  }
+                }
+                window.addEventListener('scroll', onScroll);
+              });
             }
           }
         }
