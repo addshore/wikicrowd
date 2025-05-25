@@ -418,60 +418,94 @@ export default {
       loading.value = true;
       let error = '';
       images.value = [];
+      let foundAny = false;
       try {
         const cat = props.manualCategory.trim().replace(/^Category:/, '');
-        const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${encodeURIComponent(cat)}&gcmtype=file&gcmlimit=30&prop=imageinfo|pageprops&iiprop=url&iiurlwidth=300&format=json&origin=*`;
-        const resp = await fetchWithRetry(url);
-        const data = await resp.json();
-        if (!data.query || !data.query.pages) {
-          console.log('No images found in category');
-          allLoaded.value = true;
-          loading.value = false;
-          return;
-        }
-        let rawImages = Object.values(data.query.pages).map(p => {
-          let mediainfo_id = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
-          if (!mediainfo_id && p.title && p.title.startsWith('File:')) {
-            mediainfo_id = 'M' + p.pageid;
+        // Recursively fetch images from category and all subcategories (max depth 100), progressive display
+        await fetchImagesRecursivelyAndPush(cat, new Set(), 0, 100, () => {
+          if (!foundAny && images.value.length > 0) {
+            loading.value = false;
+            foundAny = true;
           }
-          return {
-            id: mediainfo_id || ('M' + p.pageid),
-            properties: {
-              mediainfo_id: mediainfo_id || ('M' + p.pageid),
-              img_url: p.imageinfo?.[0]?.url,
-              depicts_id: props.manualQid,
-              manual: true,
-              category: props.manualCategory
-            },
-            title: p.title
-          };
-        }).filter(img => img.properties.img_url);
-
-        console.log(`Found ${rawImages.length} raw images in category`);
-
-        // --- Filter out images that already depict the QID or a more specific one ---
-        // 1. Get all relevant QIDs (target + subclasses/instances)
+        });
+        // After recursion, filter out images that already depict the QID or a more specific one
         const qidSet = await fetchSubclassesAndInstances(props.manualQid);
-        // 2. Get all mediainfo IDs
-        const mids = rawImages.map(img => img.properties.mediainfo_id);
-        // 3. Fetch depicts for all images
+        const mids = images.value.map(img => img.properties.mediainfo_id);
         const depictsMap = await fetchDepictsForMediaInfoIds(mids);
-        // 4. Filter
-        images.value = rawImages.filter(img => {
+        images.value = images.value.filter(img => {
           const mids = img.properties.mediainfo_id;
           const depicted = depictsMap[mids] || [];
-          // If any depicted QID is in the set, filter out
           return !depicted.some(qid => qidSet.has(qid));
         });
-        
-        console.log(`After filtering, ${images.value.length} images remain`);
         allLoaded.value = true;
       } catch (e) {
         console.error('Error fetching manual images:', e);
         error = e.message || 'Failed to load images';
         allLoaded.value = true;
       } finally {
-        loading.value = false;
+        if (!foundAny) loading.value = false;
+      }
+    }
+
+    // Recursive function to fetch images and push to UI as soon as found
+    async function fetchImagesRecursivelyAndPush(categoryName, visitedCategories, depth, maxDepth, onImagePushed) {
+      if (depth >= maxDepth) return;
+      const normalizedCat = categoryName.replace(/^Category:/, '');
+      const fullCatName = `Category:${normalizedCat}`;
+      if (visitedCategories.has(fullCatName)) return;
+      visitedCategories.add(fullCatName);
+      try {
+        const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${encodeURIComponent(normalizedCat)}&gcmtype=file|subcat&gcmlimit=500&prop=imageinfo|pageprops&iiprop=url&iiurlwidth=300&format=json&origin=*`;
+        const resp = await fetchWithRetry(url);
+        const data = await resp.json();
+        if (!data.query || !data.query.pages) return;
+        const pages = Object.values(data.query.pages);
+        const files = [];
+        const subcategories = [];
+        for (const page of pages) {
+          if (page.ns === 6) files.push(page);
+          else if (page.ns === 14) subcategories.push(page);
+        }
+        // Push images to UI as soon as found (top-level first)
+        for (const p of files) {
+          let mediainfo_id = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
+          if (!mediainfo_id && p.title && p.title.startsWith('File:')) {
+            mediainfo_id = 'M' + p.pageid;
+          }
+          if (p.imageinfo?.[0]?.url) {
+            images.value.push({
+              id: mediainfo_id || ('M' + p.pageid),
+              properties: {
+                mediainfo_id: mediainfo_id || ('M' + p.pageid),
+                img_url: p.imageinfo[0].url,
+                depicts_id: props.manualQid,
+                manual: true,
+                category: props.manualCategory,
+                source_category: fullCatName
+              },
+              title: p.title
+            });
+            // Hide loading spinner as soon as any images are found
+            if (loading.value && images.value.length > 0) {
+              loading.value = false;
+            }
+          }
+        }
+        // Only after top-level images are pushed, recurse into subcategories
+        for (let i = 0; i < subcategories.length; i++) {
+          const subcat = subcategories[i];
+          const subcatName = subcat.title;
+          try {
+            await fetchImagesRecursivelyAndPush(subcatName, visitedCategories, depth + 1, maxDepth, onImagePushed);
+            if (i < subcategories.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+          } catch (error) {
+            console.error(`Error processing subcategory ${subcatName}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching from category ${fullCatName}:`, error);
       }
     }
 
