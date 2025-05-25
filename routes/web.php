@@ -7,7 +7,6 @@ use App\Jobs\AddDepicts;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Answer;
 use App\Http\Controllers\QuestionController;
-use App\Http\Controllers\QuestionGroupController;
 use App\Models\Question;
 use App\Jobs\AddAlias;
 use App\Jobs\SwapDepicts;
@@ -27,7 +26,11 @@ Route::get('/', function () {
     return redirect('/groups');
 })->name('home');
 
-Route::get('/groups', [QuestionGroupController::class, 'showTopLevelGroups'])->name('groups');
+Route::get('/groups', function () {
+    return view('groups', [
+        'apiToken' => auth()->user()?->createToken('web')->plainTextToken ?? null,
+    ]);
+})->name('groups');
 
 Route::middleware('auth:sanctum')->get('/questions/depicts/custom', function () {
     if (!Auth::check()) {
