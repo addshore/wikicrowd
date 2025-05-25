@@ -128,7 +128,6 @@ import DepictsGroupBox from './DepictsGroupBox.vue';
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
 
-const groups = ref({});
 const yamlData = ref(null);
 const levels = ref({});
 const filters = ref([]);
@@ -136,6 +135,7 @@ const hasUnrated = ref(false);
 const unratedGroups = ref([]);
 const difficultyFilters = ref([]);
 const regenerating = ref({});
+const groupsApiData = ref([]);
 
 const emojiForDifficulty = (diff) => {
   switch (diff) {
@@ -180,122 +180,99 @@ const getWikidataUrl = (qid) => {
 };
 
 const visibleGroups = computed(() => {
-  // Merge YAML and group API data
+  // Group questions by 'group' field from YAML only
   const result = [];
   unratedGroups.value = [];
   hasUnrated.value = false;
-  if (!groups.value || !yamlData.value) return result;
-  for (const [groupKey, group] of Object.entries(groups.value)) {
-    const filteredSubGroups = [];
-    for (const sub of group.subGroups) {
-      // Find YAML question for this group by depictsId or name
-      let yamlQ = null;
-      if (yamlData.value.questions) {
-        yamlQ = yamlData.value.questions.find(q => {
-          // Try to match depictsId (strip {{Q|...}})
-          if (q.depictsId && sub.name.endsWith(q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1'))) return true;
-          // Or match by name
-          if (q.name && sub.display_name && q.name === sub.display_name) return true;
-          return false;
-        });
+  if (!yamlData.value || !yamlData.value.questions) return result;
+  // Build a map: groupName -> { display_name, display_description, filteredSubGroups: [] }
+  const groupMap = {};
+  for (const q of yamlData.value.questions) {
+    const groupName = q.group || 'Other';
+    if (!groupMap[groupName]) {
+      groupMap[groupName] = {
+        display_name: groupName,
+        display_description: '', // Optionally add description if present in YAML
+        filteredSubGroups: []
+      };
+    }
+    // Determine difficulty
+    const difficulty = q.difficulty || 'UNRATED';
+    if (difficulty === 'UNRATED') hasUnrated.value = true;
+    if (filters.value.length === 0 || filters.value.includes(difficulty)) {
+      // Normalize categories
+      let cats = [];
+      if (Array.isArray(q.categories)) {
+        cats = q.categories;
+      } else if (Array.isArray(q.category)) {
+        cats = q.category;
+      } else if (q.category) {
+        cats = [q.category];
       }
-      const difficulty = yamlQ?.difficulty || 'UNRATED';
-      if (difficulty === 'UNRATED') hasUnrated.value = true;
-      // Filter by difficulty
-      if (filters.value.length === 0 || filters.value.includes(difficulty)) {
-        const subWithDiff = { ...sub, difficulty };
-        // Add category and wikidata links, and categories array
-        if (yamlQ) {
-          // Support both 'category' and 'categories' (array or string)
-          let cats = [];
-          if (Array.isArray(yamlQ.categories)) cats = yamlQ.categories;
-          else if (Array.isArray(yamlQ.category)) cats = yamlQ.category;
-          else if (yamlQ.category) cats = [yamlQ.category];
-          subWithDiff.categories = cats;
-          subWithDiff.categoryUrl = cats.length ? getCategoryUrl(cats[0]) : null;
-          subWithDiff.wikidataUrl = getWikidataUrl(yamlQ.depictsId);
-          subWithDiff.name = yamlQ.name || sub.display_name || sub.name;
-          // No getSampleImage here; sample image comes from sub.example_question
-        } else {
-          subWithDiff.categories = sub.categories || [];
-          subWithDiff.categoryUrl = null;
-          subWithDiff.wikidataUrl = null;
-          subWithDiff.name = sub.display_name || sub.name;
-          // No sampleImage here; sample image comes from sub.example_question
+      // Find matching API subGroup for extra display data
+      let apiSub = null;
+      if (groupsApiData.value && typeof groupsApiData.value === 'object') {
+        outer: for (const apiGroup of Object.values(groupsApiData.value)) {
+          if (!apiGroup.subGroups) continue;
+          for (const sub of apiGroup.subGroups) {
+            // Match by depictsId (Qid) or name
+            const qid = typeof q.depictsId === 'string' ? q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1') : '';
+            const subQid = sub.depicts_id || '';
+            if (qid && subQid && qid === subQid) { apiSub = sub; break outer; }
+            if (q.name && (sub.display_name === q.name || sub.name === q.name)) { apiSub = sub; break outer; }
+          }
         }
-        // Set a route_name for correct question links
-        if (yamlQ && yamlQ.depictsId) {
-          // Use depictsId for depicts groups
-          subWithDiff.route_name = `depicts/${yamlQ.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')}`;
-        } else if (sub.name && group.name) {
-          // Fallback: use group.name and sub.name
-          subWithDiff.route_name = `${group.name}/${sub.name}`;
-        } else {
-          subWithDiff.route_name = sub.name;
-        }
+      }
+      // Build subGroup object, merging API data if found
+      const sub = {
+        ...q,
+        ...(apiSub || {}), // merge API display data (label, description, unanswered, image, etc.)
+        difficulty,
+        categories: cats,
+        categoryUrl: cats.length ? getCategoryUrl(cats[0]) : null,
+        wikidataUrl: getWikidataUrl(q.depictsId),
+        name: q.name,
+        route_name: q.depictsId ? `depicts/${q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')}` : q.name,
+        id: (q.depictsId || '') + '-' + (q.name || '')
+      };
+      // Only show boxes with unanswered > 0
+      if (sub.unanswered && sub.unanswered > 0) {
         if (difficulty === 'UNRATED') {
-          unratedGroups.value.push(subWithDiff);
+          unratedGroups.value.push(sub);
         } else {
-          filteredSubGroups.push(subWithDiff);
+          groupMap[groupName].filteredSubGroups.push(sub);
         }
       }
     }
-    if (filteredSubGroups.length > 0) {
-      result.push({ ...group, filteredSubGroups });
+  }
+  // Convert map to array, only include groups with questions
+  for (const group of Object.values(groupMap)) {
+    if (group.filteredSubGroups.length > 0) {
+      group.filteredSubGroups.sort((a, b) => (b.unanswered || 0) - (a.unanswered || 0));
+      result.push(group);
     }
   }
   return result;
 });
 
 onMounted(async () => {
+  // Fetch both YAML and API groups from local endpoints
   const [groupsResp, yamlResp] = await Promise.all([
     fetch('/api/groups'),
     fetch('/api/depicts/yaml-spec')
   ]);
-  groups.value = await groupsResp.json();
+  groupsApiData.value = await groupsResp.json();
   yamlData.value = await yamlResp.json();
   levels.value = yamlData.value.global?.levels || {};
   // Set up difficulty filters (only those with questions)
   const allDiffs = new Set();
   for (const q of yamlData.value.questions || []) {
-    if (q.difficulty) allDiffs.add(q.difficulty);
+    if (q.difficulty) { allDiffs.add(q.difficulty); }
   }
   difficultyFilters.value = Array.from(allDiffs);
 });
-
-const regenerateJob = async (q) => {
-  const key = (q.depictsId || '') + '-' + (q.name || '');
-  regenerating.value[key] = true;
-  // Extract Qid if in {{Q|...}} format
-  let depictsId = q.depictsId;
-  const match = typeof depictsId === 'string' && depictsId.match(/^\{\{Q\|(.+)\}\}$/);
-  if (match) depictsId = match[1];
-  try {
-    const resp = await fetch('/api/regenerate-question', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${window.apiToken}`,
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-      },
-      body: JSON.stringify({
-        depictsId
-      })
-    });
-    if (!resp.ok) {
-      if (resp.status === 401) {
-        alert('You must be logged in with an API token to regenerate questions.');
-        return;
-      }
-      alert('Failed to trigger regeneration.');
-    }
-  } catch (e) {
-    console.error('Error triggering regeneration:', e);
-  }
-  regenerating.value[key] = false;
-};
 </script>
 
 <style scoped>
+/* Add any component-specific styles here */
 </style>
