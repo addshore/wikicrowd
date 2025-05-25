@@ -47,36 +47,39 @@
         private $ignoreCategoriesRegex;
         private $depictItemId;
         private $depictName;
-        private $depictsSubGroup;
-        private $depictsRefineSubGroup;
-        private $instancesOfAndSubclassesOf;
-        private $parentInstancesOfAndSubclassesOf;
         private $limit;
-        private $got = 0;
-        private $yamlFile = null; // Add property
 
         /**
-         * Create a new job instance.
+         * Create a new job instance for a single depicts question job.
          *
-         * @return void
+         * @param string $category
+         * @param string|array $ignoreCategories (JSON array string or array)
+         * @param string $ignoreCategoriesRegex
+         * @param string $depictItemId
+         * @param string $depictName
+         * @param int $limit
          */
         public function __construct(
-            string $category = "",
-            string $ignoreCategories = "",
-            string $ignoreCategoriesRegex = "",
-            string $depictItemId = "",
-            string $depictName = "",
-            int $limit = 0,
-            string $yamlFile = null // Add parameter
-            )
+            string $category,
+            $ignoreCategories = [],
+            string $ignoreCategoriesRegex = '',
+            string $depictItemId = '',
+            string $depictName = '',
+            int $limit = 0
+        )
         {
             $this->category = $category;
-            $this->ignoreCategories = explode('|||', $ignoreCategories);
+            // Accept array or JSON string for CLI compatibility
+            if (is_string($ignoreCategories)) {
+                $decoded = json_decode($ignoreCategories, true);
+                $this->ignoreCategories = is_array($decoded) ? $decoded : [];
+            } else {
+                $this->ignoreCategories = $ignoreCategories;
+            }
             $this->ignoreCategoriesRegex = $ignoreCategoriesRegex;
             $this->depictItemId = $depictItemId;
             $this->depictName = $depictName;
             $this->limit = $limit;
-            $this->yamlFile = $yamlFile; // Set property
         }
 
         /**
@@ -95,84 +98,13 @@
          * @return void
          */
         public function handle() {
-            // If we were constructed with values, handle this one instance
-            // Otherwise, query the YAML and run each job
-            if ($this->depictItemId !== "") {
-                $this->handleOne();
-                return;
+            \Log::info("Starting depicts job for category: " . $this->category . ", depictsId: " . $this->depictItemId);
+
+            // Ensure category is prefixed with 'Category:'
+            $categoryName = $this->category;
+            if (stripos($categoryName, 'Category:') !== 0) {
+                $categoryName = 'Category:' . $categoryName;
             }
-
-            // If a specific YAML file is provided, only process that file
-            if ($this->yamlFile !== null) {
-                $depictsYamlFiles = [ $this->yamlFile ];
-            } else {
-                $depictsYamlDir =__DIR__ . '/../../spec/';
-                $depictsYamlFiles = $this->getRecursiveYamlFilesInDirectory( $depictsYamlDir );
-            }
-
-            $depictsJobs = [];
-            foreach( $depictsYamlFiles as $file ) {
-                $file = Yaml::parse(file_get_contents($file), Yaml::PARSE_OBJECT_FOR_MAP);
-                if ( $file === false ) {
-                    \Log::error("Failed to parse YAML file: " . $file);
-                    continue;
-                }
-                if ($file === null ) {
-                    \Log::error("YAML file is empty or invalid: " . $file);
-                    continue;
-                }
-                if( is_array( $file ) ) {
-                    $depictsJobs = array_merge( $depictsJobs, $file );
-                } else {
-                    $depictsJobs[] = $file;
-                }
-            }
-
-            // Remove .all.yml from the list of jobs if it exists
-            $depictsJobs = array_filter( $depictsJobs, function( $job ) {
-                return !isset( $job->all ) || !$job->all;
-            } );
-
-            var_dump( $depictsJobs );
-
-            // Sort the jobs
-            usort( $depictsJobs, function( $a, $b ) {
-                // Sort by category first
-                return strcmp( $a->category, $b->category );
-            } );
-            // Then write them back into a new file called "all.yml"
-            $allYamlFile = __DIR__ . '/../../spec/depicts/.all.yml';
-            file_put_contents( $allYamlFile, Yaml::dump( $depictsJobs, 10, 2, Yaml::DUMP_OBJECT_AS_MAP ) );
-            \Log::info("Wrote all jobs to: " . $allYamlFile);
-
-            // Randomize the order of the jobs
-            shuffle( $depictsJobs );
-
-            foreach( $depictsJobs as $job ) {
-                // Make sure that job is an object
-                if( !is_object( $job ) ) {
-                    \Log::info("Job is not an object");
-                    continue;
-                }
-                // Make sure it has the required fields
-                if( !isset( $job->category ) || !isset( $job->depictsId ) || !isset( $job->name ) || !isset( $job->limit ) ) {
-                    \Log::info("Job is missing required fields");
-                    continue;
-                }
-
-                $inner = new self(
-                    $job->category,
-                    isset($job->exclude) ? implode('|||', $job->exclude) : "",
-                    isset($job->excludeRegex) ? $job->excludeRegex : "",
-                    $job->depictsId,
-                    $job->name,
-                    $job->limit
-                );
-                $inner->handle();
-            }
-        }
-
-        public function handleOne() {
             $this->createQuestionGroups();
 
             // Figure out how many questions for the category we already have
@@ -242,7 +174,7 @@
                 }
                 $this->processFilePage( $pageIdentifier );
             } );
-            $traverser->descend( new Page( new PageIdentifier( new Title( $this->category, 14 ) ) ) );
+            $traverser->descend( new Page( new PageIdentifier( new Title( $categoryName, 14 ) ) ) );
         }
 
         private function getFileExtensionFromName( string $name ){
@@ -406,7 +338,7 @@
 
                 Question::create([
                     'question_group_id' => $this->depictsRefineSubGroup,
-                    // TODO don't harcode group name?
+                    // TODO don't hardcode group name?
                     'unique_id' => $this->uniqueQuestionID( 'depicts-refine', $filePageIdentifier ),
                     'properties' => [
                         'mediainfo_id' => $mid->getSerialization(),
@@ -426,7 +358,7 @@
             // Create the add depicts questions
             Question::create([
                 'question_group_id' => $this->depictsSubGroup,
-                // TODO don't harcode group name?
+                // TODO don't hardcode group name?
                 'unique_id' => $this->uniqueQuestionID( 'depicts', $filePageIdentifier ),
                 'properties' => [
                     'mediainfo_id' => $mid->getSerialization(),

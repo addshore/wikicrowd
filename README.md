@@ -8,7 +8,7 @@ The [currently deployed web app](https://wikicrowd.toolforge.org) built using La
 
 ## Question generation
 
-Question genertation is done using Laravel jobs.
+Question generation is done using Laravel jobs.
 
 For the primary questions (depicts), checkout the `spec` folder the the yaml that is used to generate the questions.
 
@@ -33,16 +33,24 @@ On first setup you'll need to create the databases.
 ./vendor/bin/sail artisan migrate
 ```
 
-You can then generate a couple of questions (just exit the command early so it doesnt run forever)
+You can then generate questions using the YAML that is on commons in the queue...
+
+https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml
 
 ```sh
-./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestions "Category:Bicycles" "" "/(Videos|art|drawings|Models|components|advertising|tools|statistics|aviation|chic|equipment|industry|logo|maintenance|manufacturing|museums|parking|pranks|recycling|shops|shirts|shows|tracks|transport of)/i" Q11442 "Bicycle (pedal-driven two-wheel)" 10
+./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestionsFromYaml
 ```
 
-Or, to generate questions from only a single YAML file:
+You can also apply an item filter, and generate questions in the same process...
 
 ```sh
-./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestions "" "" "" "" "" 0 "/var/www/html/spec/depicts/animal/redpanda.yml"
+./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestionsFromYaml Q133585 "" 1 true
+```
+
+And also manually generate specific questions...
+
+```sh
+./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestions "Bicycles" "[\"foo\",\"bar\"]" "/(Videos)/i" Q11442 "Bicycle (pedal-driven two-wheel)" 10 true
 ```
 
 Then find the site at http://localhost
