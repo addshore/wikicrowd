@@ -59,7 +59,6 @@
           https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml
         </a>
       </span>
-      <span class="block mt-2 text-sm text-gray-700 dark:text-gray-300">All questions should already regenerate every 6 hours...</span>
       <span class="block mt-2 text-sm text-gray-700 dark:text-gray-300">
         If you have made changes to the YAML file, you can regenerate questions here.</span>
     </div>

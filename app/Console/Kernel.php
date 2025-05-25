@@ -17,12 +17,6 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // $schedule->command('inspire')->hourly();
-
-        // GenerateDepictsQuestionsFromYaml: schedule every 6 hours to process all YAML questions
-        $schedule->job(
-            new GenerateDepictsQuestionsFromYaml(),
-            "low"
-        )->everySixHours();
     }
 
     /**
