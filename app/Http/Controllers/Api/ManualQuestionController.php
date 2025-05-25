@@ -8,6 +8,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Question;
 use App\Models\Answer;
+use Addwiki\Wikimedia\Api\WikimediaFactory;
+use Addwiki\Mediawiki\Api\MediawikiFactory;
+use Wikibase\MediaInfo\DataModel\MediaInfoId;
+use Wikibase\DataModel\Entity\PropertyId;
+use Wikibase\DataModel\Entity\ItemId;
+use Addwiki\Wikibase\Query\PrefixSets;
+use Illuminate\Support\Facades\Cache;
 
 class ManualQuestionController extends Controller
 {
@@ -53,8 +60,16 @@ class ManualQuestionController extends Controller
 
         // Dispatch the edit job if the answer is 'yes' (for depicts)
         if ($request->input('answer') === 'yes') {
-            // For custom/manual, always treat as 'depicts' job
-            dispatch(new \App\Jobs\AddDepicts($answer->id));
+            // Check for superclass depicts
+            $oldQid = $this->getSuperclassDepictsQid($request->input('mediainfo_id'), $request->input('qid'));
+            if ($oldQid) {
+                // Add old_depicts_id to question properties for SwapDepicts
+                $question->properties = array_merge($question->properties, ['old_depicts_id' => $oldQid]);
+                $question->save();
+                dispatch(new \App\Jobs\SwapDepicts($answer->id));
+            } else {
+                dispatch(new \App\Jobs\AddDepicts($answer->id));
+            }
         }
 
         return response()->json(['message' => 'Question answered', 'question_id' => $question->id, 'answer_id' => $answer->id]);
@@ -100,7 +115,14 @@ class ManualQuestionController extends Controller
                 'answer' => $input['answer'],
             ]);
             if ($input['answer'] === 'yes') {
-                dispatch(new \App\Jobs\AddDepicts($answer->id));
+                $oldQid = $this->getSuperclassDepictsQid($input['mediainfo_id'], $input['qid']);
+                if ($oldQid) {
+                    $question->properties = array_merge($question->properties, ['old_depicts_id' => $oldQid]);
+                    $question->save();
+                    dispatch(new \App\Jobs\SwapDepicts($answer->id));
+                } else {
+                    dispatch(new \App\Jobs\AddDepicts($answer->id));
+                }
             }
             $results[] = [
                 'question_id' => $question->id,
@@ -111,5 +133,59 @@ class ManualQuestionController extends Controller
             'message' => 'Bulk manual questions answered',
             'results' => $results
         ]);
+    }
+
+    /**
+     * Helper to determine if a depicts swap is needed, and return the old QID if so.
+     * Returns null if no swap is needed, or the old QID if a superclass is present.
+     */
+    private function getSuperclassDepictsQid($mediainfoId, $depictsQid)
+    {
+        // Setup MediaWiki API client
+        $mwAuth = new \Addwiki\Mediawiki\Api\Client\Auth\OAuthOwnerConsumer(
+            config('services.mediawiki.identifier'),
+            config('services.mediawiki.secret'),
+            Auth::user()->token,
+            Auth::user()->token_secret
+        );
+        $wm = new WikimediaFactory();
+        $wbServices = $wm->newWikibaseFactoryForDomain("commons.wikimedia.org", $mwAuth);
+        $mid = new MediaInfoId($mediainfoId);
+        $depictsProperty = new PropertyId('P180');
+        $depictsValue = new ItemId($depictsQid);
+        // Get all superclasses of the new QID
+        $superclasses = Cache::remember('instancesOfAndSubclassesOf:' . $depictsQid, 60*2, function () use ($depictsQid) {
+            $query = (new \Addwiki\Wikibase\Query\WikibaseQueryFactory(
+                "https://query.wikidata.org/sparql",
+                PrefixSets::WIKIDATA
+            ))->newWikibaseQueryService();
+            $result = $query->query("SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279*|wdt:P279/wdt:P279* wd:{$depictsQid} }");
+            $ids = [];
+            foreach ($result['results']['bindings'] as $binding) {
+                $ids[] = $this->getLastPartOfUrlPath($binding['i']['value']);
+            }
+            return $ids;
+        });
+        // Lookup entity
+        $entity = $wbServices->newEntityLookup()->getEntity($mid);
+        if ($entity === null) {
+            return null;
+        }
+        foreach ($entity->getStatements()->getByPropertyId($depictsProperty)->toArray() as $statement) {
+            if ($statement->getMainSnak()->getType() !== 'value') {
+                continue;
+            }
+            $entityId = $statement->getMainSnak()->getDataValue()->getEntityId();
+            $entityQid = $entityId->getSerialization();
+            if (in_array($entityQid, $superclasses)) {
+                return $entityQid;
+            }
+        }
+        return null;
+    }
+
+    private function getLastPartOfUrlPath(string $urlPath): string {
+        $parts = explode('/', $urlPath);
+        return end($parts);
     }
 }
