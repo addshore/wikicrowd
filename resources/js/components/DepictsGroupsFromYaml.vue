@@ -4,7 +4,8 @@
       <div class="font-semibold text-base mb-1">Important notes</div>
       <ul class="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300">
         <li>Using this tool will result in edits being made for your account, you are responsible for these edits.</li>
-        <li>Familiarize yourself with the Qid concept that you are tagging before you begin</li>
+        <li>Familiarize yourself with the Qid concept that you are tagging before you begin. <b>Read the labels and descriptions in your own language.</b></li>
+        <li class="font-bold text-red-600">A statue, or painting of a thing, is not the thing itself (does not depict)</li>
         <li>Familiarize yourself with <a href="https://commons.wikimedia.org/wiki/Commons:Depicts" target="_blank" rel="noopener" class="text-blue-700 underline">https://commons.wikimedia.org/wiki/Commons:Depicts</a></li>
         <li>
           Config for this tool can be found at
