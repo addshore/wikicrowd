@@ -110,7 +110,7 @@
                   <button
                     class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                     @click="regenerateJob(q)"
-                    :disabled="q.unanswered > 100"
+                    :disabled="regenerating[q.id]"
                   >
                     <span v-if="regenerating[q.id]">Regenerating...</span>
                     <span v-else>Regenerate</span>
@@ -119,7 +119,7 @@
                     v-if="typeof q.unanswered === 'number' && q.unanswered > 0"
                     class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
                     @click="clearUnanswered(q)"
-                    :disabled="clearing[q.id]"
+                    :disabled="clearing[q.id] || clearing.__allDisabled"
                   >
                     <span v-if="clearing[q.id]">Clearing...</span>
                     <span v-else>Clear</span>
@@ -312,6 +312,7 @@ const hasUnrated = computed(() => mergedQuestions.value.some(q => q.difficulty =
 const regenerateJob = async (q) => {
   const key = (q.depictsId || '') + '-' + (q.name || '');
   regenerating.value[key] = true;
+  alert('Regenerating happens via a background queue, and it may take some time for questions to start appearing.');
   // Extract Qid if in {{Q|...}} format
   let depictsId = q.depictsId;
   const match = typeof depictsId === 'string' && depictsId.match(/^\{\{Q\|(.+)\}\}$/);
@@ -339,12 +340,16 @@ const regenerateJob = async (q) => {
   } catch (e) {
     console.error('Error triggering regeneration:', e);
   }
-  regenerating.value[key] = false;
+  // Do not re-enable the button
 };
 
 const clearUnanswered = async (q) => {
   const key = (q.depictsId || '') + '-' + (q.name || '');
+  // Disable the clear button for this question for the rest of the session
   clearing.value[key] = true;
+  // Also mark a global flag to prevent any further clears
+  clearing.value.__allDisabled = true;
+  alert('Questions clearing in the background, this may take some time...');
   try {
     // Always clear the main depicts group
     const requests = [
@@ -357,7 +362,7 @@ const clearUnanswered = async (q) => {
           'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
         },
         body: JSON.stringify({
-          groupName: q.route_name
+          groupName: q.route_name // Use the actual group name as used in the backend
         })
       })
     ];
@@ -380,23 +385,11 @@ const clearUnanswered = async (q) => {
         );
       }
     }
-    const responses = await Promise.all(requests);
-    for (const resp of responses) {
-      if (!resp.ok) {
-        if (resp.status === 401) {
-          alert('You must be logged in with an API token to clear unanswered questions.');
-          clearing.value[key] = false;
-          return;
-        }
-        alert('Failed to clear unanswered questions.');
-        clearing.value[key] = false;
-        return;
-      }
-    }
+    await Promise.all(requests);
   } catch (e) {
     console.error('Error clearing unanswered questions:', e);
   }
-  clearing.value[key] = false;
+  // Do not re-enable the button
 };
 
 </script>
