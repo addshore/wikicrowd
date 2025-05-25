@@ -437,9 +437,11 @@ export default {
         const qidSet = await fetchSubclassesAndInstances(props.manualQid);
         const mids = images.value.map(img => img.properties.mediainfo_id);
         const depictsMap = await fetchDepictsForMediaInfoIds(mids);
+        console.log(`[CustomGrid] Depicts map for ${mids.length} images:`, depictsMap);
         images.value = images.value.filter(img => {
           const mids = img.properties.mediainfo_id;
           const depicted = depictsMap[mids] || [];
+          console.log(`[CustomGrid] Filtering image ${img.id} (${mids}) with depicts:`, depicted);
           return !depicted.some(qid => qidSet.has(qid));
         });
         allLoaded.value = true;
@@ -475,50 +477,61 @@ export default {
           if (page.ns === 6) files.push(page);
           else if (page.ns === 14) subcategories.push(page);
         }
-        // Push images to UI as soon as found (top-level first)
-        for (const p of files) {
-          let mediainfo_id = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
-          if (!mediainfo_id && p.title && p.title.startsWith('File:')) {
-            mediainfo_id = 'M' + p.pageid;
-          }
-          if (p.imageinfo?.[0]?.url) {
-            // Log image being iterated
-            console.log('[CustomGrid] Iterating image:', p.title, mediainfo_id || ('M' + p.pageid));
-            images.value.push({
-              id: mediainfo_id || ('M' + p.pageid),
-              properties: {
-                mediainfo_id: mediainfo_id || ('M' + p.pageid),
-                img_url: p.imageinfo[0].url,
-                depicts_id: props.manualQid,
-                manual: true,
-                category: props.manualCategory,
-                source_category: fullCatName
-              },
-              title: p.title
-            });
-            // Hide loading spinner as soon as any images are found
-            if (loading.value && images.value.length > 0) {
-              loading.value = false;
+        // --- Filtering logic: fetch depicts for all files, filter before pushing ---
+        if (files.length > 0) {
+          const qidSet = await fetchSubclassesAndInstances(props.manualQid);
+          const mids = files.map(p => {
+            let mid = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
+            if (!mid && p.title && p.title.startsWith('File:')) {
+              mid = 'M' + p.pageid;
             }
-            // If too many images are loaded below the fold, pause until user scrolls
-            const visible = window.innerHeight;
-            const pageHeight = document.documentElement.scrollHeight;
-            // Improved: also check if user is already at the bottom
-            const scrollY = window.scrollY || window.pageYOffset;
-            const atBottom = (scrollY + visible + 10) >= pageHeight;
-            if (pageHeight > visible + 1200 && !atBottom) {
-              await new Promise(resolve => {
-                function onScroll() {
-                  const scrollY2 = window.scrollY || window.pageYOffset;
-                  const pageHeight2 = document.documentElement.scrollHeight;
-                  // Resume if user scrolls within 1000px of bottom or is at bottom
-                  if (scrollY2 + visible + 1000 >= pageHeight2 || (scrollY2 + visible + 10) >= pageHeight2) {
-                    window.removeEventListener('scroll', onScroll);
-                    resolve();
-                  }
+            return mid;
+          });
+          const depictsMap = await fetchDepictsForMediaInfoIds(mids);
+          for (const p of files) {
+            let mediainfo_id = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
+            if (!mediainfo_id && p.title && p.title.startsWith('File:')) {
+              mediainfo_id = 'M' + p.pageid;
+            }
+            if (p.imageinfo?.[0]?.url) {
+              const depicted = depictsMap[mediainfo_id] || [];
+              // Only push if none of the depicted QIDs are in the ignore tree
+              if (!depicted.some(qid => qidSet.has(qid))) {
+                images.value.push({
+                  id: mediainfo_id || ('M' + p.pageid),
+                  properties: {
+                    mediainfo_id: mediainfo_id || ('M' + p.pageid),
+                    img_url: p.imageinfo[0].url,
+                    depicts_id: props.manualQid,
+                    manual: true,
+                    category: props.manualCategory,
+                    source_category: fullCatName
+                  },
+                  title: p.title
+                });
+                // Hide loading spinner as soon as any images are found
+                if (loading.value && images.value.length > 0) {
+                  loading.value = false;
                 }
-                window.addEventListener('scroll', onScroll);
-              });
+                // If too many images are loaded below the fold, pause until user scrolls
+                const visible = window.innerHeight;
+                const pageHeight = document.documentElement.scrollHeight;
+                const scrollY = window.scrollY || window.pageYOffset;
+                const atBottom = (scrollY + visible + 10) >= pageHeight;
+                if (pageHeight > visible + 1200 && !atBottom) {
+                  await new Promise(resolve => {
+                    function onScroll() {
+                      const scrollY2 = window.scrollY || window.pageYOffset;
+                      const pageHeight2 = document.documentElement.scrollHeight;
+                      if (scrollY2 + visible + 1000 >= pageHeight2 || (scrollY2 + visible + 10) >= pageHeight2) {
+                        window.removeEventListener('scroll', onScroll);
+                        resolve();
+                      }
+                    }
+                    window.addEventListener('scroll', onScroll);
+                  });
+                }
+              }
             }
           }
         }
