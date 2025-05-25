@@ -13,13 +13,13 @@
       <div class="ml-4 text-sm text-gray-500 sm:ml-0">
         <p>Developed by <a href="https://twitter.com/addshore" target="_blank">Addshore</a> (<a href="https://github.com/addshore/wikicrowd" target="_blank">source code</a>)</p>
         <p>Questions: {{ stats.questions }} | Answers: {{ stats.answers }} | Edits: {{ stats.edits }} | Users: {{ stats.users }}</p>
-        <p>
+        <!-- <p>
           Wikidata:&nbsp;
           <a target="_blank" href="https://www.wikidata.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2">All edits</a>
           <span v-if="isAuthed">/
             <a target="_blank" href="https://www.wikidata.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2&hidebyothers=1">Your edits</a>
           </span>
-        </p>
+        </p> -->
         <p>
           Commons:&nbsp;
           <a target="_blank" href="https://commons.wikimedia.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2">All edits</a>
