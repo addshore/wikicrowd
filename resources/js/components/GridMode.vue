@@ -92,6 +92,17 @@
           style="object-position:top"
           @error="handleImgError(image)"
         />
+        
+        <!-- Magnifying glass icon -->
+        <button 
+          @click="(e) => openFullscreen(image, e)"
+          class="absolute bottom-8 right-2 bg-black bg-opacity-60 hover:bg-opacity-80 text-white p-1.5 rounded-full transition-all z-10"
+          title="View fullscreen"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
+          </svg>
+        </button>
         <div class="image-title px-2 py-1 text-xs text-center truncate bg-white bg-opacity-80 w-full"
         >
           <a :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + image.properties?.mediainfo_id" target="_blank">{{ image.properties?.mediainfo_id || image.id }}</a>
@@ -121,6 +132,44 @@
       <button class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded shadow" @click="fetchNextImages(10)">
         Load More
       </button>
+    </div>
+    
+    <!-- Fullscreen Modal -->
+    <div v-if="showFullscreen && fullscreenImage" 
+         class="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
+         @click="closeFullscreen">
+      <div class="relative max-w-full max-h-full flex flex-col">
+        <!-- Close button -->
+        <button 
+          @click="closeFullscreen"
+          class="absolute top-4 right-4 bg-black bg-opacity-60 hover:bg-opacity-80 text-white p-2 rounded-full z-10"
+          title="Close fullscreen"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+        
+        <!-- Main image -->
+        <img 
+          :src="fullscreenImageUrl" 
+          :alt="`Fullscreen Image ${fullscreenImage.id}`"
+          class="max-h-[80vh] max-w-full object-contain cursor-pointer"
+          @click="closeFullscreen"
+          draggable="false"
+        />
+        
+        <!-- Image info -->
+        <div class="mt-4 text-white text-center">
+          <a 
+            :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + fullscreenImage.properties?.mediainfo_id" 
+            target="_blank"
+            class="text-blue-300 hover:text-blue-100 underline"
+          >
+            {{ fullscreenImage.properties?.mediainfo_id || fullscreenImage.id }}
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -157,6 +206,11 @@ export default {
     const autoSave = ref(true);
     const autoSaveDelay = ref(10); // seconds
     const pendingAnswers = ref([]); // {id, mode}
+
+    // Fullscreen modal state
+    const showFullscreen = ref(false);
+    const fullscreenImage = ref(null);
+    const fullscreenImageUrl = ref('');
 
     // Batch for progressive fill
     const batch = ref([]);
@@ -445,6 +499,72 @@ export default {
       images.value = images.value.filter(img => !answered.value.has(img.id));
     }
 
+    // Get full-size image URL from Commons
+    const getFullSizeImageUrl = async (image) => {
+      try {
+        // If this is a manual mode image, we need to get the full size URL
+        if (props.manualMode && image.title) {
+          const filename = image.title.replace('File:', '');
+          const url = `https://commons.wikimedia.org/w/api.php?action=query&titles=File:${encodeURIComponent(filename)}&prop=imageinfo&iiprop=url&format=json&origin=*`;
+          const response = await fetch(url);
+          const data = await response.json();
+          const pages = data.query?.pages;
+          if (pages) {
+            const page = Object.values(pages)[0];
+            return page.imageinfo?.[0]?.url || image.properties.img_url;
+          }
+        }
+        
+        // For regular images, try to get full size by removing width parameter
+        const currentUrl = image.properties.img_url;
+        if (currentUrl.includes('/thumb/') && currentUrl.includes('px-')) {
+          // Remove the thumbnail part to get original
+          return currentUrl.replace(/\/thumb\/(.+?)\/\d+px-.+$/, '/$1');
+        }
+        
+        return currentUrl;
+      } catch (error) {
+        console.error('Error getting full size image:', error);
+        return image.properties.img_url;
+      }
+    };
+
+    // Open fullscreen modal
+    const openFullscreen = async (image, event) => {
+      event.stopPropagation(); // Prevent triggering the image selection
+      fullscreenImage.value = image;
+      fullscreenImageUrl.value = await getFullSizeImageUrl(image);
+      showFullscreen.value = true;
+      
+      // Disable scrolling on body
+      document.body.style.overflow = 'hidden';
+    };
+
+    // Close fullscreen modal
+    const closeFullscreen = () => {
+      showFullscreen.value = false;
+      fullscreenImage.value = null;
+      fullscreenImageUrl.value = '';
+      
+      // Re-enable scrolling on body
+      document.body.style.overflow = '';
+    };
+
+    // Handle image load errors with retry logic
+    const handleImgError = (image) => {
+      const retryCount = imageRetries[image.id] || 0;
+      if (retryCount < MAX_IMAGE_RETRIES) {
+        imageRetries[image.id] = retryCount + 1;
+        // Add a small delay before retry
+        setTimeout(() => {
+          const imgElement = document.querySelector(`img[alt="Image ${image.id}"]`);
+          if (imgElement) {
+            imgElement.src = image.properties.img_url + '?retry=' + imageRetries[image.id];
+          }
+        }, 1000 * retryCount);
+      }
+    };
+
     // On mount, if manualMode, fetch manual images
     onMounted(() => {
       if (props.manualMode) {
@@ -460,9 +580,19 @@ export default {
         // Keyboard shortcuts for answer mode
         window.addEventListener('keydown', (e) => {
           if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-          if (e.key === '1') answerMode.value = 'yes';
-          if (e.key === '2') answerMode.value = 'no';
-          if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
+          
+          // Close fullscreen on Escape
+          if (e.key === 'Escape' && showFullscreen.value) {
+            closeFullscreen();
+            return;
+          }
+          
+          // Answer mode shortcuts (only when not in fullscreen)
+          if (!showFullscreen.value) {
+            if (e.key === '1') answerMode.value = 'yes';
+            if (e.key === '2') answerMode.value = 'no';
+            if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
+          }
         });
       }
     });
@@ -512,6 +642,12 @@ export default {
       saveAllPending,
       sendAnswer: sendAnswerToUse,
       onSaveClickHandler,
+      handleImgError,
+      showFullscreen,
+      fullscreenImage,
+      fullscreenImageUrl,
+      openFullscreen,
+      closeFullscreen,
     };
   },
 };
