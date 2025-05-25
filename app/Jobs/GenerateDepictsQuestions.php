@@ -17,10 +17,12 @@
     use Addwiki\Wikibase\Query\PrefixSets;
     use Illuminate\Contracts\Queue\ShouldBeUnique;
     use Symfony\Component\Yaml\Yaml;
+    use Illuminate\Bus\Batchable;
+    use Illuminate\Support\Facades\Bus;
 
     class GenerateDepictsQuestions implements ShouldQueue, ShouldBeUnique
     {
-        use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+        use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, Batchable;
 
         /**
          * The number of seconds the job can run before timing out.
@@ -48,6 +50,7 @@
         private $depictItemId;
         private $depictName;
         private $limit;
+        private $recursionDepth;
 
         /**
          * Create a new job instance for a single depicts question job.
@@ -58,6 +61,7 @@
          * @param string $depictItemId
          * @param string $depictName
          * @param int $limit
+         * @param string|null $batchId
          */
         public function __construct(
             string $category,
@@ -65,11 +69,12 @@
             string $ignoreCategoriesRegex = '',
             string $depictItemId = '',
             string $depictName = '',
-            int $limit = 0
+            int $limit = 0,
+            string $batchId = null,
+            int $recursionDepth = 0
         )
         {
             $this->category = $category;
-            // Accept array or JSON string for CLI compatibility
             if (is_string($ignoreCategories)) {
                 $decoded = json_decode($ignoreCategories, true);
                 $this->ignoreCategories = is_array($decoded) ? $decoded : [];
@@ -80,6 +85,8 @@
             $this->depictItemId = $depictItemId;
             $this->depictName = $depictName;
             $this->limit = $limit;
+            $this->batchId = $batchId;
+            $this->recursionDepth = $recursionDepth;
         }
 
         /**
@@ -89,7 +96,8 @@
          */
         public function uniqueId()
         {
-            return $this->depictItemId;
+            // Uniqueness is per depictItemId (and batch)
+            return $this->depictItemId . ($this->batchId ? (':' . $this->batchId) : '');
         }
 
         /**
@@ -98,7 +106,7 @@
          * @return void
          */
         public function handle() {
-            \Log::info("Starting depicts job for category: " . $this->category . ", depictsId: " . $this->depictItemId);
+            \Log::info("Starting depicts job for category: " . $this->category . ", depictsId: " . $this->depictItemId . ", batchId: " . ($this->batchId ?? 'none'));
 
             // Ensure category is prefixed with 'Category:'
             $categoryName = $this->category;
@@ -127,17 +135,28 @@
             $this->parentInstancesOfAndSubclassesOf = $this->parentInstancesOfAndSubclassesOf( $this->depictItemId );
 
             $mwServices = (new \Addwiki\Wikimedia\Api\WikimediaFactory())->newMediawikiFactoryForDomain( self::COMMONS );
-
-            // Recursively descend the category looking for files
             $traverser = $mwServices->newCategoryTraverser();
-            $traverser->addCallback( CategoryTraverser::CALLBACK_CATEGORY, function( Page $member, Page $rootCat ) {
+
+            // Add this category to the ignore list to prevent recursion
+            $currentIgnore = $this->ignoreCategories;
+            if (!in_array($categoryName, $currentIgnore)) {
+                $currentIgnore[] = $categoryName;
+            }
+
+            $batchId = $this->batchId;
+            $subJobs = [];
+
+            $traverser->addCallback( \Addwiki\Mediawiki\Api\Service\CategoryTraverser::CALLBACK_CATEGORY, function( $member, $rootCat ) use (&$subJobs, $currentIgnore, $batchId ) {
                 if( $this->got >= $this->limit ) {
                     \Log::info("Limit reached");
                     return false;
                 }
+                if ($this->recursionDepth >= 100) {
+                    \Log::info("Max recursion depth reached ({$this->recursionDepth}), not scheduling sub-job for category: " . $member->getPageIdentifier()->getTitle()->getText());
+                    return false;
+                }
                 $memberText = $member->getPageIdentifier()->getTitle()->getText();
-                $rootText = $rootCat->getPageIdentifier()->getTitle()->getText();
-                if(in_array($memberText, $this->ignoreCategories)) {
+                if(in_array($memberText, $currentIgnore)) {
                     \Log::info("Ignoring text match $memberText");
                     return false;
                 }
@@ -145,9 +164,22 @@
                     \Log::info("Ignoring regex match $memberText");
                     return false;
                 }
-                \Log::info("Processing: " . $memberText . ", Parent was: " . $rootText);
+                \Log::info("Dispatching sub-job for category: $memberText at recursion depth " . ($this->recursionDepth + 1));
+                // Dispatch a new job for this subcategory
+                $subJobs[] = new GenerateDepictsQuestions(
+                    $memberText,
+                    $currentIgnore,
+                    $this->ignoreCategoriesRegex,
+                    $this->depictItemId,
+                    $this->depictName,
+                    $this->limit,
+                    $batchId,
+                    $this->recursionDepth + 1
+                );
+                // Don't descend further in this job
+                return false;
             } );
-            $traverser->addCallback( CategoryTraverser::CALLBACK_PAGE, function( Page $member, Page $rootCat ) {
+            $traverser->addCallback( \Addwiki\Mediawiki\Api\Service\CategoryTraverser::CALLBACK_PAGE, function( $member, $rootCat ) {
                 // Terrible limiting, but the only way to do it right now..
                 if( $this->got >= $this->limit ) {
                     \Log::info("Limit reached");
@@ -160,11 +192,11 @@
                 }
                 // Skip anything that is not an image
                 if( !in_array( $this->getFileExtensionFromName( $pageIdentifier->getTitle()->getText() ), self::IMAGE_FILE_EXTENSIONS ) ) {
-                    \Log::info("Non image");
+                    \Log::info("Non image file: " . $pageIdentifier->getTitle()->getText());
                     return;
                 }
                 // Skip pages we already generated a question for of any depicts type
-                if (Question::whereIn('question_group_id', [ $this->depictsSubGroup, $this->depictsRefineSubGroup] )
+                if (\App\Models\Question::whereIn('question_group_id', [ $this->depictsSubGroup, $this->depictsRefineSubGroup] )
                         ->whereIn('unique_id', [ $this->uniqueQuestionID( 'depicts', $pageIdentifier ), $this->uniqueQuestionID( 'depicts-refine', $pageIdentifier ) ])
                         ->exists()
                     ) {
@@ -174,7 +206,18 @@
                 }
                 $this->processFilePage( $pageIdentifier );
             } );
-            $traverser->descend( new Page( new PageIdentifier( new Title( $categoryName, 14 ) ) ) );
+            $traverser->descend( new \Addwiki\Mediawiki\DataModel\Page( new \Addwiki\Mediawiki\DataModel\PageIdentifier( new \Addwiki\Mediawiki\DataModel\Title( $categoryName, 14 ) ) ) );
+
+            // Dispatch all subcategory jobs as a batch if any
+            if (!empty($subJobs)) {
+                if ($batchId) {
+                    Bus::batch($subJobs)->name('depicts:' . $this->depictItemId)->dispatch();
+                } else {
+                    // If this is the root job, create a new batch and pass its ID to sub-jobs
+                    $batch = Bus::batch($subJobs)->name('depicts:' . $this->depictItemId)->dispatch();
+                    $this->batchId = $batch->id;
+                }
+            }
         }
 
         private function getFileExtensionFromName( string $name ){
@@ -303,11 +346,11 @@
             }
 
             if($foundDepicts['exact'] > 0) {
-                \Log::info("Exact depicts found");
+                \Log::info("Exact depicts found for " . $filePageIdentifier->getTitle()->getText());
                 return false;
             }
             if($foundDepicts['moreSpecific'] > 0) {
-                \Log::info("More specific depicts found");
+                \Log::info("More specific depicts found for " . $filePageIdentifier->getTitle()->getText());
                 return false;
             }
 
