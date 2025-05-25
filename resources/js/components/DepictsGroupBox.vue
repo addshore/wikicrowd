@@ -1,8 +1,9 @@
 <template>
   <a :href="'/questions/' + props.sub.name" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex flex-col group hover:bg-blue-50 dark:hover:bg-gray-700 transition cursor-pointer" style="text-decoration: none;">
+    <!-- Use YAML name if available -->
     <div class="font-semibold text-lg text-gray-900 dark:text-white mb-1 flex items-center">
       <span>{{ props.emojiForDifficulty(props.sub.difficulty) }}</span>
-      <span class="ml-2">{{ props.sub.display_name }}</span>
+      <span class="ml-2">{{ props.sub.name}}</span>
     </div>
     <div v-if="props.sub.depicts_id" class="text-xs text-blue-700 mb-1 flex items-center">
       <a :href="props.getWikidataUrl(props.sub.depicts_id)" target="_blank" rel="noopener" class="hover:underline flex items-center" @click.stop>

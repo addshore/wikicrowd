@@ -134,11 +134,13 @@ const visibleGroups = computed(() => {
           subWithDiff.categories = cats;
           subWithDiff.categoryUrl = cats.length ? getCategoryUrl(cats[0]) : null;
           subWithDiff.wikidataUrl = getWikidataUrl(yamlQ.depictsId);
+          subWithDiff.name = yamlQ.name || sub.display_name || sub.name;
           // No getSampleImage here; sample image comes from sub.example_question
         } else {
           subWithDiff.categories = sub.categories || [];
           subWithDiff.categoryUrl = null;
           subWithDiff.wikidataUrl = null;
+          subWithDiff.name = sub.display_name || sub.name;
           // No sampleImage here; sample image comes from sub.example_question
         }
         if (difficulty === 'UNRATED') {
