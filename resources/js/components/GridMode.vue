@@ -90,6 +90,7 @@
           draggable="false"
           class="object-contain align-top w-full h-[22vw] min-h-[180px] max-h-[320px]"
           style="object-position:top"
+          @error="handleImgError(image)"
         />
         <div class="image-title px-2 py-1 text-xs text-center truncate bg-white bg-opacity-80 w-full"
         >
@@ -160,6 +161,10 @@ export default {
     // Batch for progressive fill
     const batch = ref([]);
     const BATCH_SIZE = 100;
+
+    // Track image load retries
+    const imageRetries = reactive({});
+    const MAX_IMAGE_RETRIES = 3;
 
     // Helper to move from batch to images
     function fillImagesFromBatch(count) {
