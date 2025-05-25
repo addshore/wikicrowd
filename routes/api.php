@@ -34,4 +34,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/clear-unanswered', [\App\Http\Controllers\Api\RemoveUnansweredQuestionsController::class, 'clear'])
     ->name('api.clear-unanswered');
     Route::post('/manual-question/answer', [\App\Http\Controllers\Api\ManualQuestionController::class, 'createAndAnswer']);
+    Route::post('/manual-question/bulk-answer', [\App\Http\Controllers\Api\ManualQuestionController::class, 'bulkCreateAndAnswer']);
 });

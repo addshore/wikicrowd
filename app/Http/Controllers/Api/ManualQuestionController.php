@@ -59,4 +59,57 @@ class ManualQuestionController extends Controller
 
         return response()->json(['message' => 'Question answered', 'question_id' => $question->id, 'answer_id' => $answer->id]);
     }
+
+    /**
+     * Bulk create (if needed) and answer manual questions.
+     */
+    public function bulkCreateAndAnswer(Request $request)
+    {
+        $v = Validator::make($request->all(), [
+            'answers' => 'required|array|min:1',
+            'answers.*.category' => 'required|string',
+            'answers.*.qid' => 'required|string|regex:/^Q[0-9]+$/',
+            'answers.*.mediainfo_id' => 'required|string',
+            'answers.*.img_url' => 'required|url',
+            'answers.*.answer' => 'required|in:yes,no,skip',
+        ]);
+        if ($v->fails()) {
+            return response()->json(['message' => 'Invalid input', 'errors' => $v->errors()], 422);
+        }
+        $user = Auth::user();
+        $results = [];
+        foreach ($request->input('answers') as $input) {
+            $uniqueId = $input['mediainfo_id'] . '/depicts/' . $input['qid'];
+            $question = Question::firstOrCreate(
+                [ 'unique_id' => $uniqueId ],
+                [
+                    'question_group_id' => 0,
+                    'properties' => [
+                        'mediainfo_id' => $input['mediainfo_id'],
+                        'depicts_id' => $input['qid'],
+                        'img_url' => $input['img_url'],
+                        'manual' => true,
+                        'category' => $input['category'],
+                        'user' => $user ? $user->username : null,
+                    ],
+                ]
+            );
+            $answer = Answer::create([
+                'question_id' => $question->id,
+                'user_id' => $user ? $user->id : null,
+                'answer' => $input['answer'],
+            ]);
+            if ($input['answer'] === 'yes') {
+                dispatch(new \App\Jobs\AddDepicts($answer->id));
+            }
+            $results[] = [
+                'question_id' => $question->id,
+                'answer_id' => $answer->id,
+            ];
+        }
+        return response()->json([
+            'message' => 'Bulk manual questions answered',
+            'results' => $results
+        ]);
+    }
 }

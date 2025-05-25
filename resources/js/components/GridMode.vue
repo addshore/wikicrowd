@@ -321,23 +321,41 @@ export default {
 
     const saveAllPending = async () => {
       if (pendingAnswers.value.length === 0) return;
-      // Use bulk API
       try {
-        await fetch('/api/answers/bulk', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...(apiToken ? { 'Authorization': `Bearer ${apiToken}` } : {}),
-            'X-CSRF-TOKEN': csrfToken
-          },
-          body: JSON.stringify({
-            answers: pendingAnswers.value.map(({id, mode}) => ({
-              question_id: id,
-              answer: mode
-            }))
-          })
-        });
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+        if (window.apiToken) {
+          headers['Authorization'] = `Bearer ${window.apiToken}`;
+        }
+        if (!window.apiToken && csrfToken) {
+          headers['X-CSRF-TOKEN'] = csrfToken;
+        }
+        if (props.manualMode) {
+          // Bulk save for manual/custom questions
+          const answers = pendingAnswers.value.map(({ id, mode }) => {
+            const img = images.value.find(img => img.id === id);
+            return {
+              category: props.manualCategory,
+              qid: props.manualQid,
+              mediainfo_id: img.properties.mediainfo_id,
+              img_url: img.properties.img_url,
+              answer: mode,
+            };
+          });
+          await fetch('/api/manual-question/bulk-answer', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ answers }),
+          });
+        } else {
+          // Use bulk API
+          await fetch('/api/answers/bulk', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ answers: pendingAnswers.value }),
+          });
+        }
         // Mark as answered in UI
         for (const {id, mode} of pendingAnswers.value) {
           answered.value.add(id);
