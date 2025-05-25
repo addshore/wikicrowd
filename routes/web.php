@@ -29,10 +29,6 @@ Route::get('/', function () {
 
 Route::get('/groups', [QuestionGroupController::class, 'showTopLevelGroups'])->name('groups');
 
-Route::get('/api-docs', function () {
-    return view('api-docs');
-})->name('api.docs');
-
 Route::middleware('auth:sanctum')->get('/questions/{groupName}/{desiredId?}', [QuestionController::class, 'showGroupDesiredOrUnanswered'])
     ->where('groupName', '([^\/]*\/[^\/]*)');
 
