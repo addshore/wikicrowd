@@ -1,5 +1,5 @@
 <template>
-  <a :href="'/questions/' + props.sub.name" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex flex-col group hover:bg-blue-50 dark:hover:bg-gray-700 transition cursor-pointer" style="text-decoration: none;">
+  <a :href="'/questions/' + (props.sub.route_name || props.sub.name)" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex flex-col group hover:bg-blue-50 dark:hover:bg-gray-700 transition cursor-pointer" style="text-decoration: none;">
     <!-- Use YAML name if available -->
     <div class="font-semibold text-lg text-gray-900 dark:text-white mb-1 flex items-center">
       <span>{{ props.emojiForDifficulty(props.sub.difficulty) }}</span>

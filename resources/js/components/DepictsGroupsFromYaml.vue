@@ -1,6 +1,21 @@
 <template>
   <div>
-    <div class="flex flex-col gap-2 mb-4" v-if="difficultyFilters.length > 0 || hasUnrated">
+    <div class="mb-4">
+      <div class="font-semibold text-base mb-1">Important notes</div>
+      <ul class="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300">
+        <li>Using this tool will result in edits being made for your account, you are responsible for these edits.</li>
+        <li>Familiarize yourself with the Qid concept that you are tagging before you begin</li>
+        <li>Familiarize yourself with <a href="https://commons.wikimedia.org/wiki/Commons:Depicts" target="_blank" rel="noopener" class="text-blue-700 underline">https://commons.wikimedia.org/wiki/Commons:Depicts</a></li>
+        <li>
+          Config for this tool can be found at
+          <a href="https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml" target="_blank" rel="noopener" class="text-blue-700 underline">
+            https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml
+          </a>
+        </li>
+      </ul>
+    </div>
+    <div v-if="difficultyFilters.length > 0 || hasUnrated" class="flex flex-col gap-2 mb-4">
+      <div class="font-semibold text-base mb-1">Filter by difficulty</div>
       <div v-for="(level, key) in levels" :key="key" class="flex items-center">
         <button class="px-3 py-1 rounded border mr-2" :class="difficultyButtonClass(key)" @click="toggleFilter(key)" :title="level.desc">
           <span>{{ emojiForDifficulty(key) }}</span> {{ level.name }}
@@ -142,6 +157,16 @@ const visibleGroups = computed(() => {
           subWithDiff.wikidataUrl = null;
           subWithDiff.name = sub.display_name || sub.name;
           // No sampleImage here; sample image comes from sub.example_question
+        }
+        // Set a route_name for correct question links
+        if (yamlQ && yamlQ.depictsId) {
+          // Use depictsId for depicts groups
+          subWithDiff.route_name = `depicts/${yamlQ.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')}`;
+        } else if (sub.name && group.name) {
+          // Fallback: use group.name and sub.name
+          subWithDiff.route_name = `${group.name}/${sub.name}`;
+        } else {
+          subWithDiff.route_name = sub.name;
         }
         if (difficulty === 'UNRATED') {
           unratedGroups.value.push(subWithDiff);

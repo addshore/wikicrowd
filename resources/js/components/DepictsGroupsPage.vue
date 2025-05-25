@@ -3,7 +3,7 @@
     <div class="flex justify-between items-center mb-6">
       <div>
         <h1 class="text-2xl font-bold">WikiCrowd (Depicts)</h1>
-        <p class="text-sm text-gray-500">Quick and easy micro contributions to the wiki space, showing what images depict.<br>Using this tool will result in edits being made for your account.</p>
+        <p class="text-sm text-gray-500">Quick and easy micro contributions to the wiki space, showing what images depict.</p>
       </div>
       <x-top-right-navbar/>
     </div>
