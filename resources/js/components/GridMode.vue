@@ -117,6 +117,7 @@
 import { ref, onMounted, reactive } from 'vue';
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
+import { fetchSubclassesAndInstances, fetchDepictsForMediaInfoIds } from './depictsUtils';
 
 export default {
   name: 'GridMode',
@@ -249,11 +250,9 @@ export default {
         const resp = await fetch(url);
         const data = await resp.json();
         if (!data.query || !data.query.pages) throw new Error('No images found in category');
-        images.value = Object.values(data.query.pages).map(p => {
-          // Try to get the correct M-ID from pageprops if available
+        let rawImages = Object.values(data.query.pages).map(p => {
           let mediainfo_id = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
           if (!mediainfo_id && p.title && p.title.startsWith('File:')) {
-            // fallback: use 'M' + pageid
             mediainfo_id = 'M' + p.pageid;
           }
           return {
@@ -268,6 +267,21 @@ export default {
             title: p.title
           };
         }).filter(img => img.properties.img_url);
+
+        // --- Filter out images that already depict the QID or a more specific one ---
+        // 1. Get all relevant QIDs (target + subclasses/instances)
+        const qidSet = await fetchSubclassesAndInstances(props.manualQid);
+        // 2. Get all mediainfo IDs
+        const mids = rawImages.map(img => img.properties.mediainfo_id);
+        // 3. Fetch depicts for all images
+        const depictsMap = await fetchDepictsForMediaInfoIds(mids);
+        // 4. Filter
+        images.value = rawImages.filter(img => {
+          const mids = img.properties.mediainfo_id;
+          const depicted = depictsMap[mids] || [];
+          // If any depicted QID is in the set, filter out
+          return !depicted.some(qid => qidSet.has(qid));
+        });
         allLoaded.value = true;
       } catch (e) {
         error = e.message || 'Failed to load images';
