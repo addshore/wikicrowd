@@ -90,11 +90,16 @@
               </td>
               <td class="p-2 border">
                 <template v-if="q.categories && q.categories.length">
-                  <span v-for="cat in q.categories" :key="cat">
-                    <a :href="getCategoryUrl(cat)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(cat) }}</a><span v-if="!$last">, </span>
+                  <span v-for="(cat, idx) in q.categories" :key="cat">
+                    <a :href="getCategoryUrl(cat)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(cat) }}</a><span v-if="idx < q.categories.length - 1">, </span>
                   </span>
                 </template>
-                <template v-else-if="q.category">
+                <template v-else-if="Array.isArray(q.category) && q.category.length">
+                  <span v-for="(cat, idx) in q.category" :key="cat">
+                    <a :href="getCategoryUrl(cat)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(cat) }}</a><span v-if="idx < q.category.length - 1">, </span>
+                  </span>
+                </template>
+                <template v-else-if="typeof q.category === 'string' && q.category">
                   <a :href="getCategoryUrl(q.category)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(q.category) }}</a>
                 </template>
                 <template v-else>-</template>
@@ -201,9 +206,10 @@ const visibleGroups = computed(() => {
         const subWithDiff = { ...sub, difficulty };
         // Add category and wikidata links, and categories array
         if (yamlQ) {
-          // Support both 'category' and 'categories' (array)
+          // Support both 'category' and 'categories' (array or string)
           let cats = [];
           if (Array.isArray(yamlQ.categories)) cats = yamlQ.categories;
+          else if (Array.isArray(yamlQ.category)) cats = yamlQ.category;
           else if (yamlQ.category) cats = [yamlQ.category];
           subWithDiff.categories = cats;
           subWithDiff.categoryUrl = cats.length ? getCategoryUrl(cats[0]) : null;
