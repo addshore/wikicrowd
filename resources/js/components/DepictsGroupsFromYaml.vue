@@ -275,6 +275,39 @@ const actionableCount = computed(() => mergedQuestions.value.filter(q => typeof 
 // Dummy for hasUnrated (for filter UI)
 const hasUnrated = computed(() => mergedQuestions.value.some(q => q.difficulty === 'UNRATED'));
 
+const regenerateJob = async (q) => {
+  const key = (q.depictsId || '') + '-' + (q.name || '');
+  regenerating.value[key] = true;
+  // Extract Qid if in {{Q|...}} format
+  let depictsId = q.depictsId;
+  const match = typeof depictsId === 'string' && depictsId.match(/^\{\{Q\|(.+)\}\}$/);
+  if (match) depictsId = match[1];
+  try {
+    const resp = await fetch('/api/regenerate-question', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${window.apiToken}`,
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+      },
+      body: JSON.stringify({
+        depictsId
+      })
+    });
+    if (!resp.ok) {
+      if (resp.status === 401) {
+        alert('You must be logged in with an API token to regenerate questions.');
+        return;
+      }
+      alert('Failed to trigger regeneration.');
+    }
+  } catch (e) {
+    console.error('Error triggering regeneration:', e);
+  }
+  regenerating.value[key] = false;
+};
+
 </script>
 
 <style scoped>
