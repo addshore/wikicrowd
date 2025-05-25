@@ -22,5 +22,5 @@ cp ~/src/toolforge/lighttpd.conf ~/.lighttpd.conf
 cp ~/src/toolforge/service.template ~/service.template
 webservice php8.2 restart
 
-# Udpate jobs
+# Update jobs
 toolforge jobs load ~/src/toolforge/jobs.yaml
