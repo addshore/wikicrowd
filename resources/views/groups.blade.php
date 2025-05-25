@@ -7,7 +7,7 @@
     <link href="/css/app.css" rel="stylesheet">
     <meta name="csrf-token" content="{{ csrf_token() }}"> {{-- Add CSRF token for AJAX --}}
 </head>
-<body class="antialiased">
+<body class="antialiased bg-gray-100 dark:bg-gray-900 min-h-screen">
     <x-top-right-navbar/>
     <script>
         // Pass the API token from PHP to JavaScript

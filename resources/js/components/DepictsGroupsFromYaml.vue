@@ -1,32 +1,32 @@
 <template>
   <div>
     <div class="mb-4">
-      <div class="font-semibold text-base mb-1">Important notes</div>
+      <div class="font-semibold text-base mb-1 text-gray-900 dark:text-gray-100">Important notes</div>
       <ul class="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300">
         <li>Using this tool will result in edits being made for your account, you are responsible for these edits.</li>
         <li>Familiarize yourself with the Qid concept that you are tagging before you begin. <b>Read the labels and descriptions in your own language.</b></li>
-        <li class="font-bold text-red-600">A statue, or painting of a thing, is not the thing itself (does not depict)</li>
-        <li>Familiarize yourself with <a href="https://commons.wikimedia.org/wiki/Commons:Depicts" target="_blank" rel="noopener" class="text-blue-700 underline">https://commons.wikimedia.org/wiki/Commons:Depicts</a></li>
+        <li class="font-bold text-red-600 dark:text-red-400">A statue, or painting of a thing, is not the thing itself (does not depict)</li>
+        <li>Familiarize yourself with <a href="https://commons.wikimedia.org/wiki/Commons:Depicts" target="_blank" rel="noopener" class="text-blue-700 dark:text-blue-400 underline">https://commons.wikimedia.org/wiki/Commons:Depicts</a></li>
       </ul>
     </div>
     <div v-if="difficultyFilters.length > 0 || hasUnrated" class="flex flex-col gap-2 mb-4">
-      <div class="font-semibold text-base mb-1">Filter by difficulty</div>
+      <div class="font-semibold text-base mb-1 text-gray-900 dark:text-gray-100">Filter by difficulty</div>
       <div v-for="(level, key) in levels" :key="key" class="flex items-center">
         <button class="px-3 py-1 rounded border mr-2" :class="difficultyButtonClass(key)" @click="toggleFilter(key)" :title="level.desc">
           <span>{{ emojiForDifficulty(key) }}</span> {{ level.name }}
         </button>
-        <span class="text-gray-600 text-sm">{{ level.desc }}</span>
+        <span class="text-gray-600 dark:text-gray-400 text-sm">{{ level.desc }}</span>
       </div>
       <div v-if="hasUnrated" class="flex items-center">
         <button class="px-3 py-1 rounded border mr-2" :class="difficultyButtonClass('UNRATED')" @click="toggleFilter('UNRATED')" title="Show unrated questions">
           ❓ Unrated
         </button>
-        <span class="text-gray-600 text-sm">Unrated groups have not been assigned a difficulty yet.</span>
+        <span class="text-gray-600 dark:text-gray-400 text-sm">Unrated groups have not been assigned a difficulty yet.</span>
       </div>
     </div>
     <div v-for="(group, groupKey) in groupedQuestions" :key="groupKey" class="mb-8">
-      <h2 class="text-xl font-bold mb-2">{{ group.display_name }}</h2>
-      <div v-if="group.display_description" class="mb-2 text-gray-600 text-sm">{{ group.display_description }}</div>
+      <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">{{ group.display_name }}</h2>
+      <div v-if="group.display_description" class="mb-2 text-gray-600 dark:text-gray-300 text-sm">{{ group.display_description }}</div>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <DepictsGroupBox
           v-for="sub in group.questions"
@@ -40,7 +40,7 @@
       </div>
     </div>
     <div v-if="unratedQuestions.length > 0" class="mb-8">
-      <h2 class="text-xl font-bold mb-2">❓ Unrated</h2>
+      <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">❓ Unrated</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <DepictsGroupBox
           v-for="sub in unratedQuestions"
@@ -54,32 +54,32 @@
       </div>
     </div>
     <div class="mt-12 border-t pt-8">
-      <h2 class="text-xl font-bold mb-4">Regenerate</h2>
-      <span class="block mt-2 text-sm text-gray-600">Config for this tool can be found at
-        <a href="https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml" target="_blank" rel="noopener" class="text-blue-700 underline">
+      <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Regenerate</h2>
+      <span class="block mt-2 text-sm text-gray-700 dark:text-gray-300">Config for this tool can be found at
+        <a href="https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml" target="_blank" rel="noopener" class="text-blue-700 dark:text-blue-400 underline">
           https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml
         </a>
       </span>
-      <span class="block mt-2 text-sm text-gray-600">All questions should already regenerate every 6 hours...</span>
-      <span class="block mt-2 text-sm text-gray-600">
+      <span class="block mt-2 text-sm text-gray-700 dark:text-gray-300">All questions should already regenerate every 6 hours...</span>
+      <span class="block mt-2 text-sm text-gray-700 dark:text-gray-300">
         If you have made changes to the YAML file, you can regenerate questions here.</span>
     </div>
     <div v-if="mergedQuestions.length">
       <table class="min-w-full text-sm border">
         <thead>
-          <tr class="bg-gray-100">
-            <th class="p-2 border">Name</th>
-            <th class="p-2 border">Depicts</th>
-            <th class="p-2 border">Categories</th>
-            <th class="p-2 border">Unanswered</th>
-            <th class="p-2 border">Action</th>
+          <tr class="bg-gray-100 dark:bg-gray-800">
+            <th class="p-2 border text-gray-900 dark:text-gray-100">Name</th>
+            <th class="p-2 border text-gray-900 dark:text-gray-100">Depicts</th>
+            <th class="p-2 border text-gray-900 dark:text-gray-100">Categories</th>
+            <th class="p-2 border text-gray-900 dark:text-gray-100">Unanswered</th>
+            <th class="p-2 border text-gray-900 dark:text-gray-100">Action</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="q in mergedQuestions" :key="q.id">
-            <td class="p-2 border">{{ q.name }}
+            <td class="p-2 border text-gray-900 dark:text-gray-100">{{ q.name }}
             </td>
-            <td class="p-2 border">
+            <td class="p-2 border text-gray-900 dark:text-gray-100">
               <template v-if="q.depictsId">
                 <a :href="getWikidataUrl(q.depictsId)" target="_blank" class="text-blue-700 hover:underline font-mono">
                   {{ q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1') }}
@@ -91,7 +91,7 @@
               </template>
               <template v-else>-</template>
             </td>
-            <td class="p-2 border">
+            <td class="p-2 border text-gray-900 dark:text-gray-100">
               <template v-if="q.categories && q.categories.length">
                 <span v-for="(cat, idx) in q.categories" :key="cat">
                   <a :href="getCategoryUrl(cat)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(cat) }}</a><span v-if="idx < q.categories.length - 1">, </span>
@@ -99,14 +99,14 @@
               </template>
               <template v-else>-</template>
             </td>
-            <td class="p-2 border text-center">
+            <td class="p-2 border text-center text-gray-900 dark:text-gray-100">
               <span v-if="typeof q.unanswered === 'number'">{{ q.unanswered }}</span>
               <template v-if="q.refinementUnanswered">
                 <span class="ml-2 text-yellow-800">+ {{ q.refinementUnanswered }} refinements</span>
               </template>
               <span v-else-if="typeof q.unanswered !== 'number'">-</span>
             </td>
-            <td class="p-2 border">
+            <td class="p-2 border text-gray-900 dark:text-gray-100">
               <div class="flex gap-2">
                 <button
                   class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
@@ -134,7 +134,7 @@
     <div v-else class="text-gray-500">No YAML questions found.</div>
     <!-- Custom grid link under table -->
     <div class="mt-12 border-t pt-8">
-      <h3 class="text-lg font-semibold mb-2">Custom Grid</h3>
+      <h3 class="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">Custom Grid</h3>
       <a href="/questions/depicts/custom" class="inline-block bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">
         Go to Custom Grid
       </a>

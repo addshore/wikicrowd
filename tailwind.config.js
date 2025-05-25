@@ -1,4 +1,5 @@
 module.exports = {
+  darkMode: 'class', // Enable dark mode via class
   content: [
     './storage/framework/views/*.php',
     './resources/**/*.blade.php',

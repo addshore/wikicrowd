@@ -8,4 +8,27 @@
     @else
         <a href="{{ route('login') }}" class="text-sm text-gray-700 dark:text-gray-500 underline">Login</a>
     @endauth
+    <button id="dark-mode-toggle" class="ml-2 px-2 py-1 rounded border text-xs" onclick="toggleDarkMode()" title="Toggle dark mode">🌓</button>
+    <script>
+        function setDarkModeClass(isDark) {
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkMode', isDark ? '1' : '0');
+        }
+        // On page load, set dark mode from localStorage
+        (function() {
+            const darkPref = localStorage.getItem('darkMode');
+            if (darkPref === '1' || (darkPref === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                setDarkModeClass(true);
+            } else {
+                setDarkModeClass(false);
+            }
+        })();
+    </script>
 </div>
