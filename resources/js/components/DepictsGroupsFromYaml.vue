@@ -24,34 +24,41 @@
         <span class="text-gray-600 dark:text-gray-400 text-sm">Unrated groups have not been assigned a difficulty yet.</span>
       </div>
     </div>
-    <div v-for="(group, groupKey) in groupedQuestions" :key="groupKey" class="mb-8">
-      <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">{{ group.display_name }}</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <DepictsGroupBox
-          v-for="sub in group.questions"
-          :key="sub.id"
-          :sub="sub"
-          :emojiForDifficulty="emojiForDifficulty"
-          :getCategoryUrl="getCategoryUrl"
-          :getCategoryName="getCategoryName"
-          :getWikidataUrl="getWikidataUrl"
-        />
+    <div v-if="groupsApiData === null || yamlData === null" class="mb-8">
+      <div class="flex items-center justify-center py-8">
+        <div class="text-gray-500 dark:text-gray-400">Loading groups...</div>
       </div>
     </div>
-    <div v-if="unratedQuestions.length > 0" class="mb-8">
-      <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">❓ Unrated</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <DepictsGroupBox
-          v-for="sub in unratedQuestions"
-          :key="sub.id"
-          :sub="sub"
-          :emojiForDifficulty="emojiForDifficulty"
-          :getCategoryUrl="getCategoryUrl"
-          :getCategoryName="getCategoryName"
-          :getWikidataUrl="getWikidataUrl"
-        />
+    <template v-else>
+      <div v-for="(group, groupKey) in groupedQuestions" :key="groupKey" class="mb-8">
+        <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">{{ group.display_name }}</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <DepictsGroupBox
+            v-for="sub in group.questions"
+            :key="sub.id"
+            :sub="sub"
+            :emojiForDifficulty="emojiForDifficulty"
+            :getCategoryUrl="getCategoryUrl"
+            :getCategoryName="getCategoryName"
+            :getWikidataUrl="getWikidataUrl"
+          />
+        </div>
       </div>
-    </div>
+      <div v-if="unratedQuestions.length > 0" class="mb-8">
+        <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">❓ Unrated</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <DepictsGroupBox
+            v-for="sub in unratedQuestions"
+            :key="sub.id"
+            :sub="sub"
+            :emojiForDifficulty="emojiForDifficulty"
+            :getCategoryUrl="getCategoryUrl"
+            :getCategoryName="getCategoryName"
+            :getWikidataUrl="getWikidataUrl"
+          />
+        </div>
+      </div>
+    </template>
     <div class="mt-12 border-t pt-8">
       <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Regenerate</h2>
       <span class="block mt-2 text-sm text-gray-700 dark:text-gray-300">Config for this tool can be found at
