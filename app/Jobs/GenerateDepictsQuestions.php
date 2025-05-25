@@ -13,14 +13,15 @@
     use Addwiki\Mediawiki\Api\Service\CategoryTraverser;
     use App\Models\Question;
     use App\Models\QuestionGroup;
+    use App\Models\SkippedQuestion;
     use Wikibase\MediaInfo\DataModel\MediaInfoId;
     use Addwiki\Wikibase\Query\PrefixSets;
-    use Illuminate\Contracts\Queue\ShouldBeUnique;
     use Symfony\Component\Yaml\Yaml;
     use Illuminate\Bus\Batchable;
     use Illuminate\Support\Facades\Bus;
+    use Illuminate\Support\Facades\Cache;
 
-    class GenerateDepictsQuestions implements ShouldQueue, ShouldBeUnique
+    class GenerateDepictsQuestions implements ShouldQueue
     {
         use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, Batchable;
 
@@ -107,8 +108,7 @@
          */
         public function uniqueId()
         {
-            // Uniqueness is per depictItemId (and batch)
-            return $this->depictItemId . ($this->batchId ? (':' . $this->batchId) : '');
+            return $this->depictItemId."x";
         }
 
         /**
@@ -117,123 +117,130 @@
          * @return void
          */
         public function handle() {
-            \Log::info("Starting depicts job for category: " . $this->category . ", depictsId: " . $this->depictItemId . ", batchId: " . ($this->batchId ?? 'none'));
-
-            // Ensure category is prefixed with 'Category:'
-            $categoryName = $this->category;
-            if (stripos($categoryName, 'Category:') !== 0) {
-                $categoryName = 'Category:' . $categoryName;
-            }
-            $this->createQuestionGroups();
-
-            // Figure out how many questions for the category we already have
-            $depictGroupCount = QuestionGroup::where('id','=',$this->depictsSubGroup)
-                ->withCount(['question as unanswered' => function($query){
-                $query->doesntHave('answer');
-                }])->first()->unanswered;
-            $depictRefineGroupCount = QuestionGroup::where('id','=',$this->depictsRefineSubGroup)
-                ->withCount(['question as unanswered' => function($query){
-                $query->doesntHave('answer');
-                }])->first()->unanswered;
-            $this->got = $depictGroupCount + $depictRefineGroupCount;
-            \Log::info("Already got $this->got questions");
-            if($this->got >= $this->limit) {
-                \Log::info("Already got enough questions");
+            $lockKey = 'depicts_questions:' . $this->depictItemId . ($this->batchId ? (':' . $this->batchId) : '');
+            $lock = Cache::lock($lockKey, 600); // 10 min lock
+            if (!$lock->get()) {
+                \Log::info("Lock held for $lockKey, skipping job");
                 return;
             }
-
-            $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $this->depictItemId );
-            $this->parentInstancesOfAndSubclassesOf = $this->parentInstancesOfAndSubclassesOf( $this->depictItemId );
-
-            $mwServices = (new \Addwiki\Wikimedia\Api\WikimediaFactory())->newMediawikiFactoryForDomain( self::COMMONS );
-            $traverser = $mwServices->newCategoryTraverser();
-
-            // Add this category to the ignore list to prevent recursion
-            $currentIgnore = $this->ignoreCategories;
-            if (!in_array($categoryName, $currentIgnore)) {
-                $currentIgnore[] = $categoryName;
-            }
-
-            $batchId = $this->batchId;
-            $subJobs = [];
-
-            $traverser->addCallback( \Addwiki\Mediawiki\Api\Service\CategoryTraverser::CALLBACK_CATEGORY, function( $member, $rootCat ) use (&$subJobs, $currentIgnore, $batchId ) {
-                if( $this->got >= $this->limit ) {
-                    \Log::info("Limit reached");
-                    return false;
+            try {
+                $batchId = $this->batchId;
+                if (!$batchId) {
+                    $batchId = \Illuminate\Support\Str::uuid()->toString();
+                    $this->batchId = $batchId;
+                    \Log::info("No batch ID provided, generating new one: $batchId");
                 }
-                if ($this->recursionDepth >= 100) {
-                    \Log::info("Max recursion depth reached ({$this->recursionDepth}), not scheduling sub-job for category: " . $member->getPageIdentifier()->getTitle()->getText());
-                    return false;
+
+                \Log::info("Starting depicts job for category: " . $this->category . ", depictsId: " . $this->depictItemId . ", batchId: " . ($this->batchId ?? 'none'));
+
+                // Ensure category is prefixed with 'Category:'
+                $categoryName = $this->category;
+                if (stripos($categoryName, 'Category:') !== 0) {
+                    $categoryName = 'Category:' . $categoryName;
                 }
-                $memberText = $member->getPageIdentifier()->getTitle()->getText();
-                if(in_array($memberText, $currentIgnore)) {
-                    \Log::info("Ignoring text match $memberText");
-                    return false;
-                }
-                if($this->ignoreCategoriesRegex !== "" && preg_match($this->ignoreCategoriesRegex, $memberText)) {
-                    \Log::info("Ignoring regex match $memberText");
-                    return false;
-                }
-                \Log::info("Dispatching sub-job for category: $memberText at recursion depth " . ($this->recursionDepth + 1));
-                // Dispatch a new job for this subcategory
-                $subJobs[] = new GenerateDepictsQuestions(
-                    $memberText,
-                    $currentIgnore,
-                    $this->ignoreCategoriesRegex,
-                    $this->depictItemId,
-                    $this->depictName,
-                    $this->limit,
-                    $batchId,
-                    $this->recursionDepth + 1
-                );
-                // Don't descend further in this job
-                return false;
-            } );
-            $traverser->addCallback( \Addwiki\Mediawiki\Api\Service\CategoryTraverser::CALLBACK_PAGE, function( $member, $rootCat ) {
-                // Terrible limiting, but the only way to do it right now..
-                if( $this->got >= $this->limit ) {
-                    \Log::info("Limit reached");
+                $this->createQuestionGroups();
+
+                // Figure out how many questions for the category we already have
+                $depictGroupCount = QuestionGroup::where('id','=',$this->depictsSubGroup)
+                    ->withCount(['question as unanswered' => function($query){
+                    $query->doesntHave('answer');
+                    }])->first()->unanswered;
+                $depictRefineGroupCount = QuestionGroup::where('id','=',$this->depictsRefineSubGroup)
+                    ->withCount(['question as unanswered' => function($query){
+                    $query->doesntHave('answer');
+                    }])->first()->unanswered;
+                $this->got = $depictGroupCount + $depictRefineGroupCount;
+                \Log::info("Already got $this->got questions");
+                if($this->got >= $this->limit) {
+                    \Log::info("Already got enough questions ({$this->got}), not processing category: $categoryName");
                     return;
                 }
-                $pageIdentifier = $member->getPageIdentifier();
-                // Skip all non files
-                if( $pageIdentifier->getTitle()->getNs() !== 6 ) {
-                    return;
-                }
-                // Skip anything that is not an image
-                if( !in_array( $this->getFileExtensionFromName( $pageIdentifier->getTitle()->getText() ), self::IMAGE_FILE_EXTENSIONS ) ) {
-                    \Log::info("Non image file: " . $pageIdentifier->getTitle()->getText());
-                    return;
-                }
-                // Skip pages we already generated a question for of any depicts type
-                if (\App\Models\Question::whereIn('question_group_id', [ $this->depictsSubGroup, $this->depictsRefineSubGroup] )
-                        ->whereIn('unique_id', [ $this->uniqueQuestionID( 'depicts', $pageIdentifier ), $this->uniqueQuestionID( 'depicts-refine', $pageIdentifier ) ])
-                        ->exists()
-                    ) {
-                    // question already found
-                    \Log::info("Question exists");
-                    return;
-                }
-                $this->processFilePage( $pageIdentifier );
-            } );
-            $traverser->descend( new \Addwiki\Mediawiki\DataModel\Page( new \Addwiki\Mediawiki\DataModel\PageIdentifier( new \Addwiki\Mediawiki\DataModel\Title( $categoryName, 14 ) ) ) );
 
-            // Dispatch all subcategory jobs as a batch if any
-            if (!empty($subJobs)) {
-                if ($batchId) {
+                $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $this->depictItemId );
+                $this->parentInstancesOfAndSubclassesOf = $this->parentInstancesOfAndSubclassesOf( $this->depictItemId );
+
+                $mwServices = (new \Addwiki\Wikimedia\Api\WikimediaFactory())->newMediawikiFactoryForDomain( self::COMMONS );
+                $traverser = $mwServices->newCategoryTraverser();
+
+                // Add this category to the ignore list to prevent recursion
+                $currentIgnore = $this->ignoreCategories;
+                if (!in_array($categoryName, $currentIgnore)) {
+                    $currentIgnore[] = $categoryName;
+                }
+
+                $subJobs = [];
+
+                $traverser->addCallback( \Addwiki\Mediawiki\Api\Service\CategoryTraverser::CALLBACK_CATEGORY, function( $member, $rootCat ) use (&$subJobs, $currentIgnore, $batchId ) {
+                    if( $this->got >= $this->limit ) {
+                        \Log::info("Limit reached");
+                        return false;
+                    }
+                    if ($this->recursionDepth >= 100) {
+                        \Log::info("Max recursion depth reached ({$this->recursionDepth}), not scheduling sub-job for category: " . $member->getPageIdentifier()->getTitle()->getText());
+                        return false;
+                    }
+                    $memberText = $member->getPageIdentifier()->getTitle()->getText();
+                    if(in_array($memberText, $currentIgnore)) {
+                        \Log::info("Ignoring text match $memberText");
+                        return false;
+                    }
+                    if($this->ignoreCategoriesRegex !== "" && preg_match($this->ignoreCategoriesRegex, $memberText)) {
+                        \Log::info("Ignoring regex match $memberText");
+                        return false;
+                    }
+                    \Log::info("Dispatching sub-job for category: $memberText at recursion depth " . ($this->recursionDepth + 1));
+                    // Dispatch a new job for this subcategory
+                    $subJobs[] = new GenerateDepictsQuestions(
+                        $memberText,
+                        $currentIgnore,
+                        $this->ignoreCategoriesRegex,
+                        $this->depictItemId,
+                        $this->depictName,
+                        $this->limit,
+                        $batchId,
+                        $this->recursionDepth + 1
+                    );
+                    // Don't descend further in this job
+                    return false;
+                } );
+                $traverser->addCallback( \Addwiki\Mediawiki\Api\Service\CategoryTraverser::CALLBACK_PAGE, function( $member, $rootCat ) {
+                    // Terrible limiting, but the only way to do it right now..
+                    if( $this->got >= $this->limit ) {
+                        \Log::info("Limit reached");
+                        return;
+                    }
+                    $pageIdentifier = $member->getPageIdentifier();
+                    // Skip all non files
+                    if( $pageIdentifier->getTitle()->getNs() !== 6 ) {
+                        return;
+                    }
+                    // Skip anything that is not an image
+                    if( !in_array( $this->getFileExtensionFromName( $pageIdentifier->getTitle()->getText() ), self::IMAGE_FILE_EXTENSIONS ) ) {
+                        \Log::info("Non image file: " . $pageIdentifier->getTitle()->getText());
+                        return;
+                    }
+                    // Skip pages we already generated a question for of any depicts type
+                    if (\App\Models\Question::whereIn('question_group_id', [ $this->depictsSubGroup, $this->depictsRefineSubGroup] )
+                            ->whereIn('unique_id', [ $this->uniqueQuestionID( 'depicts', $pageIdentifier ), $this->uniqueQuestionID( 'depicts-refine', $pageIdentifier ) ])
+                            ->exists()
+                        ) {
+                        // question already found
+                        \Log::info("Question exists");
+                        return;
+                    }
+                    $this->processFilePage( $pageIdentifier );
+                } );
+                $traverser->descend( new \Addwiki\Mediawiki\DataModel\Page( new \Addwiki\Mediawiki\DataModel\PageIdentifier( new \Addwiki\Mediawiki\DataModel\Title( $categoryName, 14 ) ) ) );
+
+                // Dispatch all subcategory jobs as a batch if any
+                if (!empty($subJobs)) {
                     Bus::batch($subJobs)
                         ->name('depicts:' . $this->depictItemId)
                         ->onQueue('low') // once we get going, we can use the low queue
                         ->dispatch();
-                } else {
-                    // If this is the root job, create a new batch and pass its ID to sub-jobs
-                    $batch = Bus::batch($subJobs)
-                        ->name('depicts:' . $this->depictItemId)
-                        ->onQueue('low') // once we get going, we can use the low queue
-                        ->dispatch();
-                    $this->batchId = $batch->id;
                 }
+            } finally {
+                $lock->release();
             }
         }
 
@@ -362,12 +369,26 @@
                 }
             }
 
+            $uniqueDepictsId = $this->uniqueQuestionID( 'depicts', $filePageIdentifier );
+            $uniqueRefineId = $this->uniqueQuestionID( 'depicts-refine', $filePageIdentifier );
+            // Check if already skipped
+            if (SkippedQuestion::whereIn('unique_id', [ $uniqueDepictsId, $uniqueRefineId ])->exists()) {
+                \Log::info("Question generation already skipped for $uniqueDepictsId or $uniqueRefineId");
+                return false;
+            }
+
             if($foundDepicts['exact'] > 0) {
                 \Log::info("Exact depicts found for " . $filePageIdentifier->getTitle()->getText());
+                // Record both as skipped
+                SkippedQuestion::firstOrCreate(['unique_id' => $uniqueDepictsId]);
+                SkippedQuestion::firstOrCreate(['unique_id' => $uniqueRefineId]);
                 return false;
             }
             if($foundDepicts['moreSpecific'] > 0) {
                 \Log::info("More specific depicts found for " . $filePageIdentifier->getTitle()->getText());
+                // Record both as skipped
+                SkippedQuestion::firstOrCreate(['unique_id' => $uniqueDepictsId]);
+                SkippedQuestion::firstOrCreate(['unique_id' => $uniqueRefineId]);
                 return false;
             }
 

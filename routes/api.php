@@ -42,10 +42,18 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::get('/stats', function () {
+    $queues = ['high', 'default', 'low'];
+    $jobCounts = [];
+    foreach ($queues as $queue) {
+        $jobCounts[$queue] = \Queue::connection()->getRedis()->llen('queues:' . $queue);
+    }
     return response()->json([
         'questions' => Question::count(),
         'answers' => Answer::count(),
         'edits' => Edit::count(),
         'users' => User::count(),
+        'jobs_high' => $jobCounts['high'],
+        'jobs_default' => $jobCounts['default'],
+        'jobs_low' => $jobCounts['low'],
     ]);
 });
