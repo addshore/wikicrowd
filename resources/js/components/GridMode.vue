@@ -211,20 +211,34 @@ export default {
     // Replace fetchNextImages to use batch logic
     const fetchNextImages = async (count = 4) => {
       if (allLoaded.value) return;
-      // Try to fill from batch first
       const added = fillImagesFromBatch(count);
       if (added < count) {
         await fetchBatchAndFill(count - added);
       }
+      ensureViewportFilled();
     };
+
+    const PRELOAD_SCROLL_THRESHOLD = 800; // px from bottom to start preloading next images
 
     const handleScroll = () => {
       if (allLoaded.value || loading.value) return;
       const scrollY = window.scrollY || window.pageYOffset;
       const visible = window.innerHeight;
       const pageHeight = document.documentElement.scrollHeight;
-      if (scrollY + visible + 200 >= pageHeight) {
-        fetchNextImages(4);
+      // Preload earlier: start loading when user is PRELOAD_SCROLL_THRESHOLD px from bottom
+      if (scrollY + visible + PRELOAD_SCROLL_THRESHOLD >= pageHeight) {
+        fetchNextImages(10);
+      }
+    };
+
+    // Helper: after images load, if viewport is not filled, load more
+    const ensureViewportFilled = () => {
+      if (allLoaded.value || loading.value) return;
+      const visible = window.innerHeight;
+      const pageHeight = document.documentElement.scrollHeight;
+      // If page is not scrollable, load more images
+      if (pageHeight <= visible + 100) {
+        fetchNextImages(10);
       }
     };
 
@@ -430,14 +444,14 @@ export default {
     // On mount, if manualMode, fetch manual images
     onMounted(() => {
       if (props.manualMode) {
-        fetchManualImages();
+        fetchManualImages().then(ensureViewportFilled);
       } else {
         // Estimate how many images are needed to fill the viewport, plus 2 extra rows for preloading
         const imageHeight = 250; // px, including padding/margin
         const columns = 5; // max columns in grid
         const rows = Math.ceil(window.innerHeight / imageHeight);
         const initialCount = (rows + 2) * columns; // Preload 2 extra rows
-        fetchNextImages(initialCount);
+        fetchNextImages(initialCount).then(ensureViewportFilled);
         window.addEventListener('scroll', handleScroll);
         // Keyboard shortcuts for answer mode
         window.addEventListener('keydown', (e) => {
@@ -448,8 +462,7 @@ export default {
         });
       }
     });
-
-    // Use sendAnswerManual if manualMode
+    // Also call ensureViewportFilled after each fetch
     const sendAnswerToUse = props.manualMode ? sendAnswerManual : sendAnswer;
     console.log('[GridMode] manualMode:', props.manualMode, 'Using', props.manualMode ? '/api/manual-question/answer' : '/api/answers');
     // Add a wrapper to ensure timers are cleared and answers are saved immediately
