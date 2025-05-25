@@ -4,4 +4,4 @@ limit: 1000
 category: Category:Felis silvestris catus
 exclude:
   - Category:Cats in ancient Egypt
-excludeRegex: "/(Videos|statues|sculpture|art|\(mascot\))/i"
+excludeRegex: "/(Videos|statues|sculpture|art|\\(mascot\\))/i"
