@@ -87,6 +87,7 @@
         <img
           :src="image.properties.img_url"
           :alt="`Image ${image.id}`"
+          draggable="false"
           class="object-contain align-top w-full h-[22vw] min-h-[180px] max-h-[320px]"
           style="object-position:top"
         />
