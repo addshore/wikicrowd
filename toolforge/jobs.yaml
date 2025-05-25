@@ -3,14 +3,14 @@
   command: php /data/project/wikicrowd/src/artisan queue:work --queue=high,default --tries=3
   continuous: true
   emails: all
-  replicas: 1 # high and default queues, are short jobs, and we always want to keep them ticking along
+  replicas: 2
   no-filelog: true
 - name: queue
   image: php8.2
   command: php /data/project/wikicrowd/src/artisan queue:work --queue=high,default,low --tries=3
   continuous: true
   emails: all
-  replicas: 3
+  replicas: 2
   no-filelog: true
 - name: schedule
   image: php8.2
