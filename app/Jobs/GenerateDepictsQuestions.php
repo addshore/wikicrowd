@@ -222,10 +222,16 @@
             // Dispatch all subcategory jobs as a batch if any
             if (!empty($subJobs)) {
                 if ($batchId) {
-                    Bus::batch($subJobs)->name('depicts:' . $this->depictItemId)->dispatch();
+                    Bus::batch($subJobs)
+                        ->name('depicts:' . $this->depictItemId)
+                        ->onQueue('low') // once we get going, we can use the low queue
+                        ->dispatch();
                 } else {
                     // If this is the root job, create a new batch and pass its ID to sub-jobs
-                    $batch = Bus::batch($subJobs)->name('depicts:' . $this->depictItemId)->dispatch();
+                    $batch = Bus::batch($subJobs)
+                        ->name('depicts:' . $this->depictItemId)
+                        ->onQueue('low') // once we get going, we can use the low queue
+                        ->dispatch();
                     $this->batchId = $batch->id;
                 }
             }

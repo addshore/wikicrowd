@@ -30,7 +30,7 @@ class RegenerateQuestionController extends Controller
         // $yamlUrl = $request->input('yamlUrl', null);
         // $jobLimit = intval($request->input('jobLimit', 0));
         // Queue the job (async)
-        dispatch(new GenerateDepictsQuestionsFromYaml($depictsId, "", 0, false));
+        dispatch((new GenerateDepictsQuestionsFromYaml($depictsId, "", 0, false))->onQueue('high')); // High queue, as this just make more jobs anyway..
         Log::info("Regeneration job dispatched for depictsId: $depictsId");
         return response()->json([
             'message' => "Regeneration job dispatched for depictsId: $depictsId",

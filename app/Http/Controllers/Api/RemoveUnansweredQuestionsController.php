@@ -26,7 +26,7 @@ class RemoveUnansweredQuestionsController extends Controller
             return response()->json(['message' => 'Invalid groupName', 'errors' => $validator->errors()], 422);
         }
         $groupName = $request->input('groupName');
-        dispatch(new RemoveUnansweredQuestions($groupName));
+        dispatch((new RemoveUnansweredQuestions($groupName))->onQueue('high')); // High queue, as this is a quick cleanup job
         Log::info("RemoveUnansweredQuestions job dispatched for groupName: $groupName");
         return response()->json([
             'message' => "RemoveUnansweredQuestions job dispatched for groupName: $groupName",

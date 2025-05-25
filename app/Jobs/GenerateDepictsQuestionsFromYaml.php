@@ -171,7 +171,7 @@ class GenerateDepictsQuestionsFromYaml implements ShouldQueue
                 dispatch_sync($jobInstance);
             } else {
                 \Log::info("Dispatching job asynchronously for category: {$job['category']}, depictsId: {$job['depictsId']}, name: {$job['name']}");
-                dispatch($jobInstance);
+                dispatch($jobInstance)->onQueue('default'); // Default for the top level question jobs from YAML..
             }
             $dispatchedCount++;
             if ($this->jobLimit > 0 && $dispatchedCount >= $this->jobLimit) {
