@@ -33,7 +33,12 @@
           @click="answerMode = 'no'"
         >NO (2)</button>
         <button
-          class="px-2 py-1 text-sm bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2 rounded"
+          class="ml-2 px-3 py-1 bg-blue-600 text-white rounded font-bold border border-blue-700 hover:bg-blue-700"
+          :disabled="pendingAnswers.length === 0 && Array.from(selected).filter(id => !answered.has(id)).length === 0"
+          @click="onSaveClickHandler"
+        >Save</button>
+        <button
+          class="ml-2 px-2 py-1 text-sm bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 rounded"
           @click="clearAnswered"
         >
           Clear Done
@@ -41,12 +46,18 @@
         <label class="flex items-center ml-4 cursor-pointer select-none">
           <input type="checkbox" v-model="autoSave" class="mr-1" />
           Auto Save
+          <span class="ml-2 flex items-center">
+            after
+            <input
+              type="number"
+              min="1"
+              v-model.number="autoSaveDelay"
+              class="mx-1 w-12 px-1 py-0.5 border border-gray-300 rounded text-center text-sm"
+              style="width:3.5em;"
+            />
+            seconds
+          </span>
         </label>
-        <button
-          v-if="!autoSave && pendingAnswers.length > 0"
-          class="ml-2 px-3 py-1 bg-blue-600 text-white rounded font-bold border border-blue-700 hover:bg-blue-700"
-          @click="saveAllPending"
-        >Save Now ({{ pendingAnswers.length }})</button>
       </div>
 
       <small>
@@ -143,6 +154,7 @@ export default {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const answerMode = ref('yes');
     const autoSave = ref(true);
+    const autoSaveDelay = ref(10); // seconds
     const pendingAnswers = ref([]); // {id, mode}
 
     // Batch for progressive fill
@@ -320,7 +332,11 @@ export default {
     };
 
     const saveAllPending = async () => {
-      if (pendingAnswers.value.length === 0) return;
+      console.log('[GridMode] saveAllPending called, pendingAnswers:', JSON.parse(JSON.stringify(pendingAnswers.value)));
+      if (pendingAnswers.value.length === 0) {
+        console.log('[GridMode] No pending answers to save.');
+        return;
+      }
       try {
         const headers = {
           'Content-Type': 'application/json',
@@ -343,21 +359,25 @@ export default {
               answer: mode,
             };
           });
-          await fetch('/api/manual-question/bulk-answer', {
+          console.log('[GridMode] Sending manual bulk answers:', answers);
+          const resp = await fetch('/api/manual-question/bulk-answer', {
             method: 'POST',
             headers,
             body: JSON.stringify({ answers }),
           });
+          console.log('[GridMode] Manual bulk answer response:', resp.status, resp.statusText);
         } else {
           const answers = pendingAnswers.value.map(({ id, mode }) => ({
             question_id: id,
             answer: mode,
           }));
-          await fetch('/api/answers/bulk', {
+          console.log('[GridMode] Sending bulk answers:', answers);
+          const resp = await fetch('/api/answers/bulk', {
             method: 'POST',
             headers,
             body: JSON.stringify({ answers }),
           });
+          console.log('[GridMode] Bulk answer response:', resp.status, resp.statusText);
         }
         // Mark as answered in UI
         for (const {id, mode} of pendingAnswers.value) {
@@ -367,8 +387,9 @@ export default {
           delete selectedMode[id];
         }
         pendingAnswers.value = [];
+        console.log('[GridMode] saveAllPending complete, UI updated.');
       } catch (e) {
-        // handle error
+        console.error('[GridMode] Error in saveAllPending:', e);
       }
     };
 
@@ -392,7 +413,7 @@ export default {
             // Always use the correct sendAnswer function for the current mode
             (props.manualMode ? sendAnswerManual : sendAnswer)(image);
             timers.delete(id);
-          }, 10000);
+          }, autoSaveDelay.value * 1000);
           timers.set(id, timer);
         } else {
           // Add to pending
@@ -430,6 +451,30 @@ export default {
     // Use sendAnswerManual if manualMode
     const sendAnswerToUse = props.manualMode ? sendAnswerManual : sendAnswer;
     console.log('[GridMode] manualMode:', props.manualMode, 'Using', props.manualMode ? '/api/manual-question/answer' : '/api/answers');
+    // Add a wrapper to ensure timers are cleared and answers are saved immediately
+    const onSaveClick = () => {
+      console.log('[GridMode] onSaveClick called');
+      // For all selected images that are not answered, ensure they're in pendingAnswers
+      selected.value.forEach(id => {
+        if (!answered.value.has(id)) {
+          // If not already in pendingAnswers, add it
+          if (!pendingAnswers.value.some(a => a.id === id)) {
+            pendingAnswers.value.push({ id, mode: selectedMode[id] || answerMode.value });
+          }
+          // Clear any running timer for this id
+          if (timers.has(id)) {
+            clearTimeout(timers.get(id));
+            timers.delete(id);
+          }
+        }
+      });
+      saveAllPending();
+    };
+    // Use a wrapper to ensure Vue always updates the handler
+    const onSaveClickHandler = (...args) => {
+      console.log('[GridMode] onSaveClickHandler called', args);
+      onSaveClick();
+    };
     return {
       images,
       selected,
@@ -444,9 +489,11 @@ export default {
       isFetchingMore,
       clearAnswered,
       autoSave,
+      autoSaveDelay,
       pendingAnswers,
       saveAllPending,
       sendAnswer: sendAnswerToUse,
+      onSaveClickHandler,
     };
   },
 };
