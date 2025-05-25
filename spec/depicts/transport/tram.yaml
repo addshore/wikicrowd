@@ -1,9 +1,0 @@
-- depictsId: Q3407658
-  name: Tram
-  limit: 1000
-  category: Category:Trams
-  exclude:
-  - Category:Mock-ups of trams
-  - Category:Tram parts
-  - Category:People on trams
-  excludeRegex: "/(Videos)/i"

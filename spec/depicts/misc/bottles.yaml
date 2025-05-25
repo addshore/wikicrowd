@@ -1,8 +1,0 @@
-depictsId: Q5567094
-name: Glass bottle
-limit: 200
-category: Category:Glass bottles
-exclude:
-  - Category:Glass onion
-  - Category:Schnapshunds
-excludeRegex: "/(in art|broken|vials|Laboratory)/i"

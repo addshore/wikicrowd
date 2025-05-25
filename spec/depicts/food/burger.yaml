@@ -1,5 +1,0 @@
-depictsId: Q111981894
-name: Burger
-limit: 1000
-category: Category:Burgers
-excludeRegex: "/(Audio|menus|presses|restaurants|in art|vendors)/i"

@@ -1,8 +1,0 @@
-depictsId: Q1124
-name: Bill Clinton
-limit: 1000
-category: Category:Bill Clinton
-exclude:
-  - Category:Clinton Foundation
-  - Category:William J. Clinton Presidential Center and Park
-excludeRegex: "/(Videos|Audio|presidential campaign|in art|books about|named after|(quotes|Quotations|Pardons granted) by|(supporters|signatures|memorabilia|impersonators|symbols and logos|administration personnel)|(Approval ratings|Private residences) of |Documents relat(ed|ing) to|protests|national convention)/i"

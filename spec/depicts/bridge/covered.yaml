@@ -1,7 +1,0 @@
-depictsId: Q1825472
-name: Covered Bridge
-limit: 1000
-category: Category:Covered bridges
-exclude:
- - Category:Skyways
-excludeRegex: "/(Videos)/i"
