@@ -159,7 +159,7 @@ class GenerateDepictsQuestionsFromYaml implements ShouldQueue
                 $job['limit']
             );
             if ($this->runSync) {
-                dispatch($jobInstance)->allOnConnection('sync');
+                dispatch_sync($jobInstance);
             } else {
                 dispatch($jobInstance);
             }
