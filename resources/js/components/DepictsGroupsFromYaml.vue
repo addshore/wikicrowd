@@ -76,7 +76,8 @@
           </thead>
           <tbody>
             <tr v-for="q in mergedQuestions" :key="q.id">
-              <td class="p-2 border">{{ q.name }}</td>
+              <td class="p-2 border">{{ q.name }}
+              </td>
               <td class="p-2 border">
                 <template v-if="q.depictsId">
                   <a :href="getWikidataUrl(q.depictsId)" target="_blank" class="text-blue-700 hover:underline font-mono">
@@ -99,7 +100,10 @@
               </td>
               <td class="p-2 border text-center">
                 <span v-if="typeof q.unanswered === 'number'">{{ q.unanswered }}</span>
-                <span v-else>-</span>
+                <template v-if="q.refinementUnanswered">
+                  <span class="ml-2 text-yellow-800">+ {{ q.refinementUnanswered }} refinements</span>
+                </template>
+                <span v-else-if="typeof q.unanswered !== 'number'">-</span>
               </td>
               <td class="p-2 border">
                 <div class="flex gap-2">
@@ -229,6 +233,25 @@ onMounted(async () => {
       return false;
     });
     const difficulty = q.difficulty || 'UNRATED';
+
+    // Find refinements for this question
+    const refinements = apiSubs.filter(sub => {
+      if (!sub.name) return false;
+      if (sub.name.startsWith('depicts-refine/')) {
+        if (qid && sub.name === `depicts-refine/${qid}`) return true;
+        if (!qid && q.name && (sub.display_name === q.name || sub.name === `depicts-refine/${q.name}`)) return true;
+      }
+      return false;
+    }).map(sub => ({
+      route_name: sub.name,
+      unanswered: typeof sub.unanswered === 'number' ? sub.unanswered : null
+    }));
+
+    // Calculate unanswered for main question (exclude refinements)
+    let mainUnanswered = typeof (apiSub && apiSub.unanswered) === 'number' ? apiSub.unanswered : null;
+    // Calculate total unanswered for refinements
+    let refinementUnanswered = refinements.reduce((sum, r) => sum + (typeof r.unanswered === 'number' ? r.unanswered : 0), 0);
+
     return {
       ...q,
       ...(apiSub || {}),
@@ -237,10 +260,12 @@ onMounted(async () => {
       categoryUrl: cats.length ? getCategoryUrl(cats[0]) : null,
       wikidataUrl: getWikidataUrl(q.depictsId),
       name: q.name,
-      route_name: q.depictsId ? `depicts/${qid}` : q.name,
+      route_name: `depicts/${qid}`,
       id: (q.depictsId || '') + '-' + (q.name || ''),
       group: q.group || 'Other',
-      unanswered: typeof (apiSub && apiSub.unanswered) === 'number' ? apiSub.unanswered : null,
+      unanswered: mainUnanswered,
+      refinement: refinements.length > 0 ? refinements : null,
+      refinementUnanswered: (refinementUnanswered && refinementUnanswered > 0) ? refinementUnanswered : null
     };
   });
 
@@ -280,9 +305,6 @@ const groupedQuestions = computed(() => {
 const unratedQuestions = computed(() => {
   return mergedQuestions.value.filter(q => q.difficulty === 'UNRATED' && typeof q.unanswered === 'number' && q.unanswered > 0);
 });
-
-// For regenerate table: all YAML questions, but show unanswered and disable if > 100
-const actionableCount = computed(() => mergedQuestions.value.filter(q => typeof q.unanswered === 'number' && q.unanswered > 0).length);
 
 // Dummy for hasUnrated (for filter UI)
 const hasUnrated = computed(() => mergedQuestions.value.some(q => q.difficulty === 'UNRATED'));
@@ -324,24 +346,52 @@ const clearUnanswered = async (q) => {
   const key = (q.depictsId || '') + '-' + (q.name || '');
   clearing.value[key] = true;
   try {
-    const resp = await fetch('/api/clear-unanswered', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${window.apiToken}`,
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-      },
-      body: JSON.stringify({
-        groupName: q.route_name // Use the actual group name as used in the backend
+    // Always clear the main depicts group
+    const requests = [
+      fetch('/api/clear-unanswered', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${window.apiToken}`,
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        },
+        body: JSON.stringify({
+          groupName: q.route_name
+        })
       })
-    });
-    if (!resp.ok) {
-      if (resp.status === 401) {
-        alert('You must be logged in with an API token to clear unanswered questions.');
+    ];
+    // Also clear all refinement groups if present
+    if (q.refinement && Array.isArray(q.refinement)) {
+      for (const ref of q.refinement) {
+        requests.push(
+          fetch('/api/clear-unanswered', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': `Bearer ${window.apiToken}`,
+              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            },
+            body: JSON.stringify({
+              groupName: ref.route_name
+            })
+          })
+        );
+      }
+    }
+    const responses = await Promise.all(requests);
+    for (const resp of responses) {
+      if (!resp.ok) {
+        if (resp.status === 401) {
+          alert('You must be logged in with an API token to clear unanswered questions.');
+          clearing.value[key] = false;
+          return;
+        }
+        alert('Failed to clear unanswered questions.');
+        clearing.value[key] = false;
         return;
       }
-      alert('Failed to clear unanswered questions.');
     }
   } catch (e) {
     console.error('Error clearing unanswered questions:', e);
