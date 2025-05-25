@@ -8,6 +8,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Symfony\Component\Yaml\Yaml;
+use App\Jobs\GenerateDepictsQuestions;
 
 class GenerateDepictsQuestionsFromYaml implements ShouldQueue
 {
@@ -124,7 +125,14 @@ class GenerateDepictsQuestionsFromYaml implements ShouldQueue
                 \Log::info("No excludeRegex set for question: " . (isset($q->name) ? $q->name : ''));
             }
             $exclude = isset($q->exclude) ? (is_array($q->exclude) ? $q->exclude : [$q->exclude]) : [];
-            $exclude = array_filter($exclude, function($e) { return $e !== null && $e !== ''; });
+            // Normalize and validate exclude categories
+            $exclude = array_filter(array_map(function($e) {
+                $norm = GenerateDepictsQuestions::normalizeCategoryName($e);
+                if ($norm === null) {
+                    \Log::warning("Invalid exclude category in YAML: '" . print_r($e, true) . "'");
+                }
+                return $norm;
+            }, $exclude));
             $limit = isset($q->limit) ? (int)$q->limit : $defaultLimit;
             foreach ($categories as $cat) {
                 $depictsJobs[] = [

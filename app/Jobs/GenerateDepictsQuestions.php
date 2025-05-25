@@ -77,10 +77,21 @@
             $this->category = $category;
             if (is_string($ignoreCategories)) {
                 $decoded = json_decode($ignoreCategories, true);
-                $this->ignoreCategories = is_array($decoded) ? $decoded : [];
+                $ignoreCategoriesArr = is_array($decoded) ? $decoded : [];
             } else {
-                $this->ignoreCategories = $ignoreCategories;
+                $ignoreCategoriesArr = $ignoreCategories;
             }
+            // Normalize and validate ignoreCategories
+            $normalized = [];
+            foreach ($ignoreCategoriesArr as $cat) {
+                $norm = self::normalizeCategoryName($cat);
+                if ($norm !== null) {
+                    $normalized[] = $norm;
+                } else {
+                    \Log::warning("Invalid ignoreCategory entry: '" . print_r($cat, true) . "'");
+                }
+            }
+            $this->ignoreCategories = $normalized;
             $this->ignoreCategoriesRegex = $ignoreCategoriesRegex;
             $this->depictItemId = $depictItemId;
             $this->depictName = $depictName;
@@ -451,6 +462,33 @@
                 }
             }
             return $files;
+        }
+
+        /**
+         * Normalize a category name: strip links, colons, whitespace, and ensure single 'Category:' prefix.
+         * @param string $cat
+         * @return string|null Returns normalized name or null if invalid
+         */
+        public static function normalizeCategoryName($cat) {
+            if (!is_string($cat) || $cat === '') return null;
+            // Remove [[...]]
+            $cat = preg_replace('/^\[\[|\]\]$/', '', trim($cat));
+            // Remove leading colon(s)
+            $cat = ltrim($cat, ':');
+            // If it's a link like [[:Category:Foo]], extract inside
+            if (preg_match('/^Category:(.+)$/i', $cat, $m)) {
+                $cat = 'Category:' . trim($m[1]);
+            } elseif (preg_match('/^Category:(.+)$/i', $cat)) {
+                // already normalized
+            } else {
+                $cat = 'Category:' . $cat;
+            }
+            // Remove double prefix if present
+            $cat = preg_replace('/^(Category:)+/', 'Category:', $cat);
+            $cat = trim($cat);
+            // Validate: must start with Category: and not be empty after
+            if (!preg_match('/^Category:[^:]+/', $cat)) return null;
+            return $cat;
         }
 
     }
