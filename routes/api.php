@@ -6,6 +6,10 @@ use App\Http\Controllers\Api\QuestionGroupController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\AnswerController;
 use App\Http\Controllers\Api\YamlSpecController;
+use App\Models\Question;
+use App\Models\Answer;
+use App\Models\Edit;
+use App\Models\User;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,4 +39,13 @@ Route::middleware('auth:sanctum')->group(function () {
     ->name('api.clear-unanswered');
     Route::post('/manual-question/answer', [\App\Http\Controllers\Api\ManualQuestionController::class, 'createAndAnswer']);
     Route::post('/manual-question/bulk-answer', [\App\Http\Controllers\Api\ManualQuestionController::class, 'bulkCreateAndAnswer']);
+});
+
+Route::get('/stats', function () {
+    return response()->json([
+        'questions' => Question::count(),
+        'answers' => Answer::count(),
+        'edits' => Edit::count(),
+        'users' => User::count(),
+    ]);
 });

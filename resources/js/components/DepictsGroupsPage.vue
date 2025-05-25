@@ -36,9 +36,13 @@ const stats = ref({ questions: 0, answers: 0, edits: 0, users: 0 });
 const isAuthed = ref(false);
 
 onMounted(async () => {
-  // Optionally fetch stats from an API if needed
-  // const resp = await fetch('/api/stats');
-  // stats.value = await resp.json();
-  // isAuthed.value = ...
+  try {
+    const resp = await fetch('/api/stats');
+    if (resp.ok) {
+      stats.value = await resp.json();
+    }
+  } catch (e) {
+    // Optionally handle error
+  }
 });
 </script>
