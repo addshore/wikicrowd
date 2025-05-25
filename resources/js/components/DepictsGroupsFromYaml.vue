@@ -131,6 +131,9 @@
         </tbody>
       </table>
     </div>
+    <div v-else-if="groupsApiData === null || yamlData === null">
+      <span class="text-gray-500">Loading....</span>
+    </div>
     <div v-else class="text-gray-500">No YAML questions found.</div>
     <!-- Custom grid link under table -->
     <div class="mt-12 border-t pt-8">
