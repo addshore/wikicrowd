@@ -15,7 +15,6 @@
     <div v-if="sub.depicts_id" class="text-xs text-gray-600 dark:text-gray-400 mb-2">
       <WikidataDescription :qid="sub.depicts_id" />
     </div>
-    <div v-if="sub.display_description" class="text-sm text-gray-700 dark:text-gray-300 mb-2">{{ sub.display_description }}</div>
     <div class="flex flex-wrap gap-2 mb-2">
       <template v-if="sub.categories && sub.categories.length">
         <span v-for="cat in sub.categories" :key="cat">

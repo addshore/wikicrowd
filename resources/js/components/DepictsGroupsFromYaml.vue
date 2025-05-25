@@ -26,7 +26,6 @@
     </div>
     <div v-for="(group, groupKey) in groupedQuestions" :key="groupKey" class="mb-8">
       <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">{{ group.display_name }}</h2>
-      <div v-if="group.display_description" class="mb-2 text-gray-600 dark:text-gray-300 text-sm">{{ group.display_description }}</div>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <DepictsGroupBox
           v-for="sub in group.questions"
@@ -295,7 +294,6 @@ const groupedQuestions = computed(() => {
       if (!groupMap[q.group]) {
         groupMap[q.group] = {
           display_name: q.group,
-          display_description: '',
           questions: []
         };
       }

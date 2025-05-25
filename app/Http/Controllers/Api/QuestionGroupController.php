@@ -71,7 +71,6 @@ class QuestionGroupController extends Controller
                     if (!isset($newManualGroups['refinement'])) {
                         $newManualGroups['refinement'] = (object) [
                             'display_name' => "Refinement",
-                            'display_description' => "Refine the depiction of images",
                             'subGroups' => [],
                         ];
                     }
@@ -107,7 +106,6 @@ class QuestionGroupController extends Controller
         // If anything is left over, add it to an "Other" group
         $newManualGroups['other'] = (object) [
             'display_name' => 'Other',
-            'display_description' => 'Other ungrouped images',
             'subGroups' => [],
         ];
         foreach ($groups as $gameGroup) {

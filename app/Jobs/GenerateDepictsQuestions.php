@@ -271,7 +271,6 @@
                 ['name' => 'depicts-refine'],
                 [
                     'display_name' => 'Depicts Refinement',
-                    'display_description' => 'Refining high level depicts statements to more specific statements.',
                     'layout' => 'grid',
                 ]
             );
