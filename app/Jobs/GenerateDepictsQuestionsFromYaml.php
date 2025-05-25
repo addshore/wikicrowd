@@ -159,8 +159,10 @@ class GenerateDepictsQuestionsFromYaml implements ShouldQueue
                 $job['limit']
             );
             if ($this->runSync) {
+                \Log::info("Dispatching job synchronously for category: {$job['category']}, depictsId: {$job['depictsId']}, name: {$job['name']}");
                 dispatch_sync($jobInstance);
             } else {
+                \Log::info("Dispatching job asynchronously for category: {$job['category']}, depictsId: {$job['depictsId']}, name: {$job['name']}");
                 dispatch($jobInstance);
             }
             $dispatchedCount++;

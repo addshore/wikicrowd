@@ -125,6 +125,7 @@ class QuestionGroupController extends Controller
                 $subGroup->example_question = $example;
             }
         }
+        $apiToken = auth()->user()?->createToken('web')->plainTextToken ?? null;
         return view('groups', [
             'groups' => $groups,
             'stats' => [
@@ -132,7 +133,8 @@ class QuestionGroupController extends Controller
                 'answers' => \App\Models\Answer::count(),
                 'edits' => \App\Models\Edit::count(),
                 'users' => \App\Models\User::count(),
-            ]
+            ],
+            'apiToken' => $apiToken,
         ]);
     }
 

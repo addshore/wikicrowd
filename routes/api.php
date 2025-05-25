@@ -29,4 +29,6 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('api.questions.show');
     Route::post('/answers', [AnswerController::class, 'store'])->name('api.answers.store');
     Route::post('/answers/bulk', [\App\Http\Controllers\Api\AnswerController::class, 'bulkStore']);
+    Route::post('/regenerate-question', [\App\Http\Controllers\Api\RegenerateQuestionController::class, 'regenerate'])
+    ->name('api.regenerate-question');
 });

@@ -7,12 +7,6 @@
         <li>Familiarize yourself with the Qid concept that you are tagging before you begin. <b>Read the labels and descriptions in your own language.</b></li>
         <li class="font-bold text-red-600">A statue, or painting of a thing, is not the thing itself (does not depict)</li>
         <li>Familiarize yourself with <a href="https://commons.wikimedia.org/wiki/Commons:Depicts" target="_blank" rel="noopener" class="text-blue-700 underline">https://commons.wikimedia.org/wiki/Commons:Depicts</a></li>
-        <li>
-          Config for this tool can be found at
-          <a href="https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml" target="_blank" rel="noopener" class="text-blue-700 underline">
-            https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml
-          </a>
-        </li>
       </ul>
     </div>
     <div v-if="difficultyFilters.length > 0 || hasUnrated" class="flex flex-col gap-2 mb-4">
@@ -59,12 +53,75 @@
         />
       </div>
     </div>
+    <div class="mt-12 border-t pt-8">
+      <h2 class="text-xl font-bold mb-4">Regenerate</h2>
+      <span class="block mt-2 text-sm text-gray-600">Config for this tool can be found at
+        <a href="https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml" target="_blank" rel="noopener" class="text-blue-700 underline">
+          https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml
+        </a>
+      </span>
+      <span class="block mt-2 text-sm text-gray-600">All questions should already regenerate every 6 hours...</span>
+      <span class="block mt-2 text-sm text-gray-600">
+        If you have made changes to the YAML file, you can regenerate questions here.</span>
+      <div v-if="yamlData && yamlData.questions && yamlData.questions.length">
+        <table class="min-w-full text-sm border">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="p-2 border">Name</th>
+              <th class="p-2 border">Depicts</th>
+              <th class="p-2 border">Categories</th>
+              <th class="p-2 border">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="q in yamlData.questions" :key="q.depictsId + '-' + q.name">
+              <td class="p-2 border">{{ q.name }}</td>
+              <td class="p-2 border">
+                <template v-if="q.depictsId">
+                  <a :href="getWikidataUrl(q.depictsId)" target="_blank" class="text-blue-700 hover:underline font-mono">
+                    {{ q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1') }}
+                  </a>
+                  <span class="ml-1">(<WikidataLabel :qid="q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')" :fallback="q.name" />)</span>
+                  <div class="text-xs text-gray-600 mt-1">
+                    <WikidataDescription :qid="q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')" />
+                  </div>
+                </template>
+                <template v-else>-</template>
+              </td>
+              <td class="p-2 border">
+                <template v-if="q.categories && q.categories.length">
+                  <span v-for="cat in q.categories" :key="cat">
+                    <a :href="getCategoryUrl(cat)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(cat) }}</a><span v-if="!$last">, </span>
+                  </span>
+                </template>
+                <template v-else-if="q.category">
+                  <a :href="getCategoryUrl(q.category)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(q.category) }}</a>
+                </template>
+                <template v-else>-</template>
+              </td>
+              <td class="p-2 border">
+                <button
+                  class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  @click="regenerateJob(q)"
+                >
+                  <span v-if="regenerating[q.depictsId + '-' + q.name]">Regenerating...</span>
+                  <span v-else>Regenerate</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-else class="text-gray-500">No YAML questions found.</div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import DepictsGroupBox from './DepictsGroupBox.vue';
+import WikidataLabel from './WikidataLabel.vue';
+import WikidataDescription from './WikidataDescription.vue';
 
 const groups = ref({});
 const yamlData = ref(null);
@@ -73,6 +130,7 @@ const filters = ref([]);
 const hasUnrated = ref(false);
 const unratedGroups = ref([]);
 const difficultyFilters = ref([]);
+const regenerating = ref({});
 
 const emojiForDifficulty = (diff) => {
   switch (diff) {
@@ -100,13 +158,13 @@ const toggleFilter = (diff) => {
 };
 
 const getCategoryUrl = (cat) => {
-  if (!cat) return null;
+  if (!cat || typeof cat !== 'string') return null;
   // Remove any prefix like 'Category:' or '[[:Category:' and any trailing ']' or whitespace
   let catName = cat.replace(/^\[\[:]?Category:/, '').replace(/\]+$/, '').trim();
   return `https://commons.wikimedia.org/wiki/Category:${encodeURIComponent(catName)}`;
 };
 const getCategoryName = (cat) => {
-  if (!cat) return '';
+  if (!cat || typeof cat !== 'string') return '';
   // Remove any prefix like 'Category:' or '[[:Category:' and any trailing ']' or whitespace
   return cat.replace(/^\[\[:]?Category:/, '').replace(/\]+$/, '').trim();
 };
@@ -198,6 +256,39 @@ onMounted(async () => {
   }
   difficultyFilters.value = Array.from(allDiffs);
 });
+
+const regenerateJob = async (q) => {
+  const key = (q.depictsId || '') + '-' + (q.name || '');
+  regenerating.value[key] = true;
+  // Extract Qid if in {{Q|...}} format
+  let depictsId = q.depictsId;
+  const match = typeof depictsId === 'string' && depictsId.match(/^\{\{Q\|(.+)\}\}$/);
+  if (match) depictsId = match[1];
+  try {
+    const resp = await fetch('/api/regenerate-question', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${window.apiToken}`,
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+      },
+      body: JSON.stringify({
+        depictsId
+      })
+    });
+    if (!resp.ok) {
+      if (resp.status === 401) {
+        alert('You must be logged in with an API token to regenerate questions.');
+        return;
+      }
+      alert('Failed to trigger regeneration.');
+    }
+  } catch (e) {
+    console.error('Error triggering regeneration:', e);
+  }
+  regenerating.value[key] = false;
+};
 </script>
 
 <style scoped>
