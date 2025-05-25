@@ -68,7 +68,7 @@
       <div v-for="image in images" :key="image.id"
         @click="!answered.has(image.id) && toggleSelect(image.id)"
         :class="[
-          'relative rounded overflow-hidden transition-all',
+          'relative flex flex-col rounded overflow-hidden transition-all',
           answered.has(image.id)
             ? (
                 answeredMode[image.id] === 'no' ? 'border-4 border-red-500 cursor-default opacity-80' :
@@ -91,8 +91,7 @@
           class="object-contain align-top w-full h-[22vw] min-h-[180px] max-h-[320px]"
           style="object-position:top"
         />
-        <div class="image-title px-2 py-1 text-xs text-center truncate bg-white bg-opacity-80 absolute bottom-0 left-0 w-full"
-          @click.stop
+        <div class="image-title px-2 py-1 text-xs text-center truncate bg-white bg-opacity-80 w-full"
         >
           <a :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + image.properties?.mediainfo_id" target="_blank">{{ image.properties?.mediainfo_id || image.id }}</a>
         </div>
