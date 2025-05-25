@@ -349,11 +349,14 @@ export default {
             body: JSON.stringify({ answers }),
           });
         } else {
-          // Use bulk API
+          const answers = pendingAnswers.value.map(({ id, mode }) => ({
+            question_id: id,
+            answer: mode,
+          }));
           await fetch('/api/answers/bulk', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ answers: pendingAnswers.value }),
+            body: JSON.stringify({ answers }),
           });
         }
         // Mark as answered in UI
