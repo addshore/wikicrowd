@@ -24,12 +24,12 @@
         <span class="text-gray-600 text-sm">Unrated groups have not been assigned a difficulty yet.</span>
       </div>
     </div>
-    <div v-for="(group, groupKey) in visibleGroups" :key="groupKey" class="mb-8">
+    <div v-for="(group, groupKey) in groupedQuestions" :key="groupKey" class="mb-8">
       <h2 class="text-xl font-bold mb-2">{{ group.display_name }}</h2>
       <div v-if="group.display_description" class="mb-2 text-gray-600 text-sm">{{ group.display_description }}</div>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <DepictsGroupBox
-          v-for="sub in group.filteredSubGroups"
+          v-for="sub in group.questions"
           :key="sub.id"
           :sub="sub"
           :emojiForDifficulty="emojiForDifficulty"
@@ -39,11 +39,11 @@
         />
       </div>
     </div>
-    <div v-if="unratedGroups.length > 0" class="mb-8">
+    <div v-if="unratedQuestions.length > 0" class="mb-8">
       <h2 class="text-xl font-bold mb-2">❓ Unrated</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <DepictsGroupBox
-          v-for="sub in unratedGroups"
+          v-for="sub in unratedQuestions"
           :key="sub.id"
           :sub="sub"
           :emojiForDifficulty="emojiForDifficulty"
@@ -63,18 +63,19 @@
       <span class="block mt-2 text-sm text-gray-600">All questions should already regenerate every 6 hours...</span>
       <span class="block mt-2 text-sm text-gray-600">
         If you have made changes to the YAML file, you can regenerate questions here.</span>
-      <div v-if="yamlData && yamlData.questions && yamlData.questions.length">
+      <div v-if="mergedQuestions.length">
         <table class="min-w-full text-sm border">
           <thead>
             <tr class="bg-gray-100">
               <th class="p-2 border">Name</th>
               <th class="p-2 border">Depicts</th>
               <th class="p-2 border">Categories</th>
+              <th class="p-2 border">Unanswered</th>
               <th class="p-2 border">Action</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="q in yamlData.questions" :key="q.depictsId + '-' + q.name">
+            <tr v-for="q in mergedQuestions" :key="q.id">
               <td class="p-2 border">{{ q.name }}</td>
               <td class="p-2 border">
                 <template v-if="q.depictsId">
@@ -94,22 +95,19 @@
                     <a :href="getCategoryUrl(cat)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(cat) }}</a><span v-if="idx < q.categories.length - 1">, </span>
                   </span>
                 </template>
-                <template v-else-if="Array.isArray(q.category) && q.category.length">
-                  <span v-for="(cat, idx) in q.category" :key="cat">
-                    <a :href="getCategoryUrl(cat)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(cat) }}</a><span v-if="idx < q.category.length - 1">, </span>
-                  </span>
-                </template>
-                <template v-else-if="typeof q.category === 'string' && q.category">
-                  <a :href="getCategoryUrl(q.category)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(q.category) }}</a>
-                </template>
                 <template v-else>-</template>
+              </td>
+              <td class="p-2 border text-center">
+                <span v-if="typeof q.unanswered === 'number'">{{ q.unanswered }}</span>
+                <span v-else>-</span>
               </td>
               <td class="p-2 border">
                 <button
-                  class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                   @click="regenerateJob(q)"
+                  :disabled="q.unanswered > 100"
                 >
-                  <span v-if="regenerating[q.depictsId + '-' + q.name]">Regenerating...</span>
+                  <span v-if="regenerating[q.id]">Regenerating...</span>
                   <span v-else>Regenerate</span>
                 </button>
               </td>
@@ -129,13 +127,14 @@ import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
 
 const yamlData = ref(null);
+const groupsApiData = ref(null);
 const levels = ref({});
 const filters = ref([]);
-const hasUnrated = ref(false);
-const unratedGroups = ref([]);
 const difficultyFilters = ref([]);
 const regenerating = ref({});
-const groupsApiData = ref([]);
+
+// The single merged data structure for all display logic
+const mergedQuestions = ref([]);
 
 const emojiForDifficulty = (diff) => {
   switch (diff) {
@@ -179,84 +178,8 @@ const getWikidataUrl = (qid) => {
   return match ? `https://www.wikidata.org/wiki/${match[0]}` : null;
 };
 
-const visibleGroups = computed(() => {
-  // Group questions by 'group' field from YAML only
-  const result = [];
-  unratedGroups.value = [];
-  hasUnrated.value = false;
-  if (!yamlData.value || !yamlData.value.questions) return result;
-  // Build a map: groupName -> { display_name, display_description, filteredSubGroups: [] }
-  const groupMap = {};
-  for (const q of yamlData.value.questions) {
-    const groupName = q.group || 'Other';
-    if (!groupMap[groupName]) {
-      groupMap[groupName] = {
-        display_name: groupName,
-        display_description: '', // Optionally add description if present in YAML
-        filteredSubGroups: []
-      };
-    }
-    // Determine difficulty
-    const difficulty = q.difficulty || 'UNRATED';
-    if (difficulty === 'UNRATED') hasUnrated.value = true;
-    if (filters.value.length === 0 || filters.value.includes(difficulty)) {
-      // Normalize categories
-      let cats = [];
-      if (Array.isArray(q.categories)) {
-        cats = q.categories;
-      } else if (Array.isArray(q.category)) {
-        cats = q.category;
-      } else if (q.category) {
-        cats = [q.category];
-      }
-      // Find matching API subGroup for extra display data
-      let apiSub = null;
-      if (groupsApiData.value && typeof groupsApiData.value === 'object') {
-        outer: for (const apiGroup of Object.values(groupsApiData.value)) {
-          if (!apiGroup.subGroups) continue;
-          for (const sub of apiGroup.subGroups) {
-            // Match by depictsId (Qid) or name
-            const qid = typeof q.depictsId === 'string' ? q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1') : '';
-            const subQid = sub.depicts_id || '';
-            if (qid && subQid && qid === subQid) { apiSub = sub; break outer; }
-            if (q.name && (sub.display_name === q.name || sub.name === q.name)) { apiSub = sub; break outer; }
-          }
-        }
-      }
-      // Build subGroup object, merging API data if found
-      const sub = {
-        ...q,
-        ...(apiSub || {}), // merge API display data (label, description, unanswered, image, etc.)
-        difficulty,
-        categories: cats,
-        categoryUrl: cats.length ? getCategoryUrl(cats[0]) : null,
-        wikidataUrl: getWikidataUrl(q.depictsId),
-        name: q.name,
-        route_name: q.depictsId ? `depicts/${q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')}` : q.name,
-        id: (q.depictsId || '') + '-' + (q.name || '')
-      };
-      // Only show boxes with unanswered > 0
-      if (sub.unanswered && sub.unanswered > 0) {
-        if (difficulty === 'UNRATED') {
-          unratedGroups.value.push(sub);
-        } else {
-          groupMap[groupName].filteredSubGroups.push(sub);
-        }
-      }
-    }
-  }
-  // Convert map to array, only include groups with questions
-  for (const group of Object.values(groupMap)) {
-    if (group.filteredSubGroups.length > 0) {
-      group.filteredSubGroups.sort((a, b) => (b.unanswered || 0) - (a.unanswered || 0));
-      result.push(group);
-    }
-  }
-  return result;
-});
-
+// Build mergedQuestions on mount
 onMounted(async () => {
-  // Fetch both YAML and API groups from local endpoints
   const [groupsResp, yamlResp] = await Promise.all([
     fetch('/api/groups'),
     fetch('/api/depicts/yaml-spec')
@@ -264,13 +187,94 @@ onMounted(async () => {
   groupsApiData.value = await groupsResp.json();
   yamlData.value = await yamlResp.json();
   levels.value = yamlData.value.global?.levels || {};
+
+  // Build mergedQuestions
+  const apiSubs = [];
+  if (groupsApiData.value && typeof groupsApiData.value === 'object') {
+    for (const apiGroup of Object.values(groupsApiData.value)) {
+      if (apiGroup.subGroups) {
+        apiSubs.push(...apiGroup.subGroups);
+      }
+    }
+  }
+  mergedQuestions.value = (yamlData.value.questions || []).map(q => {
+    // Normalize categories
+    let cats = [];
+    if (Array.isArray(q.categories)) {
+      cats = q.categories;
+    } else if (Array.isArray(q.category)) {
+      cats = q.category;
+    } else if (q.category) {
+      cats = [q.category];
+    }
+    // Find matching API subGroup for extra display data
+    let apiSub = null;
+    const qid = typeof q.depictsId === 'string' ? q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1') : '';
+    apiSub = apiSubs.find(sub => {
+      const subQid = sub.depicts_id || '';
+      if (qid && subQid && qid === subQid) return true;
+      if (q.name && (sub.display_name === q.name || sub.name === q.name)) return true;
+      return false;
+    });
+    const difficulty = q.difficulty || 'UNRATED';
+    return {
+      ...q,
+      ...(apiSub || {}),
+      difficulty,
+      categories: cats,
+      categoryUrl: cats.length ? getCategoryUrl(cats[0]) : null,
+      wikidataUrl: getWikidataUrl(q.depictsId),
+      name: q.name,
+      route_name: q.depictsId ? `depicts/${qid}` : q.name,
+      id: (q.depictsId || '') + '-' + (q.name || ''),
+      group: q.group || 'Other',
+      unanswered: typeof (apiSub && apiSub.unanswered) === 'number' ? apiSub.unanswered : null,
+    };
+  });
+
   // Set up difficulty filters (only those with questions)
   const allDiffs = new Set();
-  for (const q of yamlData.value.questions || []) {
-    if (q.difficulty) { allDiffs.add(q.difficulty); }
+  for (const q of mergedQuestions.value) {
+    if (q.difficulty) allDiffs.add(q.difficulty);
   }
   difficultyFilters.value = Array.from(allDiffs);
 });
+
+// Grouped for main display (by YAML group, only unanswered > 0)
+const groupedQuestions = computed(() => {
+  const groupMap = {};
+  for (const q of mergedQuestions.value) {
+    if (q.difficulty !== 'UNRATED' && typeof q.unanswered === 'number' && q.unanswered > 0) {
+      if (!groupMap[q.group]) {
+        groupMap[q.group] = {
+          display_name: q.group,
+          display_description: '',
+          questions: []
+        };
+      }
+      if (filters.value.length === 0 || filters.value.includes(q.difficulty)) {
+        groupMap[q.group].questions.push(q);
+      }
+    }
+  }
+  // Sort by unanswered descending
+  for (const group of Object.values(groupMap)) {
+    group.questions.sort((a, b) => (b.unanswered || 0) - (a.unanswered || 0));
+  }
+  return Object.values(groupMap);
+});
+
+// Unrated questions (unanswered > 0)
+const unratedQuestions = computed(() => {
+  return mergedQuestions.value.filter(q => q.difficulty === 'UNRATED' && typeof q.unanswered === 'number' && q.unanswered > 0);
+});
+
+// For regenerate table: all YAML questions, but show unanswered and disable if > 100
+const actionableCount = computed(() => mergedQuestions.value.filter(q => typeof q.unanswered === 'number' && q.unanswered > 0).length);
+
+// Dummy for hasUnrated (for filter UI)
+const hasUnrated = computed(() => mergedQuestions.value.some(q => q.difficulty === 'UNRATED'));
+
 </script>
 
 <style scoped>
