@@ -102,14 +102,25 @@
                 <span v-else>-</span>
               </td>
               <td class="p-2 border">
-                <button
-                  class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                  @click="regenerateJob(q)"
-                  :disabled="q.unanswered > 100"
-                >
-                  <span v-if="regenerating[q.id]">Regenerating...</span>
-                  <span v-else>Regenerate</span>
-                </button>
+                <div class="flex gap-2">
+                  <button
+                    class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                    @click="regenerateJob(q)"
+                    :disabled="q.unanswered > 100"
+                  >
+                    <span v-if="regenerating[q.id]">Regenerating...</span>
+                    <span v-else>Regenerate</span>
+                  </button>
+                  <button
+                    v-if="typeof q.unanswered === 'number' && q.unanswered > 0"
+                    class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                    @click="clearUnanswered(q)"
+                    :disabled="clearing[q.id]"
+                  >
+                    <span v-if="clearing[q.id]">Clearing...</span>
+                    <span v-else>Clear</span>
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -132,6 +143,7 @@ const levels = ref({});
 const filters = ref([]);
 const difficultyFilters = ref([]);
 const regenerating = ref({});
+const clearing = ref({});
 
 // The single merged data structure for all display logic
 const mergedQuestions = ref([]);
@@ -306,6 +318,35 @@ const regenerateJob = async (q) => {
     console.error('Error triggering regeneration:', e);
   }
   regenerating.value[key] = false;
+};
+
+const clearUnanswered = async (q) => {
+  const key = (q.depictsId || '') + '-' + (q.name || '');
+  clearing.value[key] = true;
+  try {
+    const resp = await fetch('/api/clear-unanswered', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${window.apiToken}`,
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+      },
+      body: JSON.stringify({
+        groupName: q.route_name // Use the actual group name as used in the backend
+      })
+    });
+    if (!resp.ok) {
+      if (resp.status === 401) {
+        alert('You must be logged in with an API token to clear unanswered questions.');
+        return;
+      }
+      alert('Failed to clear unanswered questions.');
+    }
+  } catch (e) {
+    console.error('Error clearing unanswered questions:', e);
+  }
+  clearing.value[key] = false;
 };
 
 </script>

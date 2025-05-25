@@ -31,4 +31,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/answers/bulk', [\App\Http\Controllers\Api\AnswerController::class, 'bulkStore']);
     Route::post('/regenerate-question', [\App\Http\Controllers\Api\RegenerateQuestionController::class, 'regenerate'])
     ->name('api.regenerate-question');
+    Route::post('/clear-unanswered', [\App\Http\Controllers\Api\RemoveUnansweredQuestionsController::class, 'clear'])
+    ->name('api.clear-unanswered');
 });
