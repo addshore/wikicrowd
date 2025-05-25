@@ -221,13 +221,30 @@ const getWikidataUrl = (qid) => {
 
 // Build mergedQuestions on mount
 onMounted(async () => {
-  const [groupsResp, yamlResp] = await Promise.all([
-    fetch('/api/groups'),
-    fetch('/api/depicts/yaml-spec')
-  ]);
-  groupsApiData.value = await groupsResp.json();
-  yamlData.value = await yamlResp.json();
-  levels.value = yamlData.value.global?.levels || {};
+  try {
+    // Start both requests simultaneously and parse responses in parallel
+    const [groupsResp, yamlResp] = await Promise.all([
+      fetch('/api/groups'),
+      fetch('/api/depicts/yaml-spec')
+    ]);
+    
+    // Parse both responses in parallel
+    const [groupsData, yamlSpecData] = await Promise.all([
+      groupsResp.json(),
+      yamlResp.json()
+    ]);
+    
+    // Assign the parsed data
+    groupsApiData.value = groupsData;
+    yamlData.value = yamlSpecData;
+    levels.value = yamlSpecData.global?.levels || {};
+  } catch (error) {
+    console.error('Error loading data:', error);
+    // Set empty values so loading state clears
+    groupsApiData.value = {};
+    yamlData.value = { questions: [] };
+    levels.value = {};
+  }
 
   // Build mergedQuestions
   const apiSubs = [];
