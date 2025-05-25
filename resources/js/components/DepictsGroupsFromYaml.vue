@@ -70,12 +70,14 @@
             <th class="p-2 border text-gray-900 dark:text-gray-100">Depicts</th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Categories</th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Unanswered</th>
+            <th class="p-2 border text-gray-900 dark:text-gray-100">Go to</th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Action</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="q in mergedQuestions" :key="q.id">
-            <td class="p-2 border text-gray-900 dark:text-gray-100">{{ q.name }}
+            <td class="p-2 border text-gray-900 dark:text-gray-100">
+              <span>{{ emojiForDifficulty(q.difficulty) }}</span> {{ q.name }}
             </td>
             <td class="p-2 border text-gray-900 dark:text-gray-100">
               <template v-if="q.depictsId">
@@ -103,6 +105,14 @@
                 <span class="ml-2 text-yellow-800">+ {{ q.refinementUnanswered }} refinements</span>
               </template>
               <span v-else-if="typeof q.unanswered !== 'number'">-</span>
+            </td>
+            <td class="p-2 border text-gray-900 dark:text-gray-100">
+              <div class="flex gap-2">
+                <a :href="`/questions/${q.route_name}`" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 font-bold" title="Go to start questions">Start</a>
+                <template v-if="q.refinement && Array.isArray(q.refinement) && q.refinement.length">
+                  <a v-for="ref in q.refinement" :key="ref.route_name" :href="`/questions/${ref.route_name}`" class="px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 font-bold" title="Go to refine questions">Refine</a>
+                </template>
+              </div>
             </td>
             <td class="p-2 border text-gray-900 dark:text-gray-100">
               <div class="flex gap-2">
@@ -403,4 +413,21 @@ const clearUnanswered = async (q) => {
 
 <style scoped>
 /* Add any component-specific styles here */
+a[href].text-blue-700.dark\:text-blue-400,
+a.text-blue-700.dark\:text-blue-400,
+a.text-blue-700:hover.dark\:text-blue-400,
+a.text-blue-700.hover\:underline.dark\:text-blue-400 {
+  /* Lighter blue for dark mode links */
+  color: #60a5fa !important; /* tailwind blue-400 */
+}
+
+a.text-blue-700:hover,
+a.text-blue-700.hover\:underline {
+  color: #2563eb !important; /* tailwind blue-600 for hover */
+}
+
+/* For font-mono links in dark mode */
+a.font-mono.text-blue-700.dark\:text-blue-400 {
+  color: #60a5fa !important;
+}
 </style>
