@@ -5,7 +5,6 @@
         <h1 class="text-2xl font-bold">WikiCrowd (Depicts)</h1>
         <p class="text-sm text-gray-500">Quick and easy micro contributions to the wiki space, showing what images depict.</p>
       </div>
-      <x-top-right-navbar/>
     </div>
 
     <DepictsGroupsFromYaml />
