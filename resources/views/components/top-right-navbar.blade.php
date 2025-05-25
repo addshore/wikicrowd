@@ -1,4 +1,4 @@
-<div class="hidden fixed top-0 right-0 px-6 py-4 sm:block">
+<div class="hidden fixed top-0 right-0 px-6 py-4 sm:block" style="z-index: 9999;">
     @auth
         <span class="text-sm text-gray-800 dark:text-gray-400">Hello, {{ Auth::user()->username }}!</span>
     @endauth
