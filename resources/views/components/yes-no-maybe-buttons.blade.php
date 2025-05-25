@@ -366,11 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const initialCurrentId = container.dataset.currentQuestionId; // This is from Blade $qu
         const initialNextId = container.dataset.nextQuestionId; // This is from Blade $next
 
-        // initialCurrentQuestionData and initialNextQuestionData are expected to be set globally
-        // by the parent Blade view (e.g., image-focus.blade.php) like so:
-        // window.initialQuestionData = someJsonEncodedInitialQuestion;
-        // window.initialNextQuestionData = someJsonEncodedInitialNextQuestion;
-
         // Then access them here:
         const initialCurrentQuestionData = window.initialQuestionData || null;
         const initialNextQuestionData = window.initialNextQuestionData || null;

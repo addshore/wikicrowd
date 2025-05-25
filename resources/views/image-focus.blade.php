@@ -22,9 +22,7 @@
                 {{-- Question content will be dynamically inserted here by JavaScript --}}
                 @if ($qu)
                     <div id="image-focus-vue-root">
-                        <template v-if="gridMode">
-                            <grid-mode @disable-grid="gridMode = false" />
-                        </template>
+                        <grid-mode/>
                     </div>
                 @else
                     <div id="no-more-questions" class="flex justify-center pt-8 sm:justify-start sm:pt-0">

@@ -1,16 +1,16 @@
 require('./bootstrap');
 
 import { createApp } from 'vue';
+import GridMode from './components/GridMode.vue';
 import YesNoMaybeButtons from './components/YesNoMaybeButtons.vue';
-import ImageFocusOrGrid from './components/ImageFocusOrGrid.vue';
 import DepictsGroupsFromYaml from './components/DepictsGroupsFromYaml.vue';
 import DepictsGroupsPage from './components/DepictsGroupsPage.vue';
 
 console.log('Vue app is starting...');
 
 if (document.getElementById('image-focus-vue-root')) {
-  const imageFocusApp = createApp(ImageFocusOrGrid);
-  imageFocusApp.mount('#image-focus-vue-root');
+  const gridApp = createApp(GridMode);
+  gridApp.mount('#image-focus-vue-root');
 }
 
 if (document.getElementById('yes-no-maybe-buttons')) {

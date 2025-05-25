@@ -106,8 +106,6 @@ class QuestionGroupController extends Controller
             $newManualGroups['refinement'] = $refinement;
         }
 
-        // And then totally restructure the groups, to focus on depicts, and the types of depicts we are doing ;D
-
         return $newManualGroups;
     }
 

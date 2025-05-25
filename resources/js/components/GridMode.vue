@@ -33,11 +33,6 @@
           @click="answerMode = 'no'"
         >NO (2)</button>
         <button
-          class="px-2 py-1 text-sm rounded-l rounded-t bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2"
-          @click="$emit('disable-grid')"
-          style="margin-left: 12px;"
-        >Single Mode</button>
-        <button
           class="px-2 py-1 text-sm bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 ml-2 rounded"
           @click="clearAnswered"
         >
@@ -115,7 +110,6 @@
         Load More
       </button>
     </div>
-    <button class="mt-4 px-4 py-2 bg-gray-300 text-white rounded" @click="$emit('disable-grid')">Disable Grid Mode</button>
   </div>
 </template>
 
