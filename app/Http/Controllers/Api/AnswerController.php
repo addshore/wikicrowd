@@ -10,7 +10,6 @@ use App\Models\Question;
 use App\Models\Answer;
 use App\Jobs\AddDepicts;
 use App\Jobs\SwapDepicts;
-use App\Jobs\AddAlias;
 
 class AnswerController extends Controller
 {
@@ -58,8 +57,6 @@ class AnswerController extends Controller
                     dispatch(new AddDepicts($storedAnswer->id));
                 } elseif ($parentGroupName === 'depicts-refine') {
                     dispatch(new SwapDepicts($storedAnswer->id));
-                } elseif ($parentGroupName === 'aliases') {
-                    dispatch(new AddAlias($storedAnswer->id));
                 }
             } else {
                 // Log if group or parentGroup is missing, as jobs might not be dispatched correctly
@@ -109,8 +106,6 @@ class AnswerController extends Controller
                         dispatch(new AddDepicts($storedAnswer->id));
                     } elseif ($parentGroupName === 'depicts-refine') {
                         dispatch(new SwapDepicts($storedAnswer->id));
-                    } elseif ($parentGroupName === 'aliases') {
-                        dispatch(new AddAlias($storedAnswer->id));
                     }
                 } else {
                     \Log::warning("Question {$question->id} is missing group or parentGroup information. Answer ID: {$storedAnswer->id}");

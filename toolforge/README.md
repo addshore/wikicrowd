@@ -41,12 +41,6 @@ General question generation is done by an built in CRON.
 
 You can also trigger some question generation manually.
 
-```sh
-mw tools exec --tool=wikicrowd -- webservice php8.2 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions enwiki 200
-mw tools exec --tool=wikicrowd -- webservice php8.2 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions dewiki 100
-mw tools exec --tool=wikicrowd -- webservice php8.2 shell -- php ./src/artisan job:dispatchNow GenerateAliasQuestions plwiki 100
-```
-
 For depicts right now you need to get a bunch of info from the YAML files in the spec dir...
 
 ```sh
