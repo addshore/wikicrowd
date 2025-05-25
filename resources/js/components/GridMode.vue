@@ -619,9 +619,13 @@ export default {
         setTimeout(() => {
           const imgElement = document.querySelector(`img[alt="Image ${image.id}"]`);
           if (imgElement) {
-            imgElement.src = image.properties.img_url + '?retry=' + imageRetries[image.id];
+            // Force reload by resetting src to itself (browser will retry)
+            imgElement.src = '';
+            setTimeout(() => {
+              imgElement.src = image.properties.img_url;
+            }, 50);
           }
-        }, 1000 * retryCount);
+        }, 1000 * (retryCount*2));
       } else {
         // Mark as failed to load
         imageLoadingStates[image.id] = 'error';
