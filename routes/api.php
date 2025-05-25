@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\QuestionGroupController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\AnswerController;
+use App\Http\Controllers\Api\YamlSpecController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\AnswerController;
 // Route::post('token', [\App\Http\Controllers\ApiAuthController::class, 'requestToken']);
 
 Route::get('/groups', [QuestionGroupController::class, 'index'])->name('api.groups.index');
+Route::get('/depicts/yaml-spec', [YamlSpecController::class, 'index'])->name('api.depicts.yaml-spec');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/questions/{groupName}/{desiredId?}', [QuestionController::class, 'getGroupQuestions'])

@@ -51,6 +51,21 @@ class QuestionGroupController extends Controller
         foreach ($groups as $gameGroup) {
             $jIgnore = [];
             foreach ($gameGroup->subGroups as $j => $game) {
+                // Get a sample unanswered question for this subgroup (with image if possible)
+                $sampleUnanswered = $game->question()->doesntHave('answer')->whereNotNull('properties->img_url')->first();
+                $game->example_question = $sampleUnanswered;
+                // Try to extract depicts_id and categories from the first unanswered question
+                if ($sampleUnanswered && isset($sampleUnanswered->properties['depicts_id'])) {
+                    $game->depicts_id = $sampleUnanswered->properties['depicts_id'];
+                }
+                if ($sampleUnanswered && isset($sampleUnanswered->properties['categories'])) {
+                    // categories may be a string or array
+                    $cats = $sampleUnanswered->properties['categories'];
+                    if (is_string($cats)) {
+                        $cats = [$cats];
+                    }
+                    $game->categories = $cats;
+                }
                 // Separate out the depict-refine names
                 if (strpos($game->name, 'depicts-refine') === 0) {
                     if (!isset($newManualGroups['refinement'])) {
