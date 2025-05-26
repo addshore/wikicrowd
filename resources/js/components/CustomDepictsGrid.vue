@@ -158,17 +158,37 @@ async function checkIfCategoryQid(qid) {
     if (Array.isArray(p31) && p31.some(
       s => s.mainsnak?.datavalue?.value?.id === 'Q4167836')) {
       // This is a category item
-      isCategoryQid.value = true;
-      categoryQidWarning.value = 'This Qid is a Wikimedia category (not a real thing). Please use the main topic instead.';
-      showGrid.value = false;
-      return true;
+      const p301 = entity?.claims?.P301;
+      if (Array.isArray(p301) && p301[0]?.mainsnak?.datavalue?.value?.id) {
+        const mainTopicQid = p301[0].mainsnak.datavalue.value.id;
+        isCategoryQid.value = true;
+        categoryQidWarning.value = `This Qid is a Wikimedia category (not a real thing). Main topic found: ${mainTopicQid}. Switching to it...`;
+        // Show popup to user
+        window.alert(`The Qid you entered is a Wikimedia category. Automatically switching to its main topic: ${mainTopicQid}`);
+        manualQid.value = mainTopicQid;
+        // Wait a tick, then re-check the new QID
+        setTimeout(async () => {
+          const result = await checkIfCategoryQid(mainTopicQid);
+          if (!result) {
+            // If the new QID is not a category, show the grid
+            showGrid.value = true;
+            isCategoryQid.value = false;
+            categoryQidWarning.value = '';
+          }
+        }, 0);
+        return true;
+      } else {
+        isCategoryQid.value = true;
+        categoryQidWarning.value = 'This Qid is a Wikimedia category (not a real thing). No main topic (P301) found. Please use the main topic instead.';
+        showGrid.value = false;
+        return true;
+      }
     } else {
       isCategoryQid.value = false;
       categoryQidWarning.value = '';
       return false;
     }
   } catch (e) {
-    // ignore
     isCategoryQid.value = false;
     categoryQidWarning.value = '';
     return false;
