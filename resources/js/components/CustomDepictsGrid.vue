@@ -166,6 +166,7 @@ async function checkIfCategoryQid(qid) {
         // Show popup to user
         window.alert(`The Qid you entered is a Wikimedia category. Automatically switching to its main topic: ${mainTopicQid}`);
         manualQid.value = mainTopicQid;
+        updateUrl();
         // Wait a tick, then re-check the new QID
         setTimeout(async () => {
           const result = await checkIfCategoryQid(mainTopicQid);
