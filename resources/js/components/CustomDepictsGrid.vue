@@ -8,6 +8,7 @@
           <div class="flex items-center gap-2">
             <input v-model="manualCategory" @input="onCategoryInput" @focus="showCategoryDropdown = true" @blur="hideCategoryDropdown" class='border rounded px-2 py-1 w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700' placeholder='e.g. Paintings by Vincent van Gogh' required autocomplete="off" />
             <a v-if="manualCategory" :href="categoryUrl" target="_blank" rel="noopener" class="ml-1 text-blue-600 dark:text-blue-400" title="Open category"><svg xmlns="http://www.w3.org/2000/svg" class="inline w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3h7v7m0 0L10 21l-7-7L21 10z"/></svg></a>
+            <button type="button" @click="autoFillQidFromCategory" class="ml-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600" title="Auto-fill Qid from category">Auto Wikidata ID</button>
           </div>
           <ul v-if="showCategoryDropdown && categoryResults.length" class="absolute z-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 w-full mt-1 rounded shadow max-h-60 overflow-auto">
             <li v-for="(result, idx) in categoryResults" :key="result" @mousedown.prevent="selectCategory(result)" class="px-3 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer text-gray-900 dark:text-gray-200">{{ result }}</li>
@@ -18,6 +19,7 @@
           <div class="flex items-center gap-2">
             <input v-model="manualQid" @input="onQidInput" @focus="showQidDropdown = true" @blur="hideQidDropdown" class='border rounded px-2 py-1 w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700' placeholder='e.g. Q5582' required autocomplete="off" />
             <a v-if="manualQid" :href="qidUrl" target="_blank" rel="noopener" class="ml-1 text-blue-600 dark:text-blue-400" title="Open item"><svg xmlns="http://www.w3.org/2000/svg" class="inline w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3h7v7m0 0L10 21l-7-7L21 10z"/></svg></a>
+            <button type="button" @click="autoFillCategoryFromQid" class="ml-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600" title="Auto-fill category from Qid">Auto Commons Category</button>
           </div>
           <ul v-if="showQidDropdown && qidResults.length" class="absolute z-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 w-full mt-1 rounded shadow max-h-60 overflow-auto">
             <li v-for="item in qidResults" :key="item.id" @mousedown.prevent="selectQid(item)" class="px-3 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer text-gray-900 dark:text-gray-200">
@@ -27,6 +29,7 @@
           </ul>
         </div>
         <button type='submit' class='bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded font-bold'>Generate Grid</button>
+        <div v-if="autoError" class="mt-2 text-red-600 dark:text-red-400 text-sm">{{ autoError }}</div>
       </form>
     </div>
     <div class='w-full'>
@@ -43,6 +46,9 @@ const manualCategory = ref('Category:Windsurfing');
 const manualQid = ref('Q191051');
 const showGrid = ref(false);
 const gridKey = ref(0); // Used to force re-render of GridMode
+
+// --- Auto error state ---
+const autoError = ref('');
 
 // --- Category search state ---
 const categoryResults = ref([]);
@@ -136,6 +142,68 @@ function hideQidDropdown() {
   setTimeout(() => { showQidDropdown.value = false; }, 150);
 }
 const qidUrl = computed(() => manualQid.value ? `https://www.wikidata.org/wiki/${manualQid.value}` : '#');
+
+// --- Auto-fill logic ---
+
+async function autoFillCategoryFromQid() {
+  autoError.value = '';
+  const qid = manualQid.value.trim();
+  if (!/^Q\d+$/i.test(qid)) {
+    autoError.value = 'Please enter a valid Wikidata Qid first.';
+    return;
+  }
+  try {
+    const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${encodeURIComponent(qid)}&props=claims&format=json&origin=*`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const entity = data.entities?.[qid];
+    const p373 = entity?.claims?.P373;
+    if (!p373 || !Array.isArray(p373) || p373.length === 0) {
+      autoError.value = 'No Commons category (P373) found for this Qid.';
+      return;
+    }
+    if (p373.length > 1) {
+      autoError.value = 'Multiple Commons categories (P373) found for this Qid.';
+      return;
+    }
+    const value = p373[0]?.mainsnak?.datavalue?.value;
+    if (!value) {
+      autoError.value = 'Commons category (P373) value missing.';
+      return;
+    }
+    manualCategory.value = 'Category:' + value;
+    updateUrl();
+  } catch (e) {
+    autoError.value = 'Failed to fetch Commons category from Wikidata.';
+  }
+}
+
+async function autoFillQidFromCategory() {
+  autoError.value = '';
+  let cat = manualCategory.value.trim();
+  if (!cat) {
+    autoError.value = 'Please enter a category first.';
+    return;
+  }
+  if (!/^Category:/i.test(cat)) {
+    cat = 'Category:' + cat;
+  }
+  try {
+    const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&sites=commonswiki&titles=${encodeURIComponent(cat)}&format=json&origin=*`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const entities = data.entities || {};
+    const qids = Object.keys(entities).filter(k => k.startsWith('Q'));
+    if (qids.length === 0) {
+      autoError.value = 'No Wikidata item found for this category.';
+      return;
+    }
+    manualQid.value = qids[0];
+    updateUrl();
+  } catch (e) {
+    autoError.value = 'Failed to fetch Wikidata Qid from category.';
+  }
+}
 
 onMounted(() => {
   const category = getQueryParam('category');
