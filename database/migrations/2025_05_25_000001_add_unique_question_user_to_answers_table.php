@@ -8,10 +8,30 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration {
     public function up()
     {
-        // Remove duplicates before adding unique constraint
-        // Cant do the below query, as it is too slow
-        // DB::statement('DELETE a1 FROM answers a1 JOIN answers a2 ON a1.question_id = a2.question_id AND a1.user_id = a2.user_id AND a1.id > a2.id');
+        // Find all duplicate (question_id, user_id) pairs
+        $duplicates = DB::table('answers')
+            ->select('question_id', 'user_id', DB::raw('COUNT(*) as duplicate_count'))
+            ->groupBy('question_id', 'user_id')
+            ->having('duplicate_count', '>', 1)
+            ->get();
+        printf("Found %d duplicate question_id/user_id pairs\n", $duplicates->count());
 
+        foreach ($duplicates as $dup) {
+            printf("Processing duplicate for question_id %d and user_id %d\n", $dup->question_id, $dup->user_id);
+            // For each duplicate pair, delete one (the one with the highest id)
+            $row = DB::table('answers')
+                ->where('question_id', $dup->question_id)
+                ->where('user_id', $dup->user_id)
+                ->orderByDesc('id')
+                ->first();
+
+            if ($row) {
+                printf("Deleting answer with id %d for question_id %d and user_id %d\n", $row->id, $dup->question_id, $dup->user_id);
+                DB::table('answers')->where('id', $row->id)->delete();
+            }
+        }
+
+        // And then seemingly try looping? as we still have issues?
         $maxIterations = 1000;
         $iteration = 0;
         while ($iteration < $maxIterations) {
