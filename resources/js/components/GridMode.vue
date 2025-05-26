@@ -214,7 +214,7 @@
 </template>
 
 <script>
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, reactive } from 'vue';
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
 import { fetchSubclassesAndInstances, fetchDepictsForMediaInfoIds } from './depictsUtils';
@@ -777,7 +777,8 @@ export default {
       imageLoadingStates[image.id] = 'loading';
     };
 
-    // On mount, if manualMode, fetch manual images
+    // On mount, always add keyboard shortcuts
+    let keydownHandler;
     onMounted(() => {
       if (props.manualMode) {
         fetchManualImages().then(() => {
@@ -797,24 +798,27 @@ export default {
           }, 100);
         });
         window.addEventListener('scroll', handleScroll);
-        // Keyboard shortcuts for answer mode
-        window.addEventListener('keydown', (e) => {
-          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-          
-          // Close fullscreen on Escape
-          if (e.key === 'Escape' && showFullscreen.value) {
-            closeFullscreen();
-            return;
-          }
-          
-          // Answer mode shortcuts (only when not in fullscreen)
-          if (!showFullscreen.value) {
-            if (e.key === '1') answerMode.value = 'yes';
-            if (e.key === '2') answerMode.value = 'no';
-            if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
-          }
-        });
       }
+      // Keyboard shortcuts for answer mode (always add)
+      keydownHandler = (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        // Close fullscreen on Escape
+        if (e.key === 'Escape' && showFullscreen.value) {
+          closeFullscreen();
+          return;
+        }
+        // Answer mode shortcuts (only when not in fullscreen)
+        if (!showFullscreen.value) {
+          if (e.key === '1') answerMode.value = 'yes';
+          if (e.key === '2') answerMode.value = 'no';
+          if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
+        }
+      };
+      window.addEventListener('keydown', keydownHandler);
+    });
+    onUnmounted(() => {
+      if (keydownHandler) window.removeEventListener('keydown', keydownHandler);
+      window.removeEventListener('scroll', handleScroll);
     });
     // Also call ensureViewportFilled after each fetch
     const sendAnswerToUse = props.manualMode ? sendAnswerManual : sendAnswer;
