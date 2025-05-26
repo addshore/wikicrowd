@@ -19,6 +19,7 @@ use Addwiki\Wikibase\Query\PrefixSets;
 use Wikibase\DataModel\Snak\PropertyValueSnak;
 use Wikibase\DataModel\Entity\EntityIdValue;
 use Illuminate\Support\Facades\Cache;
+use Addwiki\Mediawiki\DataModel\EditInfo;
 
 class SwapDepicts implements ShouldQueue
 {
@@ -136,7 +137,15 @@ class SwapDepicts implements ShouldQueue
 
         $pageIdentifier = new PageIdentifier( null, str_replace( 'M', '', $mid->getSerialization() ) );
 
-        $wbServices->newStatementRemover()->remove( $oldStatement );
+        // Build custom summary if manual
+        $editInfo = null;
+        if (!empty($question->properties['manual']) && !empty($question->properties['category']) && !empty($question->properties['depicts_id'])) {
+            $cat = $question->properties['category'];
+            $qid = $question->properties['depicts_id'];
+            $editInfo = new EditInfo("From custom inputs [[:$cat]] and [[wikidata:$qid]]");
+        }
+
+        $wbServices->newStatementRemover()->remove( $oldStatement, $editInfo );
 
         // TODO fix the DUMB way of getting the new revision IDs here..
         // TODO this probably requires fixes in addwiki (if we are to continue using it)
@@ -146,7 +155,8 @@ class SwapDepicts implements ShouldQueue
 
         $wbServices->newStatementCreator()->create(
             new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) ),
-            $mid
+            $mid,
+            $editInfo
         );
 
         $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );

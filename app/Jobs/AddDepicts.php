@@ -19,6 +19,7 @@ use Addwiki\Wikibase\Query\PrefixSets;
 use Wikibase\DataModel\Snak\PropertyValueSnak;
 use Wikibase\DataModel\Entity\EntityIdValue;
 use Illuminate\Support\Facades\Cache;
+use Addwiki\Mediawiki\DataModel\EditInfo;
 
 class AddDepicts implements ShouldQueue
 {
@@ -115,9 +116,17 @@ class AddDepicts implements ShouldQueue
             \Log::info("Already has {$foundDepicts} depicts");
             return;
         } else {
+            // Build custom summary if manual
+            $editInfo = null;
+            if (!empty($question->properties['manual']) && !empty($question->properties['category']) && !empty($question->properties['depicts_id'])) {
+                $cat = $question->properties['category'];
+                $qid = $question->properties['depicts_id'];
+                $editInfo = new EditInfo("From custom inputs [[:$cat]] and [[wikidata:$qid]]");
+            }
             $wbServices->newStatementCreator()->create(
                 new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) ),
-                $mid
+                $mid,
+                $editInfo
             );
 
             $mwServices = new MediawikiFactory( $mwApi );
