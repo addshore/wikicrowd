@@ -263,6 +263,11 @@ export default {
     const fetchRetryCount = ref(0);
     const MAX_FETCH_RETRIES = 5;
 
+    // Only allow certain image file extensions
+    const IMAGE_FILE_EXTENSIONS = [
+      'jpg', 'jpeg', 'png', 'gif', 'svg', 'tiff'
+    ];
+
     // Exponential backoff utility
     const exponentialBackoff = (retryCount) => {
       return Math.min(1000 * Math.pow(2, retryCount), 30000); // Max 30 seconds
@@ -479,8 +484,18 @@ export default {
         }
         // --- Filtering logic: fetch depicts for all files, filter before pushing ---
         if (files.length > 0) {
+          // Filter by allowed file extensions
+          const filteredFiles = files.filter(p => {
+            // Only keep files with valid image extensions IMAGE_FILE_EXTENSIONS
+            const ext = p.title.split('.').pop().toLowerCase();
+            if (!IMAGE_FILE_EXTENSIONS.includes(ext)) {
+              console.log(`[CustomGrid] Skipping file ${p.pageid} (${p.title}) with unsupported extension: ${ext}`);
+              return false;
+            }
+            return true;
+          });
           const qidSet = await fetchSubclassesAndInstances(props.manualQid);
-          const mids = files.map(p => {
+          const mids = filteredFiles.map(p => {
             let mid = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
             if (!mid && p.title && p.title.startsWith('File:')) {
               mid = 'M' + p.pageid;
@@ -488,7 +503,7 @@ export default {
             return mid;
           });
           const depictsMap = await fetchDepictsForMediaInfoIds(mids);
-          for (const p of files) {
+          for (const p of filteredFiles) {
             let mediainfo_id = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
             if (!mediainfo_id && p.title && p.title.startsWith('File:')) {
               mediainfo_id = 'M' + p.pageid;
@@ -531,6 +546,7 @@ export default {
                     window.addEventListener('scroll', onScroll);
                   });
                 }
+                if (onImagePushed) onImagePushed();
               }
             }
           }
