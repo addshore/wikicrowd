@@ -28,6 +28,12 @@ export async function fetchDepictsForMediaInfoIds(mids) {
   const data = await resp.json();
   const depicts = {};
   for (const mid of mids) {
+    // check the mid is in the response
+    if (!data.entities || !data.entities[mid]) {
+      console.warn('[depictsUtils] MediaInfo', mid, 'not found in response');
+      depicts[mid] = []; // Return empty array if not found
+      continue;
+    }
     const entity = data.entities[mid];
     depicts[mid] = [];
     // Support both .claims (old API) and .statements (newer API)
