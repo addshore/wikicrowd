@@ -17,7 +17,7 @@
         <div class="relative">
           <label class='block font-semibold mb-1 text-gray-800 dark:text-gray-200'>Wikidata Qid</label>
           <div class="flex items-center gap-2">
-            <input v-model="manualQid" @input="onQidInput" @focus="showQidDropdown = true" @blur="hideQidDropdown" class='border rounded px-2 py-1 w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700' placeholder='e.g. Q5582' required autocomplete="off" />
+            <input v-model="manualQid" @input="onQidInput" @focus="showQidDropdown = true" @blur="hideQidDropdown" :class="['border rounded px-2 py-1 w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700', isCategoryQid ? 'input-category-qid-bad' : '']" placeholder='e.g. Q5582' required autocomplete="off" />
             <a v-if="manualQid" :href="qidUrl" target="_blank" rel="noopener" class="ml-1 text-blue-600 dark:text-blue-400" title="Open item"><svg xmlns="http://www.w3.org/2000/svg" class="inline w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3h7v7m0 0L10 21l-7-7L21 10z"/></svg></a>
             <button type="button" @click="autoFillCategoryFromQid" class="ml-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600" title="Auto-fill category from Qid">Auto Commons Category</button>
           </div>
@@ -30,10 +30,11 @@
         </div>
         <button type='submit' class='bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded font-bold'>Generate Grid</button>
         <div v-if="autoError" class="mt-2 text-red-600 dark:text-red-400 text-sm">{{ autoError }}</div>
+        <div v-if="categoryQidWarning" class="mt-2 text-red-600 dark:text-red-400 text-sm">{{ categoryQidWarning }}</div>
       </form>
     </div>
     <div class='w-full'>
-      <GridMode v-if="showGrid" :manual-category="manualCategory" :manual-qid="manualQid" :manual-mode="true" :key="gridKey" />
+      <GridMode v-if="showGrid && canShowGrid()" :manual-category="manualCategory" :manual-qid="manualQid" :manual-mode="true" :key="gridKey" />
     </div>
   </div>
 </template>
@@ -59,6 +60,11 @@ let categorySearchTimeout;
 const qidResults = ref([]);
 const showQidDropdown = ref(false);
 let qidSearchTimeout;
+
+// --- Category Qid check ---
+const isCategoryQid = ref(false);
+const categoryQidWarning = ref('');
+
 
 function getQueryParam(name) {
   const url = new URL(window.location.href);
@@ -118,8 +124,16 @@ function onQidInput() {
   const val = manualQid.value.trim();
   if (!val || /^Q\d+$/i.test(val)) {
     qidResults.value = [];
+    if (/^Q\d+$/i.test(val)) {
+      checkIfCategoryQid(val);
+    } else {
+      isCategoryQid.value = false;
+      categoryQidWarning.value = '';
+    }
     return;
   }
+  isCategoryQid.value = false;
+  categoryQidWarning.value = '';
   qidSearchTimeout = setTimeout(async () => {
     // Use wbsearchentities API instead of REST endpoint
     const url = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(val)}&language=en&format=json&origin=*`;
@@ -133,14 +147,45 @@ function onQidInput() {
     showQidDropdown.value = true;
   }, 250);
 }
+
+async function checkIfCategoryQid(qid) {
+  try {
+    const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${encodeURIComponent(qid)}&props=claims&format=json&origin=*`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const entity = data.entities?.[qid];
+    const p31 = entity?.claims?.P31;
+    if (Array.isArray(p31) && p31.some(
+      s => s.mainsnak?.datavalue?.value?.id === 'Q4167836')) {
+      // This is a category item
+      isCategoryQid.value = true;
+      categoryQidWarning.value = 'This Qid is a Wikimedia category (not a real thing). Please use the main topic instead.';
+      showGrid.value = false;
+      return true;
+    } else {
+      isCategoryQid.value = false;
+      categoryQidWarning.value = '';
+      return false;
+    }
+  } catch (e) {
+    // ignore
+    isCategoryQid.value = false;
+    categoryQidWarning.value = '';
+    return false;
+  }
+}
+
 function selectQid(item) {
   manualQid.value = item.id;
   showQidDropdown.value = false;
   updateUrl();
+  checkIfCategoryQid(item.id);
 }
+
 function hideQidDropdown() {
   setTimeout(() => { showQidDropdown.value = false; }, 150);
 }
+
 const qidUrl = computed(() => manualQid.value ? `https://www.wikidata.org/wiki/${manualQid.value}` : '#');
 
 // --- Auto-fill logic ---
@@ -173,6 +218,7 @@ async function autoFillCategoryFromQid() {
     }
     manualCategory.value = 'Category:' + value;
     updateUrl();
+    await checkIfCategoryQid(qid);
   } catch (e) {
     autoError.value = 'Failed to fetch Commons category from Wikidata.';
   }
@@ -200,9 +246,14 @@ async function autoFillQidFromCategory() {
     }
     manualQid.value = qids[0];
     updateUrl();
+    await checkIfCategoryQid(qids[0]);
   } catch (e) {
     autoError.value = 'Failed to fetch Wikidata Qid from category.';
   }
+}
+
+function canShowGrid() {
+  return !isCategoryQid.value && manualQid.value && manualCategory.value;
 }
 
 onMounted(async () => {
@@ -212,7 +263,8 @@ onMounted(async () => {
   if (category && item) {
     manualCategory.value = category;
     manualQid.value = item;
-    showGrid.value = true;
+    await checkIfCategoryQid(item);
+    showGrid.value = canShowGrid();
     return;
   }
   // If auto=1 and only one of category/item is present, auto-fill the other and show grid if successful
@@ -220,16 +272,23 @@ onMounted(async () => {
     if (category && !item) {
       manualCategory.value = category;
       await autoFillQidFromCategory();
-      if (!autoError.value) {
+      if (!autoError.value && canShowGrid()) {
         showGrid.value = true;
       }
     } else if (!category && item) {
       manualQid.value = item;
       await autoFillCategoryFromQid();
-      if (!autoError.value) {
+      if (!autoError.value && canShowGrid()) {
         showGrid.value = true;
       }
     }
   }
 });
 </script>
+
+<style>
+.input-category-qid-bad {
+  border-color: #e53e3e; /* red-600 */
+  background-color: #fff5f5; /* red-50 */
+}
+</style>
