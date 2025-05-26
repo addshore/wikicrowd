@@ -155,40 +155,44 @@ async function checkIfCategoryQid(qid) {
     const data = await resp.json();
     const entity = data.entities?.[qid];
     const p31 = entity?.claims?.P31;
-    if (Array.isArray(p31) && p31.some(
-      s => s.mainsnak?.datavalue?.value?.id === 'Q4167836')) {
-      // This is a category item
-      const p301 = entity?.claims?.P301;
-      if (Array.isArray(p301) && p301[0]?.mainsnak?.datavalue?.value?.id) {
-        const mainTopicQid = p301[0].mainsnak.datavalue.value.id;
+    if (Array.isArray(p31)) {
+      // Check for Wikimedia category
+      if (p31.some(s => s.mainsnak?.datavalue?.value?.id === 'Q4167836')) {
+        const p301 = entity?.claims?.P301;
+        if (Array.isArray(p301) && p301[0]?.mainsnak?.datavalue?.value?.id) {
+          const mainTopicQid = p301[0].mainsnak.datavalue.value.id;
+          isCategoryQid.value = true;
+          categoryQidWarning.value = `This Qid is a Wikimedia category (not a real thing). Main topic found: ${mainTopicQid}. Switching to it...`;
+          window.alert(`The Qid you entered is a Wikimedia category. Automatically switching to its main topic: ${mainTopicQid}`);
+          manualQid.value = mainTopicQid;
+          updateUrl();
+          setTimeout(async () => {
+            const result = await checkIfCategoryQid(mainTopicQid);
+            if (!result) {
+              showGrid.value = true;
+              isCategoryQid.value = false;
+              categoryQidWarning.value = '';
+            }
+          }, 0);
+          return true;
+        } else {
+          isCategoryQid.value = true;
+          categoryQidWarning.value = 'This Qid is a Wikimedia category (not a real thing). No main topic (P301) found. Please use the main topic instead.';
+          showGrid.value = false;
+          return true;
+        }
+      }
+      // Check for Wikimedia disambiguation page
+      if (p31.some(s => s.mainsnak?.datavalue?.value?.id === 'Q4167410')) {
         isCategoryQid.value = true;
-        categoryQidWarning.value = `This Qid is a Wikimedia category (not a real thing). Main topic found: ${mainTopicQid}. Switching to it...`;
-        // Show popup to user
-        window.alert(`The Qid you entered is a Wikimedia category. Automatically switching to its main topic: ${mainTopicQid}`);
-        manualQid.value = mainTopicQid;
-        updateUrl();
-        // Wait a tick, then re-check the new QID
-        setTimeout(async () => {
-          const result = await checkIfCategoryQid(mainTopicQid);
-          if (!result) {
-            // If the new QID is not a category, show the grid
-            showGrid.value = true;
-            isCategoryQid.value = false;
-            categoryQidWarning.value = '';
-          }
-        }, 0);
-        return true;
-      } else {
-        isCategoryQid.value = true;
-        categoryQidWarning.value = 'This Qid is a Wikimedia category (not a real thing). No main topic (P301) found. Please use the main topic instead.';
+        categoryQidWarning.value = 'This Qid is a Wikimedia disambiguation page. Please use a specific item instead.';
         showGrid.value = false;
         return true;
       }
-    } else {
-      isCategoryQid.value = false;
-      categoryQidWarning.value = '';
-      return false;
     }
+    isCategoryQid.value = false;
+    categoryQidWarning.value = '';
+    return false;
   } catch (e) {
     isCategoryQid.value = false;
     categoryQidWarning.value = '';
