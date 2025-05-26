@@ -24,3 +24,7 @@ webservice php8.2 restart
 
 # Update jobs
 toolforge jobs load ~/src/toolforge/jobs.yaml
+# And restart
+toolforge jobs restart queue-high
+toolforge jobs restart queue
+toolforge jobs restart schedule
