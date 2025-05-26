@@ -42,8 +42,8 @@
 import { ref, onMounted, computed } from 'vue';
 import GridMode from './GridMode.vue';
 
-const manualCategory = ref('Category:Windsurfing');
-const manualQid = ref('Q191051');
+const manualCategory = ref('');
+const manualQid = ref('');
 const showGrid = ref(false);
 const gridKey = ref(0); // Used to force re-render of GridMode
 
@@ -205,13 +205,31 @@ async function autoFillQidFromCategory() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   const category = getQueryParam('category');
   const item = getQueryParam('item');
+  const auto = getQueryParam('auto');
   if (category && item) {
     manualCategory.value = category;
     manualQid.value = item;
     showGrid.value = true;
+    return;
+  }
+  // If auto=1 and only one of category/item is present, auto-fill the other and show grid if successful
+  if (auto === '1') {
+    if (category && !item) {
+      manualCategory.value = category;
+      await autoFillQidFromCategory();
+      if (!autoError.value) {
+        showGrid.value = true;
+      }
+    } else if (!category && item) {
+      manualQid.value = item;
+      await autoFillCategoryFromQid();
+      if (!autoError.value) {
+        showGrid.value = true;
+      }
+    }
   }
 });
 </script>
