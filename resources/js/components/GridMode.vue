@@ -399,6 +399,12 @@ export default {
         const data = await response.json();
         console.log(`fetchBatchAndFill: received ${data?.questions?.length || 0} questions`);
         if (data && Array.isArray(data.questions)) {
+          // Log if any questions are missing mediainfo_id
+          for (const question of data.questions) {
+            if (!question.properties?.mediainfo_id) {
+              console.warn('Image from API is missing mediainfo_id in properties:', JSON.parse(JSON.stringify(question)));
+            }
+          }
           batch.value.push(...data.questions);
           // If we got no questions or fewer than expected, we've reached the end
           if (data.questions.length === 0) {
@@ -496,8 +502,12 @@ export default {
           delete selectedMode[image.id];
           // No success toast for individual auto-saves to avoid noise. UI change is the feedback.
         } else {
-          const imageIdentifier = image.properties?.mediainfo_id || image.id;
-          const message = `Failed to save answer for image ${imageIdentifier}. Status: ${response.status}.`;
+          const mid = image.properties?.mediainfo_id;
+          if (!mid) {
+            console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
+          }
+          const imageIdentifierForToast = mid || '[MID not found]';
+          const message = `Failed to save answer for image ${imageIdentifierForToast}. Status: ${response.status}.`;
           console.error(`sendAnswer: ${message}`);
           toastStore.addToast({ message, type: 'error' });
           // console.warn underlying UI message is removed as toast is user-facing.
@@ -506,8 +516,12 @@ export default {
           }
         }
       } catch (error) {
-        const imageIdentifier = image.properties?.mediainfo_id || image.id;
-        const message = `Failed to save answer for image ${imageIdentifier} due to network/critical error: ${error.message}`;
+        const mid = image.properties?.mediainfo_id;
+        if (!mid) {
+          console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
+        }
+        const imageIdentifierForToast = mid || '[MID not found]';
+        const message = `Failed to save answer for image ${imageIdentifierForToast} due to network/critical error: ${error.message}`;
         console.error(`sendAnswer: ${message}`, error);
         toastStore.addToast({ message, type: 'error' });
         if (timers.has(image.id)) {
@@ -698,8 +712,12 @@ export default {
           delete selectedMode[image.id];
           // No success toast for individual auto-saves to avoid noise. UI change is the feedback.
         } else {
-          const imageIdentifier = image.properties?.mediainfo_id || image.id;
-          const message = `Failed to save manual answer for image ${imageIdentifier}. Status: ${response.status}.`;
+          const mid = image.properties?.mediainfo_id;
+          if (!mid) {
+            console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
+          }
+          const imageIdentifierForToast = mid || '[MID not found]';
+          const message = `Failed to save manual answer for image ${imageIdentifierForToast}. Status: ${response.status}.`;
           console.error(`sendAnswerManual: ${message}`);
           toastStore.addToast({ message, type: 'error' });
           if (timers.has(image.id)) {
@@ -707,8 +725,12 @@ export default {
           }
         }
       } catch (error) {
-        const imageIdentifier = image.properties?.mediainfo_id || image.id;
-        const message = `Failed to save manual answer for image ${imageIdentifier} due to network/critical error: ${error.message}`;
+        const mid = image.properties?.mediainfo_id;
+        if (!mid) {
+          console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
+        }
+        const imageIdentifierForToast = mid || '[MID not found]';
+        const message = `Failed to save manual answer for image ${imageIdentifierForToast} due to network/critical error: ${error.message}`;
         console.error(`sendAnswerManual: ${message}`, error);
         toastStore.addToast({ message, type: 'error' });
         if (timers.has(image.id)) {
