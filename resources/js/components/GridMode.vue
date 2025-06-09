@@ -224,6 +224,7 @@ import { ref, onMounted, onUnmounted, reactive, watch } from 'vue'; // Added wat
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
 import { fetchSubclassesAndInstances, fetchDepictsForMediaInfoIds } from './depictsUtils';
+import { toastStore } from '../toastStore.js';
 
 export default {
   name: 'GridMode',
@@ -270,7 +271,7 @@ export default {
     // Track image loading states and backoff
     const imageLoadingStates = reactive({});
     const fetchRetryCount = ref(0);
-    const MAX_FETCH_RETRIES = 5;
+    const MAX_FETCH_RETRIES = 5; // Used by existing fetchWithRetry
 
     // Only allow certain image file extensions
     const IMAGE_FILE_EXTENSIONS = [
@@ -282,7 +283,67 @@ export default {
       return Math.min(1000 * Math.pow(2, retryCount), 30000); // Max 30 seconds
     };
 
-    // Fetch with retry and exponential backoff
+    // New helper function for retrying answer submissions
+    const fetchAnswerWithRetry = async (url, options = {}) => {
+      const retryDelays = [1000, 5000, 10000]; // Defined delays in milliseconds
+      // MAX_ANSWER_RETRIES is implicitly retryDelays.length
+
+      for (let attempt = 0; attempt < retryDelays.length; attempt++) {
+        try {
+          const response = await fetch(url, options);
+          if (response.ok) {
+            return response; // Successful call
+          }
+
+          // Only retry on 5xx server errors
+          if (response.status >= 500 && response.status < 600) {
+            if (attempt < retryDelays.length - 1) {
+              const delay = retryDelays[attempt];
+              toastStore.addToast({
+                message: `Server error (status ${response.status}). Retrying in ${delay / 1000}s... (Attempt ${attempt + 1}/${retryDelays.length})`,
+                type: 'warning',
+                duration: delay
+              });
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue; // to the next attempt
+            } else {
+              // Last attempt failed with 5xx
+              console.error(`API call failed with status ${response.status} after ${retryDelays.length} attempts (URL: ${url})`);
+              return response; // Return the error response
+            }
+          } else {
+            // For 4xx client errors or other non-5xx errors, don't retry, return response immediately
+            return response;
+          }
+        } catch (error) { // Network error or fetch itself failed
+          if (attempt < retryDelays.length - 1) {
+            const delay = retryDelays[attempt];
+            toastStore.addToast({
+              message: `Network error: ${error.message}. Retrying in ${delay / 1000}s... (Attempt ${attempt + 1}/${retryDelays.length})`,
+              type: 'warning',
+              duration: delay
+            });
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue; // to the next attempt
+          } else {
+            console.error(`API call failed with network error: ${error.message} after ${retryDelays.length} attempts (URL: ${url})`);
+            // To align with how other errors are returned (as a response object),
+            // we might need to construct a mock error response or re-throw and catch higher up.
+            // For now, re-throwing to be caught by the calling function's try-catch.
+            throw error;
+          }
+        }
+      }
+      // Fallback if loop completes without returning (should ideally not happen with the logic above)
+      // This implies all retries (defined by retryDelays.length) have been exhausted.
+      // The actual error response or thrown error would have been returned/thrown inside the loop.
+      // To satisfy a return path, though, we might throw a generic error or return a synthetic error response.
+      // However, the logic above should ensure a response or error is always returned/thrown from within the loop.
+      // For safety, if somehow reached:
+      throw new Error(`fetchAnswerWithRetry exhausted all attempts for ${url}`);
+    };
+
+    // Existing Fetch with retry and exponential backoff (mostly for image fetching from wikimedia)
     const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
       try {
         const response = await fetch(url, options);
@@ -299,19 +360,20 @@ export default {
         }
         
         if (!response.ok) {
+          // This is the part that differs significantly from fetchAnswerWithRetry's needs
+          // For general image fetching, any non-ok might be a hard stop.
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         return response;
       } catch (error) {
-        if (retryCount < MAX_FETCH_RETRIES && error.name === 'TypeError') {
-          // Network error, retry
+        if (retryCount < MAX_FETCH_RETRIES && error.name === 'TypeError') { // Typically network errors
           const delay = exponentialBackoff(retryCount);
           console.log(`Network error, retrying in ${delay}ms (attempt ${retryCount + 1})`);
           await new Promise(resolve => setTimeout(resolve, delay));
           return fetchWithRetry(url, options, retryCount + 1);
         }
-        throw error;
+        throw error; // Re-throw if not a TypeError or retries exhausted
       }
     };
 
@@ -345,6 +407,12 @@ export default {
         const data = await response.json();
         console.log(`fetchBatchAndFill: received ${data?.questions?.length || 0} questions`);
         if (data && Array.isArray(data.questions)) {
+          // Log if any questions are missing mediainfo_id
+          for (const question of data.questions) {
+            if (!question.properties?.mediainfo_id) {
+              console.warn('Image from API is missing mediainfo_id in properties:', JSON.parse(JSON.stringify(question)));
+            }
+          }
           batch.value.push(...data.questions);
           // If we got no questions or fewer than expected, we've reached the end
           if (data.questions.length === 0) {
@@ -409,26 +477,80 @@ export default {
     };
 
     const sendAnswer = async (image, modeOverride = null) => {
-      answered.value.add(image.id);
-      answeredMode[image.id] = modeOverride || selectedMode[image.id] || answerMode.value;
-      selected.value.delete(image.id);
-      delete selectedMode[image.id];
+      // UI updates are now deferred until after successful API call.
+      // The mode that will be used if the call is successful.
+      const finalAnswerMode = modeOverride || selectedMode[image.id] || answerMode.value;
+
+      const url = '/api/answers';
+      const options = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...(apiToken ? { 'Authorization': `Bearer ${apiToken}` } : {}),
+          'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({
+          question_id: image.id,
+          answer: finalAnswerMode // Use the determined mode for the API call
+        })
+      };
+
       try {
-        await fetch('/api/answers', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...(apiToken ? { 'Authorization': `Bearer ${apiToken}` } : {}),
-            'X-CSRF-TOKEN': csrfToken
-          },
-          body: JSON.stringify({
-            question_id: image.id,
-            answer: answeredMode[image.id]
-          })
-        });
+        const response = await fetchAnswerWithRetry(url, options);
+
+        if (response.ok) {
+          console.log(`sendAnswer: Successfully answered ${image.id} with mode ${finalAnswerMode}`);
+          // Apply UI updates now that API call was successful
+          answered.value.add(image.id);
+          answeredMode[image.id] = finalAnswerMode;
+          selected.value.delete(image.id);
+          // selectedMode[image.id] was already set by toggleSelect,
+          // and should be cleared if the item is successfully answered.
+          delete selectedMode[image.id];
+          // No success toast for individual auto-saves to avoid noise. UI change is the feedback.
+        } else {
+          const mid = image.properties?.mediainfo_id;
+          if (!mid) {
+            console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
+          }
+          let message;
+          if (mid) {
+            const link = `<a href="https://commons.wikimedia.org/wiki/Special:EntityData/${mid}" target="_blank" rel="noopener noreferrer" class="text-white underline hover:opacity-80">${mid}</a>`;
+            message = `Failed to save answer for image ${link}. Status: ${response.status}.`;
+          } else {
+            message = `Failed to save answer for image [MID not found]. Status: ${response.status}.`;
+          }
+          console.error(`sendAnswer: Failed to save answer for image ${mid || image.id}. Status: ${response.status}.`);
+          toastStore.addToast({ message, type: 'error' });
+          // console.warn underlying UI message is removed as toast is user-facing.
+          if (timers.has(image.id)) { // Check if it was an auto-save timer
+             console.warn(`UI: Auto-save for image ${image.id} failed. Image remains selected.`);
+          }
+          // Revert UI on failure
+          selected.value.delete(image.id);
+          delete selectedMode[image.id];
+        }
       } catch (error) {
-        // handle error
+        const mid = image.properties?.mediainfo_id;
+        if (!mid) {
+          console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
+        }
+        let message;
+        if (mid) {
+          const link = `<a href="https://commons.wikimedia.org/wiki/Special:EntityData/${mid}" target="_blank" rel="noopener noreferrer" class="text-white underline hover:opacity-80">${mid}</a>`;
+          message = `Failed to save answer for image ${link} due to network/critical error: ${error.message}`;
+        } else {
+          message = `Failed to save answer for image [MID not found] due to network/critical error: ${error.message}`;
+        }
+        console.error(`sendAnswer: Failed to save answer for image ${mid || image.id} due to network/critical error: ${error.message}`, error);
+        toastStore.addToast({ message, type: 'error' });
+        if (timers.has(image.id)) {
+             console.warn(`UI: Auto-save for image ${image.id} failed due to network/critical error. Image remains selected.`);
+        }
+        // Revert UI on failure
+        selected.value.delete(image.id);
+        delete selectedMode[image.id];
       }
     };
 
@@ -580,30 +702,80 @@ export default {
 
     // Override sendAnswer for manual mode
     const sendAnswerManual = async (image, modeOverride = null) => {
-      answered.value.add(image.id);
-      answeredMode[image.id] = modeOverride || selectedMode[image.id] || answerMode.value;
-      selected.value.delete(image.id);
-      delete selectedMode[image.id];
+      // UI updates are now deferred until after successful API call.
+      const finalAnswerMode = modeOverride || selectedMode[image.id] || answerMode.value;
+
+      const url = '/api/manual-question/answer';
+      const options = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...(apiToken ? { 'Authorization': `Bearer ${apiToken}` } : {}),
+          'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({
+          category: props.manualCategory,
+          qid: props.manualQid,
+          mediainfo_id: image.properties.mediainfo_id, // always Mxxx
+          img_url: image.properties.img_url,
+          answer: finalAnswerMode, // Use the determined mode
+          manual: true
+        })
+      };
+
       try {
-        await fetch('/api/manual-question/answer', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...(apiToken ? { 'Authorization': `Bearer ${apiToken}` } : {}),
-            'X-CSRF-TOKEN': csrfToken
-          },
-          body: JSON.stringify({
-            category: props.manualCategory,
-            qid: props.manualQid,
-            mediainfo_id: image.properties.mediainfo_id, // always Mxxx
-            img_url: image.properties.img_url,
-            answer: answeredMode[image.id],
-            manual: true
-          })
-        });
+        const response = await fetchAnswerWithRetry(url, options);
+
+        if (response.ok) {
+          console.log(`sendAnswerManual: Successfully answered ${image.id} with mode ${finalAnswerMode}`);
+          // Apply UI updates now that API call was successful
+          answered.value.add(image.id);
+          answeredMode[image.id] = finalAnswerMode;
+          selected.value.delete(image.id);
+          delete selectedMode[image.id];
+          // No success toast for individual auto-saves to avoid noise. UI change is the feedback.
+        } else {
+          const mid = image.properties?.mediainfo_id;
+          if (!mid) {
+            console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
+          }
+          let message;
+          if (mid) {
+            const link = `<a href="https://commons.wikimedia.org/wiki/Special:EntityData/${mid}" target="_blank" rel="noopener noreferrer" class="text-white underline hover:opacity-80">${mid}</a>`;
+            message = `Failed to save manual answer for image ${link}. Status: ${response.status}.`;
+          } else {
+            message = `Failed to save manual answer for image [MID not found]. Status: ${response.status}.`;
+          }
+          console.error(`sendAnswerManual: Failed to save manual answer for image ${mid || image.id}. Status: ${response.status}.`);
+          toastStore.addToast({ message, type: 'error' });
+          if (timers.has(image.id)) {
+             console.warn(`UI: Auto-save for image ${image.id} failed. Image remains selected.`);
+          }
+          // Revert UI on failure
+          selected.value.delete(image.id);
+          delete selectedMode[image.id];
+        }
       } catch (error) {
-        // handle error
+        const mid = image.properties?.mediainfo_id;
+        if (!mid) {
+          console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
+        }
+        let message;
+        if (mid) {
+          const link = `<a href="https://commons.wikimedia.org/wiki/Special:EntityData/${mid}" target="_blank" rel="noopener noreferrer" class="text-white underline hover:opacity-80">${mid}</a>`;
+          message = `Failed to save manual answer for image ${link} due to network/critical error: ${error.message}`;
+        } else {
+          message = `Failed to save manual answer for image [MID not found] due to network/critical error: ${error.message}`;
+        }
+        console.error(`sendAnswerManual: Failed to save manual answer for image ${mid || image.id} due to network/critical error: ${error.message}`, error);
+        toastStore.addToast({ message, type: 'error' });
+        if (timers.has(image.id)) {
+             console.warn(`UI: Auto-save for image ${image.id} failed due to network/critical error. Image remains selected.`);
+        }
+        // Revert UI on failure
+        selected.value.delete(image.id);
+        delete selectedMode[image.id];
       }
     };
 
@@ -636,26 +808,67 @@ export default {
             };
           });
           console.log('[GridMode] Sending manual bulk answers:', answers);
-          const resp = await fetch('/api/manual-question/bulk-answer', {
+          const manualUrl = '/api/manual-question/bulk-answer';
+          const manualOptions = {
             method: 'POST',
             headers,
             body: JSON.stringify({ answers }),
-          });
-          console.log('[GridMode] Manual bulk answer response:', resp.status, resp.statusText);
+          };
+          const responseManual = await fetchAnswerWithRetry(manualUrl, manualOptions);
+
+          console.log('[GridMode] Manual bulk answer response:', responseManual.status, responseManual.statusText);
+          if (responseManual.ok) {
+            console.log('saveAllPending: Manual bulk answers successfully sent.');
+            // Apply UI updates for each successfully saved item
+            for (const {id, mode} of pendingAnswers.value) {
+              answered.value.add(id);
+              answeredMode[id] = mode;
+              selected.value.delete(id);
+              delete selectedMode[id];
+            }
+            pendingAnswers.value = []; // Clear pending answers only on full success
+            console.log('[GridMode] saveAllPending complete for manual mode, UI updated.');
+            toastStore.addToast({ message: `${answers.length} manual answers saved successfully!`, type: 'success' });
+          } else {
+            const message = `Manual bulk save failed. Status: ${responseManual.status}.`;
+            console.error(`saveAllPending: ${message}`);
+            toastStore.addToast({ message, type: 'error' });
+            // console.warn underlying UI message is removed.
+          }
         } else {
-          const answers = pendingAnswers.value.map(({ id, mode }) => ({
+          const answersToSubmit = pendingAnswers.value.map(({ id, mode }) => ({
             question_id: id,
             answer: mode,
           }));
-          console.log('[GridMode] Sending bulk answers:', answers);
-          const resp = await fetch('/api/answers/bulk', {
+          console.log('[GridMode] Sending regular bulk answers:', answersToSubmit);
+          const regularUrl = '/api/answers/bulk';
+          const regularOptions = {
             method: 'POST',
             headers,
-            body: JSON.stringify({ answers }),
-          });
-          console.log('[GridMode] Bulk answer response:', resp.status, resp.statusText);
+            body: JSON.stringify({ answers: answersToSubmit }), // Ensure payload matches API expectation if it's { "answers": [...] }
+          };
+          const responseRegular = await fetchAnswerWithRetry(regularUrl, regularOptions);
+
+          console.log('[GridMode] Regular bulk answer response:', responseRegular.status, responseRegular.statusText);
+          if (responseRegular.ok) {
+            console.log('saveAllPending: Regular bulk answers successfully sent.');
+            // Apply UI updates for each successfully saved item
+            for (const {id, mode} of pendingAnswers.value) {
+              answered.value.add(id);
+              answeredMode[id] = mode;
+              selected.value.delete(id);
+              delete selectedMode[id];
+            }
+            pendingAnswers.value = []; // Clear pending answers only on full success
+            console.log('[GridMode] saveAllPending complete for regular mode, UI updated.');
+            toastStore.addToast({ message: `${answersToSubmit.length} answers saved successfully!`, type: 'success' });
+          } else {
+            const message = `Regular bulk save failed. Status: ${responseRegular.status}.`;
+            console.error(`saveAllPending: ${message}`);
+            toastStore.addToast({ message, type: 'error' });
+          }
         }
-        // Mark as answered in UI
+        // Mark as answered in UI and clear timers/intervals for all processed IDs
         const answersToProcess = [...pendingAnswers.value]; // Iterate over a copy
         for (const {id, mode} of answersToProcess) {
           answered.value.add(id);
@@ -678,7 +891,9 @@ export default {
         pendingAnswers.value = []; // Clear the list after processing
         console.log('[GridMode] saveAllPending complete, UI updated.');
       } catch (e) {
+        const message = `Bulk save failed due to network/critical error: ${e.message}`;
         console.error('[GridMode] Error in saveAllPending:', e);
+        toastStore.addToast({ message, type: 'error' });
       }
     };
 
