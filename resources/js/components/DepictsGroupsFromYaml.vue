@@ -76,11 +76,11 @@
             <th class="p-2 border text-gray-900 dark:text-gray-100">Name</th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Depicts</th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Categories</th>
-            <th class="p-2 border text-gray-900 dark:text-gray-100" @click="toggleSort('unanswered')" style="cursor: pointer;">
-              Unanswered
-              <span v-if="sortColumn === 'unanswered'">
-                <span v-if="sortDirection === 'asc'">↑</span>
-                <span v-if="sortDirection === 'desc'">↓</span>
+            <th class="p-2 border text-gray-900 dark:text-gray-100 flex items-center" @click="toggleSort('unanswered')" style="cursor: pointer;">
+              <span>Unanswered</span>
+              <span class="ml-1">
+                <span :class="{'text-gray-800 dark:text-white font-bold': sortDirection === 'asc' && sortColumn === 'unanswered', 'text-gray-400 dark:text-gray-600': !(sortDirection === 'asc' && sortColumn === 'unanswered')}">↑</span>
+                <span :class="{'text-gray-800 dark:text-white font-bold': sortDirection === 'desc' && sortColumn === 'unanswered', 'text-gray-400 dark:text-gray-600': !(sortDirection === 'desc' && sortColumn === 'unanswered')}">↓</span>
               </span>
             </th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Go to</th>
