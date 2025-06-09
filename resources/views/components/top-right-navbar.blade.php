@@ -1,4 +1,4 @@
-<div class="fixed top-0 right-0 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg" style="z-index: 50;">
+<div class="fixed top-0 right-0 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg" style="z-index: 50;">
     <button id="mobile-menu-button" type="button" class="inline-flex items-center justify-center p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:hidden" aria-label="Toggle menu" aria-expanded="false" aria-controls="menu-items-wrapper">
         <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -6,7 +6,7 @@
     </button>
 
     <!-- Menu items wrapper -->
-    <div id="menu-items-wrapper" class="block hidden absolute top-16 right-3 w-56 rounded-md shadow-xl py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none sm:flex sm:items-center sm:space-x-3">
+    <div id="menu-items-wrapper" class="block hidden top-0 right-0 rounded-md shadow-xl py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none sm:flex sm:items-center sm:space-x-3 z-50">
         @auth
             <span class="block px-4 py-2 text-sm text-gray-800 dark:text-gray-300 sm:text-gray-800 sm:dark:text-gray-400 sm:px-0 sm:py-0">Hello, {{ Auth::user()->username }}!</span>
         @endauth
