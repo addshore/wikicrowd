@@ -265,9 +265,6 @@ export default {
     const fetchRetryCount = ref(0);
     const MAX_FETCH_RETRIES = 5; // Used by existing fetchWithRetry
 
-    // New fetchAnswerWithRetry specific constants
-    const MAX_ANSWER_RETRIES = 3;
-
     // Only allow certain image file extensions
     const IMAGE_FILE_EXTENSIONS = [
       'jpg', 'jpeg', 'png', 'gif', 'svg', 'tiff'
@@ -279,8 +276,11 @@ export default {
     };
 
     // New helper function for retrying answer submissions
-    const fetchAnswerWithRetry = async (url, options = {}, maxRetries = MAX_ANSWER_RETRIES) => {
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const fetchAnswerWithRetry = async (url, options = {}) => {
+      const retryDelays = [1000, 5000, 10000]; // Defined delays in milliseconds
+      // MAX_ANSWER_RETRIES is implicitly retryDelays.length
+
+      for (let attempt = 0; attempt < retryDelays.length; attempt++) {
         try {
           const response = await fetch(url, options);
           if (response.ok) {
@@ -289,10 +289,10 @@ export default {
 
           // Only retry on 5xx server errors
           if (response.status >= 500 && response.status < 600) {
-            if (attempt < maxRetries - 1) {
-              const delay = exponentialBackoff(attempt);
+            if (attempt < retryDelays.length - 1) {
+              const delay = retryDelays[attempt];
               toastStore.addToast({
-                message: `Server error (status ${response.status}). Retrying attempt ${attempt + 2}/${maxRetries} in ${Math.round(delay/1000)}s...`,
+                message: `Server error (status ${response.status}). Retrying in ${delay / 1000}s... (Attempt ${attempt + 1}/${retryDelays.length})`,
                 type: 'warning',
                 duration: delay
               });
@@ -300,7 +300,7 @@ export default {
               continue; // to the next attempt
             } else {
               // Last attempt failed with 5xx
-              console.error(`API call failed with status ${response.status} after ${maxRetries} attempts (URL: ${url})`);
+              console.error(`API call failed with status ${response.status} after ${retryDelays.length} attempts (URL: ${url})`);
               return response; // Return the error response
             }
           } else {
@@ -308,17 +308,17 @@ export default {
             return response;
           }
         } catch (error) { // Network error or fetch itself failed
-          if (attempt < maxRetries - 1) {
-            const delay = exponentialBackoff(attempt);
+          if (attempt < retryDelays.length - 1) {
+            const delay = retryDelays[attempt];
             toastStore.addToast({
-              message: `Network error: ${error.message}. Retrying attempt ${attempt + 2}/${maxRetries} in ${Math.round(delay/1000)}s...`,
+              message: `Network error: ${error.message}. Retrying in ${delay / 1000}s... (Attempt ${attempt + 1}/${retryDelays.length})`,
               type: 'warning',
               duration: delay
             });
             await new Promise(resolve => setTimeout(resolve, delay));
             continue; // to the next attempt
           } else {
-            console.error(`API call failed with network error: ${error.message} after ${maxRetries} attempts (URL: ${url})`);
+            console.error(`API call failed with network error: ${error.message} after ${retryDelays.length} attempts (URL: ${url})`);
             // To align with how other errors are returned (as a response object),
             // we might need to construct a mock error response or re-throw and catch higher up.
             // For now, re-throwing to be caught by the calling function's try-catch.
@@ -326,8 +326,13 @@ export default {
           }
         }
       }
-      // Should not be reached if logic is correct, but as a fallback:
-      throw new Error(`fetchAnswerWithRetry exhausted attempts for ${url}`);
+      // Fallback if loop completes without returning (should ideally not happen with the logic above)
+      // This implies all retries (defined by retryDelays.length) have been exhausted.
+      // The actual error response or thrown error would have been returned/thrown inside the loop.
+      // To satisfy a return path, though, we might throw a generic error or return a synthetic error response.
+      // However, the logic above should ensure a response or error is always returned/thrown from within the loop.
+      // For safety, if somehow reached:
+      throw new Error(`fetchAnswerWithRetry exhausted all attempts for ${url}`);
     };
 
     // Existing Fetch with retry and exponential backoff (mostly for image fetching from wikimedia)
@@ -491,7 +496,8 @@ export default {
           delete selectedMode[image.id];
           // No success toast for individual auto-saves to avoid noise. UI change is the feedback.
         } else {
-          const message = `Failed to save answer for image ${image.id}. Status: ${response.status}.`;
+          const imageIdentifier = image.properties?.mediainfo_id || image.id;
+          const message = `Failed to save answer for image ${imageIdentifier}. Status: ${response.status}.`;
           console.error(`sendAnswer: ${message}`);
           toastStore.addToast({ message, type: 'error' });
           // console.warn underlying UI message is removed as toast is user-facing.
@@ -500,7 +506,8 @@ export default {
           }
         }
       } catch (error) {
-        const message = `Failed to save answer for image ${image.id} due to network/critical error: ${error.message}`;
+        const imageIdentifier = image.properties?.mediainfo_id || image.id;
+        const message = `Failed to save answer for image ${imageIdentifier} due to network/critical error: ${error.message}`;
         console.error(`sendAnswer: ${message}`, error);
         toastStore.addToast({ message, type: 'error' });
         if (timers.has(image.id)) {
@@ -691,7 +698,8 @@ export default {
           delete selectedMode[image.id];
           // No success toast for individual auto-saves to avoid noise. UI change is the feedback.
         } else {
-          const message = `Failed to save manual answer for image ${image.id}. Status: ${response.status}.`;
+          const imageIdentifier = image.properties?.mediainfo_id || image.id;
+          const message = `Failed to save manual answer for image ${imageIdentifier}. Status: ${response.status}.`;
           console.error(`sendAnswerManual: ${message}`);
           toastStore.addToast({ message, type: 'error' });
           if (timers.has(image.id)) {
@@ -699,7 +707,8 @@ export default {
           }
         }
       } catch (error) {
-        const message = `Failed to save manual answer for image ${image.id} due to network/critical error: ${error.message}`;
+        const imageIdentifier = image.properties?.mediainfo_id || image.id;
+        const message = `Failed to save manual answer for image ${imageIdentifier} due to network/critical error: ${error.message}`;
         console.error(`sendAnswerManual: ${message}`, error);
         toastStore.addToast({ message, type: 'error' });
         if (timers.has(image.id)) {

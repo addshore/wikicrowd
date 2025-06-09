@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed top-4 right-4 z-[1000] w-full max-w-xs sm:max-w-sm">
+  <div class="fixed top-4 right-4 z-[10000] w-full max-w-xs sm:max-w-sm">
     <transition-group name="toast-fade" tag="div" class="space-y-2">
       <div
         v-for="toast in toasts"
