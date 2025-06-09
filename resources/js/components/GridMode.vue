@@ -104,13 +104,14 @@
           </div>
           
           <!-- Error state -->
-          <div v-if="imageLoadingStates[image.id] === 'error'" 
+          <div v-if="imageLoadingStates[image.id]?.state === 'error'"
                class="absolute inset-0 flex items-center justify-center bg-gray-100">
-            <div class="text-center text-gray-500">
-              <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="text-center text-gray-500 px-2"> <!-- Added padding for better text display -->
+              <svg class="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <!-- Slightly smaller icon -->
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
-              <span class="text-sm">Failed to load</span>
+              <p class="text-xs font-semibold truncate" :title="imageLoadingStates[image.id].filename">{{ imageLoadingStates[image.id].filename }}</p>
+              <p class="text-xs">{{ imageLoadingStates[image.id].reason }}</p>
             </div>
           </div>
           
@@ -121,7 +122,7 @@
             class="object-contain align-top w-full h-full"
             style="object-position:top"
             @load="handleImgLoad(image)"
-            @error="handleImgError(image)"
+            @error="handleImgError(image, $event)"
             @loadstart="markImageLoading(image)"
           />
           <!-- Countdown Timer Overlay -->
@@ -813,7 +814,7 @@ export default {
     };
 
     // Handle image load errors with retry logic
-    const handleImgError = (image) => {
+    const handleImgError = (image, event) => {
       const retryCount = imageRetries[image.id] || 0;
       if (retryCount < MAX_IMAGE_RETRIES) {
         imageRetries[image.id] = retryCount + 1;
@@ -829,8 +830,29 @@ export default {
           }
         }, 1000 * (retryCount*2));
       } else {
-        // Mark as failed to load
-        imageLoadingStates[image.id] = 'error';
+        // Mark as failed to load initially
+        const filename = image.properties.img_url.substring(image.properties.img_url.lastIndexOf('/') + 1);
+        imageLoadingStates[image.id] = { state: 'error', filename: filename, reason: 'Loading error details...' };
+
+        // Asynchronously fetch more details about the error
+        (async () => {
+          let determinedReason = 'Failed to load';
+          try {
+            const response = await fetch(image.properties.img_url, { method: 'HEAD' });
+            // Even if response.ok is false, we got a response from the server
+            determinedReason = `HTTP ${response.status}: ${response.statusText}`;
+          } catch (e) {
+            // Network error or other fetch-related issue
+            if (e instanceof TypeError) { // TypeError is often a network error (e.g. CORS, DNS)
+                determinedReason = 'Network error';
+            } else {
+                determinedReason = 'Failed to fetch details'; // Or a more generic error
+            }
+            console.error(`HEAD request failed for ${image.properties.img_url}:`, e);
+          }
+          // Update with the more specific reason
+          imageLoadingStates[image.id] = { state: 'error', filename: filename, reason: determinedReason };
+        })();
       }
     };
 
