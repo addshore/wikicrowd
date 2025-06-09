@@ -124,6 +124,11 @@
             @error="handleImgError(image)"
             @loadstart="markImageLoading(image)"
           />
+          <!-- Countdown Timer Overlay -->
+          <div v-if="countdownTimers.has(image.id) && countdownTimers.get(image.id) > 0"
+               class="absolute top-2 right-2 bg-black bg-opacity-75 text-white text-xs font-bold px-2 py-1 rounded z-10">
+            Saving in {{ countdownTimers.get(image.id) }}s
+          </div>
         </div>
         
         <!-- Magnifying glass icon -->
@@ -214,7 +219,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, reactive, watch } from 'vue'; // Added watch
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
 import { fetchSubclassesAndInstances, fetchDepictsForMediaInfoIds } from './depictsUtils';
@@ -236,6 +241,8 @@ export default {
     const selected = ref(new Set());
     const answered = ref(new Set());
     const timers = reactive(new Map());
+    const countdownTimers = reactive(new Map()); // Added: Stores remaining seconds for countdown
+    const countdownIntervals = reactive(new Map()); // Added: Stores setInterval IDs for countdowns
     const answeredMode = reactive({});
     const selectedMode = reactive({});
     const groupName = document.getElementById('question-container')?.dataset.groupName;
@@ -648,13 +655,26 @@ export default {
           console.log('[GridMode] Bulk answer response:', resp.status, resp.statusText);
         }
         // Mark as answered in UI
-        for (const {id, mode} of pendingAnswers.value) {
+        const answersToProcess = [...pendingAnswers.value]; // Iterate over a copy
+        for (const {id, mode} of answersToProcess) {
           answered.value.add(id);
           answeredMode[id] = mode;
-          selected.value.delete(id);
-          delete selectedMode[id];
+          selected.value.delete(id); // Ensure it's removed from selection
+          delete selectedMode[id];   // And from selection mode mapping
+
+          // Clear any auto-save timer that might still exist for this ID
+          if (timers.has(id)) {
+            clearTimeout(timers.get(id));
+            timers.delete(id);
+          }
+          // Clear any countdown display and interval for this ID
+          if (countdownIntervals.has(id)) {
+            clearInterval(countdownIntervals.get(id));
+            countdownIntervals.delete(id);
+          }
+          countdownTimers.delete(id);
         }
-        pendingAnswers.value = [];
+        pendingAnswers.value = []; // Clear the list after processing
         console.log('[GridMode] saveAllPending complete, UI updated.');
       } catch (e) {
         console.error('[GridMode] Error in saveAllPending:', e);
@@ -663,29 +683,76 @@ export default {
 
     const toggleSelect = (id) => {
       if (answered.value.has(id)) return;
+      const image = images.value.find(img => img.id === id); // Get image ref once
+
       if (selected.value.has(id)) {
         selected.value.delete(id);
+        delete selectedMode[id];
+
         if (timers.has(id)) {
           clearTimeout(timers.get(id));
           timers.delete(id);
         }
-        delete selectedMode[id];
+        // Clear countdown interval and timer display on unselect
+        if (countdownIntervals.has(id)) {
+          clearInterval(countdownIntervals.get(id));
+          countdownIntervals.delete(id);
+        }
+        countdownTimers.delete(id);
+
         // Remove from pending if present
         pendingAnswers.value = pendingAnswers.value.filter(a => a.id !== id);
       } else {
         selected.value.add(id);
         selectedMode[id] = answerMode.value;
-        const image = images.value.find(img => img.id === id);
-        if (autoSave.value) {
+
+        if (autoSave.value && image) {
+          // Set main auto-save timer
           const timer = setTimeout(() => {
-            // Always use the correct sendAnswer function for the current mode
-            (props.manualMode ? sendAnswerManual : sendAnswer)(image);
-            timers.delete(id);
+            (props.manualMode ? sendAnswerManual : sendAnswer)(image); // Pass the image object
+            timers.delete(image.id); // Use image.id
+            // Ensure countdown is cleared when auto-save fires
+            if (countdownIntervals.has(image.id)) {
+                clearInterval(countdownIntervals.get(image.id));
+                countdownIntervals.delete(image.id);
+            }
+            countdownTimers.delete(image.id);
           }, autoSaveDelay.value * 1000);
           timers.set(id, timer);
+
+          // Start visual countdown
+          countdownTimers.set(id, autoSaveDelay.value);
+          // Clear any existing interval for this image before starting a new one
+          if (countdownIntervals.has(id)) {
+            clearInterval(countdownIntervals.get(id));
+          }
+          const intervalId = setInterval(() => {
+            if (countdownTimers.has(id)) {
+              const currentTime = countdownTimers.get(id);
+              if (currentTime > 1) {
+                countdownTimers.set(id, currentTime - 1);
+              } else {
+                // Timer reaches 0 (or 1 and will then hit 0 via normal save)
+                clearInterval(countdownIntervals.get(id));
+                countdownIntervals.delete(id);
+                countdownTimers.delete(id); // Remove when it effectively hits zero.
+              }
+            } else {
+              // Safeguard: if somehow countdownTimers doesn't have id, or id is no longer in countdownIntervals, clear the specific interval.
+              clearInterval(intervalId); // Corrected: use intervalId from closure
+              if(countdownIntervals.has(id)) { // defensive deletion
+                countdownIntervals.delete(id);
+              }
+            }
+          }, 1000);
+          countdownIntervals.set(id, intervalId);
+
         } else {
-          // Add to pending
-          pendingAnswers.value.push({id, mode: answerMode.value});
+          // Not auto-saving, add to pending answers
+          // Ensure no duplicates if user clicks multiple times without autoSave
+          if (!pendingAnswers.value.some(a => a.id === id)) {
+            pendingAnswers.value.push({id, mode: answerMode.value});
+          }
         }
       }
     };
@@ -838,15 +905,52 @@ export default {
             clearTimeout(timers.get(id));
             timers.delete(id);
           }
+          // Clear countdown for items being manually saved via "Save" button
+          if (countdownIntervals.has(id)) {
+            clearInterval(countdownIntervals.get(id));
+            countdownIntervals.delete(id);
+          }
+          countdownTimers.delete(id);
         }
       });
-      saveAllPending();
+      saveAllPending(); // saveAllPending will handle its own items if any were missed.
     };
     // Use a wrapper to ensure Vue always updates the handler
     const onSaveClickHandler = (...args) => {
       console.log('[GridMode] onSaveClickHandler called', args);
       onSaveClick();
     };
+
+    // Watch for changes in autoSave to clear timers if disabled
+    watch(autoSave, (newValue, oldValue) => {
+      if (newValue === false) {
+        console.log('[GridMode] autoSave turned off. Clearing all active auto-save timers and countdowns.');
+        // Clear all countdown intervals
+        for (const intervalId of countdownIntervals.values()) {
+          clearInterval(intervalId);
+        }
+        countdownIntervals.clear();
+
+        // Clear all main auto-save timers
+        for (const timerId of timers.values()) {
+          clearTimeout(timerId);
+        }
+        timers.clear();
+
+        // Clear all visual countdown displays
+        countdownTimers.clear();
+
+        // Optional: move currently selected items to pendingAnswers, or clear selection.
+        // For now, just clearing timers. Users will need to re-engage if they want to save.
+        // selected.value.forEach(id => {
+        //   if (!pendingAnswers.value.some(a => a.id === id)) {
+        //     pendingAnswers.value.push({ id, mode: selectedMode[id] || answerMode.value });
+        //   }
+        // });
+        // selected.value.clear(); // Or just clear selection
+      }
+    });
+
     return {
       images,
       selected,
@@ -875,6 +979,7 @@ export default {
       fullscreenImageUrl,
       openFullscreen,
       closeFullscreen,
+      countdownTimers, // Added for template access
     };
   },
 };
