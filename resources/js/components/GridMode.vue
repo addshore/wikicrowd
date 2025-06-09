@@ -506,27 +506,43 @@ export default {
           if (!mid) {
             console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
           }
-          const imageIdentifierForToast = mid || '[MID not found]';
-          const message = `Failed to save answer for image ${imageIdentifierForToast}. Status: ${response.status}.`;
-          console.error(`sendAnswer: ${message}`);
+          let message;
+          if (mid) {
+            const link = `<a href="https://commons.wikimedia.org/wiki/Special:EntityData/${mid}" target="_blank" rel="noopener noreferrer" class="text-white underline hover:opacity-80">${mid}</a>`;
+            message = `Failed to save answer for image ${link}. Status: ${response.status}.`;
+          } else {
+            message = `Failed to save answer for image [MID not found]. Status: ${response.status}.`;
+          }
+          console.error(`sendAnswer: Failed to save answer for image ${mid || image.id}. Status: ${response.status}.`);
           toastStore.addToast({ message, type: 'error' });
           // console.warn underlying UI message is removed as toast is user-facing.
           if (timers.has(image.id)) { // Check if it was an auto-save timer
              console.warn(`UI: Auto-save for image ${image.id} failed. Image remains selected.`);
           }
+          // Revert UI on failure
+          selected.value.delete(image.id);
+          delete selectedMode[image.id];
         }
       } catch (error) {
         const mid = image.properties?.mediainfo_id;
         if (!mid) {
           console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
         }
-        const imageIdentifierForToast = mid || '[MID not found]';
-        const message = `Failed to save answer for image ${imageIdentifierForToast} due to network/critical error: ${error.message}`;
-        console.error(`sendAnswer: ${message}`, error);
+        let message;
+        if (mid) {
+          const link = `<a href="https://commons.wikimedia.org/wiki/Special:EntityData/${mid}" target="_blank" rel="noopener noreferrer" class="text-white underline hover:opacity-80">${mid}</a>`;
+          message = `Failed to save answer for image ${link} due to network/critical error: ${error.message}`;
+        } else {
+          message = `Failed to save answer for image [MID not found] due to network/critical error: ${error.message}`;
+        }
+        console.error(`sendAnswer: Failed to save answer for image ${mid || image.id} due to network/critical error: ${error.message}`, error);
         toastStore.addToast({ message, type: 'error' });
         if (timers.has(image.id)) {
              console.warn(`UI: Auto-save for image ${image.id} failed due to network/critical error. Image remains selected.`);
         }
+        // Revert UI on failure
+        selected.value.delete(image.id);
+        delete selectedMode[image.id];
       }
     };
 
@@ -716,26 +732,42 @@ export default {
           if (!mid) {
             console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
           }
-          const imageIdentifierForToast = mid || '[MID not found]';
-          const message = `Failed to save manual answer for image ${imageIdentifierForToast}. Status: ${response.status}.`;
-          console.error(`sendAnswerManual: ${message}`);
+          let message;
+          if (mid) {
+            const link = `<a href="https://commons.wikimedia.org/wiki/Special:EntityData/${mid}" target="_blank" rel="noopener noreferrer" class="text-white underline hover:opacity-80">${mid}</a>`;
+            message = `Failed to save manual answer for image ${link}. Status: ${response.status}.`;
+          } else {
+            message = `Failed to save manual answer for image [MID not found]. Status: ${response.status}.`;
+          }
+          console.error(`sendAnswerManual: Failed to save manual answer for image ${mid || image.id}. Status: ${response.status}.`);
           toastStore.addToast({ message, type: 'error' });
           if (timers.has(image.id)) {
              console.warn(`UI: Auto-save for image ${image.id} failed. Image remains selected.`);
           }
+          // Revert UI on failure
+          selected.value.delete(image.id);
+          delete selectedMode[image.id];
         }
       } catch (error) {
         const mid = image.properties?.mediainfo_id;
         if (!mid) {
           console.warn('MediaInfo ID (MID) is missing from image properties when generating error toast for image:', JSON.parse(JSON.stringify(image)));
         }
-        const imageIdentifierForToast = mid || '[MID not found]';
-        const message = `Failed to save manual answer for image ${imageIdentifierForToast} due to network/critical error: ${error.message}`;
-        console.error(`sendAnswerManual: ${message}`, error);
+        let message;
+        if (mid) {
+          const link = `<a href="https://commons.wikimedia.org/wiki/Special:EntityData/${mid}" target="_blank" rel="noopener noreferrer" class="text-white underline hover:opacity-80">${mid}</a>`;
+          message = `Failed to save manual answer for image ${link} due to network/critical error: ${error.message}`;
+        } else {
+          message = `Failed to save manual answer for image [MID not found] due to network/critical error: ${error.message}`;
+        }
+        console.error(`sendAnswerManual: Failed to save manual answer for image ${mid || image.id} due to network/critical error: ${error.message}`, error);
         toastStore.addToast({ message, type: 'error' });
         if (timers.has(image.id)) {
              console.warn(`UI: Auto-save for image ${image.id} failed due to network/critical error. Image remains selected.`);
         }
+        // Revert UI on failure
+        selected.value.delete(image.id);
+        delete selectedMode[image.id];
       }
     };
 
