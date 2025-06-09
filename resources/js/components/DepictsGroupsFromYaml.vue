@@ -76,13 +76,19 @@
             <th class="p-2 border text-gray-900 dark:text-gray-100">Name</th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Depicts</th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Categories</th>
-            <th class="p-2 border text-gray-900 dark:text-gray-100">Unanswered</th>
+            <th class="p-2 border text-gray-900 dark:text-gray-100 flex items-center" @click="toggleSort('unanswered')" style="cursor: pointer;">
+              <span>Unanswered</span>
+              <span class="ml-1">
+                <span :class="{'text-gray-800 dark:text-white font-bold': sortDirection === 'asc' && sortColumn === 'unanswered', 'text-gray-400 dark:text-gray-600': !(sortDirection === 'asc' && sortColumn === 'unanswered')}">↑</span>
+                <span :class="{'text-gray-800 dark:text-white font-bold': sortDirection === 'desc' && sortColumn === 'unanswered', 'text-gray-400 dark:text-gray-600': !(sortDirection === 'desc' && sortColumn === 'unanswered')}">↓</span>
+              </span>
+            </th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Go to</th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Action</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="q in mergedQuestions" :key="q.id">
+          <tr v-for="q in sortedMergedQuestions" :key="q.id">
             <td class="p-2 border text-gray-900 dark:text-gray-100">
               <span>{{ emojiForDifficulty(q.difficulty) }}</span> {{ q.name }}
             </td>
@@ -173,6 +179,9 @@ const filters = ref([]);
 const difficultyFilters = ref([]);
 const regenerating = ref({});
 const clearing = ref({});
+
+const sortColumn = ref(null);
+const sortDirection = ref('none'); // 'asc', 'desc', 'none'
 
 // The single merged data structure for all display logic
 const mergedQuestions = ref([]);
@@ -350,6 +359,31 @@ const unratedQuestions = computed(() => {
 // Dummy for hasUnrated (for filter UI)
 const hasUnrated = computed(() => mergedQuestions.value.some(q => q.difficulty === 'UNRATED'));
 
+const sortedMergedQuestions = computed(() => {
+  if (sortDirection.value === 'none' || !sortColumn.value) {
+    return mergedQuestions.value;
+  }
+
+  return [...mergedQuestions.value].sort((a, b) => {
+    let valA = a[sortColumn.value];
+    let valB = b[sortColumn.value];
+
+    // Treat null or undefined 'unanswered' as 0 for sorting
+    if (sortColumn.value === 'unanswered') {
+      valA = valA == null ? 0 : valA;
+      valB = valB == null ? 0 : valB;
+    }
+
+    if (valA < valB) {
+      return sortDirection.value === 'asc' ? -1 : 1;
+    }
+    if (valA > valB) {
+      return sortDirection.value === 'asc' ? 1 : -1;
+    }
+    return 0;
+  });
+});
+
 const regenerateJob = async (q) => {
   const key = (q.depictsId || '') + '-' + (q.name || '');
   regenerating.value[key] = true;
@@ -382,6 +416,22 @@ const regenerateJob = async (q) => {
     console.error('Error triggering regeneration:', e);
   }
   // Do not re-enable the button
+};
+
+const toggleSort = (columnKey) => {
+  if (sortColumn.value === columnKey) {
+    if (sortDirection.value === 'asc') {
+      sortDirection.value = 'desc';
+    } else if (sortDirection.value === 'desc') {
+      sortDirection.value = 'none';
+      sortColumn.value = null; // Reset column when going to 'none'
+    } else { // 'none'
+      sortDirection.value = 'asc';
+    }
+  } else {
+    sortColumn.value = columnKey;
+    sortDirection.value = 'asc';
+  }
 };
 
 const clearUnanswered = async (q) => {
