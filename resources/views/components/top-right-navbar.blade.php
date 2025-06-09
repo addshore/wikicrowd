@@ -1,15 +1,12 @@
-<div class="fixed top-0 inset-x-0 px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between sm:justify-end bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sm:shadow-md" style="z-index: 9999;">
-    <!-- Hamburger button -->
-    <div class="sm:hidden">
-        <button id="mobile-menu-button" type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:hidden" aria-label="Toggle menu" aria-expanded="false" aria-controls="menu-items-wrapper">
-            <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-        </button>
-    </div>
+<div class="fixed top-0 right-0 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg" style="z-index: 50;">
+    <button id="mobile-menu-button" type="button" class="inline-flex items-center justify-center p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:hidden" aria-label="Toggle menu" aria-expanded="false" aria-controls="menu-items-wrapper">
+        <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+    </button>
 
     <!-- Menu items wrapper -->
-    <div id="menu-items-wrapper" class="block hidden absolute top-full right-0 mt-1 w-56 rounded-md shadow-lg py-1 bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none sm:relative sm:top-auto sm:right-auto sm:left-auto sm:mt-0 sm:w-auto sm:shadow-none sm:bg-transparent sm:dark:bg-transparent sm:ring-0 sm:flex sm:items-center sm:py-0 sm:space-x-4">
+    <div id="menu-items-wrapper" class="block hidden absolute top-16 right-3 w-56 rounded-md shadow-xl py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none sm:flex sm:items-center sm:space-x-3">
         @auth
             <span class="block px-4 py-2 text-sm text-gray-800 dark:text-gray-300 sm:text-gray-800 sm:dark:text-gray-400 sm:px-0 sm:py-0">Hello, {{ Auth::user()->username }}!</span>
         @endauth
@@ -19,7 +16,7 @@
         @else
             <a href="{{ route('login') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white sm:text-gray-700 sm:dark:text-gray-500 sm:hover:bg-transparent sm:dark:hover:bg-transparent sm:underline">Login</a>
         @endauth
-        <button id="dark-mode-toggle" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white sm:ml-2 sm:w-auto sm:text-xs sm:px-2 sm:py-1 sm:rounded sm:border sm:text-gray-700 sm:dark:text-gray-500" onclick="toggleDarkMode()" title="Toggle dark mode">🌓 Mode Toggle</button>
+        <button id="dark-mode-toggle" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white sm:ml-2 sm:w-auto sm:text-base sm:p-1 sm:rounded-md sm:border-0 sm:text-gray-700 sm:dark:text-gray-300 hover:sm:bg-gray-100 dark:hover:sm:bg-gray-700" onclick="toggleDarkMode()" title="Toggle dark mode"><span class="sm:hidden">🌓 Mode Toggle</span><span class="hidden sm:inline">🌓</span></button>
     </div>
 
     <script>
