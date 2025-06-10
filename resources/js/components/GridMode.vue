@@ -254,6 +254,7 @@ export default {
     const autoSave = ref(true);
     const autoSaveDelay = ref(10); // seconds
     const pendingAnswers = ref([]); // {id, mode}
+    const addedImageIds = new Set(); // Set to track added image IDs for manual mode
 
     // Fullscreen modal state
     const showFullscreen = ref(false);
@@ -559,6 +560,7 @@ export default {
       loading.value = true;
       let error = '';
       images.value = [];
+      addedImageIds.clear(); // Clear the set for new manual fetch
       let foundAny = false;
       try {
         const cat = props.manualCategory.trim().replace(/^Category:/, '');
@@ -568,7 +570,7 @@ export default {
             loading.value = false;
             foundAny = true;
           }
-        });
+        }, addedImageIds);
         // After recursion, filter out images that already depict the QID or a more specific one
         const qidSet = await fetchSubclassesAndInstances(props.manualQid);
         const mids = images.value.map(img => img.properties.mediainfo_id);
@@ -591,7 +593,7 @@ export default {
     }
 
     // Recursive function to fetch images and push to UI as soon as found
-    async function fetchImagesRecursivelyAndPush(categoryName, visitedCategories, depth, maxDepth, onImagePushed) {
+    async function fetchImagesRecursivelyAndPush(categoryName, visitedCategories, depth, maxDepth, onImagePushed, currentAddedImageIds) {
       if (depth >= maxDepth) return;
       // Log category being iterated
       console.log('[CustomGrid] Iterating category:', categoryName);
@@ -639,14 +641,19 @@ export default {
             if (!mediainfo_id && p.title && p.title.startsWith('File:')) {
               mediainfo_id = 'M' + p.pageid;
             }
+            const imageId = mediainfo_id || ('M' + p.pageid);
             if (p.imageinfo?.[0]?.url) {
               const depicted = depictsMap[mediainfo_id] || [];
               // Only push if none of the depicted QIDs are in the ignore tree
               if (!depicted.some(qid => qidSet.has(qid))) {
+                if (currentAddedImageIds.has(imageId)) {
+                  console.log(`[CustomGrid] Duplicate image ID ${imageId} found in category ${categoryName}. Skipping.`);
+                  continue;
+                }
                 images.value.push({
-                  id: mediainfo_id || ('M' + p.pageid),
+                  id: imageId,
                   properties: {
-                    mediainfo_id: mediainfo_id || ('M' + p.pageid),
+                    mediainfo_id: imageId,
                     img_url: p.imageinfo[0].url,
                     depicts_id: props.manualQid,
                     manual: true,
@@ -655,6 +662,7 @@ export default {
                   },
                   title: p.title
                 });
+                currentAddedImageIds.add(imageId);
                 // Hide loading spinner as soon as any images are found
                 if (loading.value && images.value.length > 0) {
                   loading.value = false;
@@ -687,7 +695,7 @@ export default {
           const subcat = subcategories[i];
           const subcatName = subcat.title;
           try {
-            await fetchImagesRecursivelyAndPush(subcatName, visitedCategories, depth + 1, maxDepth, onImagePushed);
+            await fetchImagesRecursivelyAndPush(subcatName, visitedCategories, depth + 1, maxDepth, onImagePushed, currentAddedImageIds);
             if (i < subcategories.length - 1) {
               await new Promise(resolve => setTimeout(resolve, 200));
             }
