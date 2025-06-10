@@ -28,13 +28,16 @@
             </li>
           </ul>
         </div>
-        <button type='submit' class='bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded font-bold'>Generate Grid</button>
+        <div class="flex gap-2">
+          <button type='submit' class='flex-1 bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded font-bold'>Dynamic grid</button>
+          <button type='button' @click="generateFullGrid" class='flex-1 bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded font-bold'>Full grid</button>
+        </div>
         <div v-if="autoError" class="mt-2 text-red-600 dark:text-red-400 text-sm">{{ autoError }}</div>
         <div v-if="categoryQidWarning" class="mt-2 text-red-600 dark:text-red-400 text-sm">{{ categoryQidWarning }}</div>
       </form>
     </div>
     <div class='w-full'>
-      <GridMode v-if="showGrid && canShowGrid()" :manual-category="manualCategory" :manual-qid="manualQid" :manual-mode="true" :key="gridKey" />
+      <GridMode v-if="showGrid && canShowGrid()" :manual-category="manualCategory" :manual-qid="manualQid" :manual-mode="true" :load-all="loadAll" :key="gridKey" />
     </div>
   </div>
 </template>
@@ -47,6 +50,7 @@ const manualCategory = ref('');
 const manualQid = ref('');
 const showGrid = ref(false);
 const gridKey = ref(0); // Used to force re-render of GridMode
+const loadAll = ref(false); // New data property
 
 // --- Auto error state ---
 const autoError = ref('');
@@ -78,13 +82,27 @@ function updateUrl() {
   window.history.replaceState({}, '', url);
 }
 
-function generateGrid() {
+function triggerGridGeneration() {
   showGrid.value = false;
   gridKey.value++;
   setTimeout(() => {
     showGrid.value = true;
   }, 0);
 }
+
+function generateDynamicGrid() {
+  loadAll.value = false;
+  triggerGridGeneration();
+}
+
+function generateFullGrid() {
+  loadAll.value = true;
+  triggerGridGeneration();
+}
+
+// The form submission will now call generateDynamicGrid
+const generateGrid = generateDynamicGrid;
+
 
 // --- Category search logic ---
 function onCategoryInput() {
