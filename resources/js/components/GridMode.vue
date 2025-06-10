@@ -936,6 +936,7 @@ export default {
         // Remove from imageClickQueue if present
         imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== id);
 
+        // Clear individual auto-save timer and countdown if active for this image
         if (timers.has(id)) {
           clearTimeout(timers.get(id));
           timers.delete(id);
@@ -946,75 +947,71 @@ export default {
         }
         countdownTimers.delete(id);
 
-        // Remove from pendingAnswers if present (e.g., if it was added by a previous interaction)
+        // Remove from pendingAnswers if present
         pendingAnswers.value = pendingAnswers.value.filter(a => a.id !== id);
 
-      } else { // Selecting
+      } else { // Selecting an image
         selected.value.add(id);
-        selectedMode[id] = answerMode.value;
-        const clickData = { id, mode: answerMode.value };
-
-        // Always remove existing entry for this id from queue to prevent duplicates/stale modes
-        imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== id);
-        imageClickQueue.value.push(clickData);
+        selectedMode[id] = answerMode.value; // Set/update the mode for this selection
 
         if (autoSave.value && image) {
-          // Clear existing auto-save timer for this specific image if one exists
-          if (timers.has(id)) {
-            clearTimeout(timers.get(id));
-            timers.delete(id);
-          }
-          // Clear existing countdown interval for this specific image
-          if (countdownIntervals.has(id)) {
-            clearInterval(countdownIntervals.get(id));
-            countdownIntervals.delete(id);
-          }
+          // If an auto-save timer is NOT already running for this image, start it.
+          if (!timers.has(id)) {
+            const autoSaveTimerForImage = setTimeout(() => {
+              // Timer expired, add to imageClickQueue using the latest selectedMode
+              const currentMode = selectedMode[id] || answerMode.value; // Fallback just in case
 
-          // Set main auto-save timer (for individual image visual countdown)
-          const autoSaveTimerForImage = setTimeout(() => {
-            // When this timer fires, the item should already be in imageClickQueue.
-            // We just need to ensure the batchTimer is running.
-            if (!batchTimer.value) {
-              batchTimer.value = setTimeout(processClickQueue, 1000);
-            }
-            // Clear its own timer and countdown
-            timers.delete(id);
-            if (countdownIntervals.has(id)) {
-              clearInterval(countdownIntervals.get(id));
-              countdownIntervals.delete(id);
-            }
-            countdownTimers.delete(id);
-          }, autoSaveDelay.value * 1000);
-          timers.set(id, autoSaveTimerForImage);
+              // Remove any existing entry for this id from queue to use the latest one from autoSaveDelay
+              imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== id);
+              imageClickQueue.value.push({ id, mode: currentMode });
 
-          // Start visual countdown
-          countdownTimers.set(id, autoSaveDelay.value);
-          const intervalId = setInterval(() => {
-            if (countdownTimers.has(id)) {
-              const currentTime = countdownTimers.get(id);
-              if (currentTime > 1) {
-                countdownTimers.set(id, currentTime - 1);
-              } else {
+              // Clear its own timer and countdown
+              timers.delete(id);
+              if (countdownIntervals.has(id)) {
                 clearInterval(countdownIntervals.get(id));
                 countdownIntervals.delete(id);
-                countdownTimers.delete(id);
               }
-            } else {
-              clearInterval(intervalId);
-              if(countdownIntervals.has(id)) {
-                countdownIntervals.delete(id);
-              }
+              countdownTimers.delete(id);
+
+              // Start/reset the main 1-second batchTimer
+              if (batchTimer.value) clearTimeout(batchTimer.value);
+              batchTimer.value = setTimeout(processClickQueue, 1000);
+            }, autoSaveDelay.value * 1000);
+            timers.set(id, autoSaveTimerForImage);
+
+            // Start visual countdown only when a new timer is set
+            countdownTimers.set(id, autoSaveDelay.value);
+            // Clear any existing interval for this image before starting a new one
+            if (countdownIntervals.has(id)) { // Should not happen if timer was not set, but good practice
+                clearInterval(countdownIntervals.get(id));
             }
-          }, 1000);
-          countdownIntervals.set(id, intervalId);
-
-          // Regardless of autoSaveDelay, ensure the 1-second batch timer is running or reset
-          if (batchTimer.value) clearTimeout(batchTimer.value);
-          batchTimer.value = setTimeout(processClickQueue, 1000);
-
+            const intervalId = setInterval(() => {
+              if (countdownTimers.has(id)) {
+                const currentTime = countdownTimers.get(id);
+                if (currentTime > 1) {
+                  countdownTimers.set(id, currentTime - 1);
+                } else { // Countdown reaches 1 (will be 0 after this tick effectively)
+                  clearInterval(countdownIntervals.get(id)); // Clear interval
+                  countdownIntervals.delete(id);
+                  // countdownTimers.delete(id) will be handled by the main timer's expiry
+                }
+              } else { // Image unselected or saved manually during countdown
+                clearInterval(intervalId);
+                if(countdownIntervals.has(id)) {
+                  countdownIntervals.delete(id);
+                }
+              }
+            }, 1000);
+            countdownIntervals.set(id, intervalId);
+          }
+          // If a timer is already running, its countdown continues.
+          // selectedMode[id] has already been updated above, so it will pick the new mode when its timer expires.
         } else { // autoSave is OFF
-          // Add to imageClickQueue (already done above)
-          // Clear any existing batchTimer and start a new one
+          // Remove existing entry for this id from queue to use the latest one
+          imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== id);
+          imageClickQueue.value.push({ id, mode: selectedMode[id] }); // Use selectedMode[id] which is answerMode.value
+
+          // Start/reset the main 1-second batchTimer
           if (batchTimer.value) clearTimeout(batchTimer.value);
           batchTimer.value = setTimeout(processClickQueue, 1000);
         }
