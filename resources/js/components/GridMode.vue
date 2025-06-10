@@ -283,8 +283,6 @@ export default {
     // Track image load retries
     const imageRetries = reactive({});
     const MAX_IMAGE_RETRIES = 3;
-    const image429Retries = reactive({});
-    const MAX_429_IMAGE_RETRIES = 10; // Max retries for 429 errors
 
     // Track image loading states and backoff
     const imageLoadingStates = reactive({});
@@ -1236,74 +1234,40 @@ export default {
     // Handle image load errors with retry logic
     const handleImgError = (image, event) => {
       const filename = image.properties.img_url.substring(image.properties.img_url.lastIndexOf('/') + 1);
+      // Increment and check general retry count
+      const generalRetryCount = imageRetries[image.id] || 0;
 
-      // Asynchronously determine error type and then handle retries
-      (async () => {
-        let responseStatus = null;
-        let fetchError = null;
+      if (generalRetryCount < MAX_IMAGE_RETRIES) {
+        imageRetries[image.id] = generalRetryCount + 1;
+        // Use the existing exponentialBackoff or a simple fixed delay for retries
+        const delay = exponentialBackoff(generalRetryCount); // or a fixed delay like 2000 * (generalRetryCount + 1)
 
-        try {
-          // Try a HEAD request to get status code without downloading the full image
-          const response = await fetch(image.properties.img_url, { method: 'HEAD' });
-          responseStatus = response.status;
-        } catch (e) {
-          fetchError = e;
-          console.error(`HEAD request failed for ${image.properties.img_url}:`, e);
-        }
+        imageLoadingStates[image.id] = {
+          state: 'error',
+          filename: filename,
+          reason: `Load error. Retrying in ${delay/1000}s... (${generalRetryCount + 1}/${MAX_IMAGE_RETRIES})`
+        };
 
-        if (responseStatus === 429) {
-          const current429Retries = image429Retries[image.id] || 0;
-          if (current429Retries < MAX_429_IMAGE_RETRIES) {
-            image429Retries[image.id] = current429Retries + 1;
-            const delay = Math.min(1000 * Math.pow(2, current429Retries), 60000); // Exponential backoff, capped at 60s
-
-            imageLoadingStates[image.id] = { state: 'error', filename: filename, reason: `HTTP 429. Retrying in ${delay/1000}s... (${current429Retries + 1}/${MAX_429_IMAGE_RETRIES})` };
-
+        setTimeout(() => {
+          const imgElement = document.querySelector(`img[alt="Image ${image.id}"]`);
+          if (imgElement) {
+            // Reset src to attempt reload
+            const originalSrc = image.properties.img_url;
+            imgElement.src = ''; // Clear src
+            // Vue might need a tick or a slight delay to re-trigger the load event
             setTimeout(() => {
-              const imgElement = document.querySelector(`img[alt="Image ${image.id}"]`);
-              if (imgElement) {
-                imgElement.src = ''; // Clear src
-                setTimeout(() => {
-                  imgElement.src = image.properties.img_url; // Re-set src to trigger reload
-                }, 50);
-              }
-            }, delay);
-          } else {
-            imageLoadingStates[image.id] = { state: 'error', filename: filename, reason: `Failed after ${MAX_429_IMAGE_RETRIES} retries due to HTTP 429.` };
+              imgElement.src = originalSrc;
+            }, 50);
           }
-        } else {
-          // Handle non-429 errors or cases where HEAD request failed
-          const generalRetryCount = imageRetries[image.id] || 0;
-          if (generalRetryCount < MAX_IMAGE_RETRIES) {
-            imageRetries[image.id] = generalRetryCount + 1;
-            const delay = 1000 * (generalRetryCount * 2 || 1); // Ensure delay is at least 1s for first general retry
-
-            let reasonSuffix = fetchError ? `(Network error). Retrying in ${delay/1000}s...` : `(HTTP ${responseStatus || 'Error'}). Retrying in ${delay/1000}s...`;
-            imageLoadingStates[image.id] = { state: 'error', filename: filename, reason: `Load error ${reasonSuffix} (${generalRetryCount + 1}/${MAX_IMAGE_RETRIES})` };
-
-            setTimeout(() => {
-              const imgElement = document.querySelector(`img[alt="Image ${image.id}"]`);
-              if (imgElement) {
-                imgElement.src = '';
-                setTimeout(() => {
-                  imgElement.src = image.properties.img_url;
-                }, 50);
-              }
-            }, delay);
-          } else {
-            // Max general retries reached or HEAD request failed definitively
-            let determinedReason = 'Failed to load';
-            if (responseStatus) {
-              determinedReason = `HTTP ${responseStatus}`;
-            } else if (fetchError instanceof TypeError) {
-              determinedReason = 'Network error';
-            } else if (fetchError) {
-              determinedReason = 'Failed to fetch details';
-            }
-            imageLoadingStates[image.id] = { state: 'error', filename: filename, reason: `${determinedReason}. Max general retries reached.` };
-          }
-        }
-      })();
+        }, delay);
+      } else {
+        // Max general retries reached
+        imageLoadingStates[image.id] = {
+          state: 'error',
+          filename: filename,
+          reason: `Failed to load after ${MAX_IMAGE_RETRIES} retries.`
+        };
+      }
     };
 
     // Handle successful image load
