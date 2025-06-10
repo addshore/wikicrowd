@@ -116,7 +116,7 @@
               <template v-if="q.depictsId">
                 <div class="text-xs">
                   <a
-                    :href="`https://query.wikidata.org/embed.html#SELECT%20%3Fitem%20%3FitemLabel%0AWHERE%0A%7B%0A%20%20wd%3A${q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')}%20wdt%3AP279%2B%20%3Fitem.%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cmul%2Cen%22.%20%7D%0A%7D`"
+                    :href="getDepictsUpQueryUrl(q.depictsId)"
                     target="_blank"
                     rel="noopener"
                     class="text-blue-700 hover:underline"
@@ -500,6 +500,13 @@ const clearUnanswered = async (q) => {
     console.error('Error clearing unanswered questions:', e);
   }
   // Do not re-enable the button
+};
+
+const getDepictsUpQueryUrl = (depictsId) => {
+  if (!depictsId) return '';
+  const cleanId = depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1');
+  const sparql = `SELECT DISTINCT ?item ?itemLabel WHERE { {wd:${cleanId} (wdt:P31/wdt:P279)+ ?item.} UNION {wd:${cleanId} (wdt:P31/wdt:P279|wdt:P279)+ ?item .} SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". } }`;
+  return 'https://query.wikidata.org/embed.html#' + encodeURIComponent(sparql);
 };
 
 </script>

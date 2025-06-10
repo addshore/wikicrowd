@@ -16,7 +16,7 @@
           <span class="ml-1">(<WikidataLabel :qid="images[0].properties.depicts_id" :fallback="images[0].properties.depicts_name" />)</span>
           <span class="ml-2 text-sm">
             <a
-              :href="`https://query.wikidata.org/embed.html#SELECT%20%3Fitem%20%3FitemLabel%0AWHERE%0A%7B%0A%20%20wd%3A${images[0].properties.depicts_id}%20wdt%3AP279%2B%20%3Fitem.%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cmul%2Cen%22.%20%7D%0A%7D`"
+              :href="depictsUpQueryUrl"
               target="_blank"
               class="text-blue-600 hover:underline"
             >(up)</a>
@@ -232,7 +232,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, reactive, watch } from 'vue'; // Added watch
+import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue'; // Added computed
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
 import { fetchSubclassesAndInstances, fetchDepictsForMediaInfoIds } from './depictsUtils';
@@ -1286,6 +1286,14 @@ export default {
       imageLoadingStates[image.id] = 'loading';
     };
 
+    // --- Add computed property for the (up) SPARQL query link ---
+    const depictsUpQueryUrl = computed(() => {
+      const depictsId = images.value[0]?.properties?.depicts_id;
+      if (!depictsId) return '';
+      const sparql = `SELECT DISTINCT ?item ?itemLabel WHERE { {wd:${depictsId} (wdt:P31/wdt:P279)+ ?item.} UNION {wd:${depictsId} (wdt:P31/wdt:P279|wdt:P279)+ ?item .} SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". } }`;
+      return 'https://query.wikidata.org/embed.html#' + encodeURIComponent(sparql);
+    });
+
     // On mount, always add keyboard shortcuts
     let keydownHandler;
     onMounted(() => {
@@ -1468,6 +1476,7 @@ export default {
       openFullscreen,
       closeFullscreen,
       countdownTimers, // Added for template access
+      depictsUpQueryUrl, // Added computed property
     };
   },
 };
