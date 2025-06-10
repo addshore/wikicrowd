@@ -189,6 +189,13 @@ async function checkIfCategoryQid(qid) {
         showGrid.value = false;
         return true;
       }
+      // Check for Wikimedia disambiguation category
+      if (p31.some(s => s.mainsnak?.datavalue?.value?.id === 'Q15407973')) {
+        isCategoryQid.value = true;
+        categoryQidWarning.value = 'This Qid is a Wikimedia disambiguation category. Please use a specific item instead.';
+        showGrid.value = false;
+        return true;
+      }
     }
     isCategoryQid.value = false;
     categoryQidWarning.value = '';
