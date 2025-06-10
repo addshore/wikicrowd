@@ -847,25 +847,45 @@ export default {
           console.log('[GridMode] Manual bulk answer response:', responseManual.status, responseManual.statusText);
           if (responseManual.ok) {
             console.log('saveAllPending: Manual bulk answers successfully sent.');
-            // Apply UI updates for each successfully saved item
-            for (const {id, mode} of pendingAnswers.value) {
+            const currentSavedItems = [...pendingAnswers.value]; // Copy before clearing
+            for (const {id, mode} of currentSavedItems) {
               answered.value.add(id);
               answeredMode[id] = mode;
               selected.value.delete(id);
               delete selectedMode[id];
+               // Clear any auto-save timer and countdown
+              if (timers.has(id)) clearTimeout(timers.get(id)); timers.delete(id);
+              if (countdownIntervals.has(id)) clearInterval(countdownIntervals.get(id)); countdownIntervals.delete(id);
+              countdownTimers.delete(id);
             }
             pendingAnswers.value = []; // Clear pending answers only on full success
             console.log('[GridMode] saveAllPending complete for manual mode, UI updated.');
             toastStore.addToast({ message: `${answers.length} manual answers saved successfully!`, type: 'success' });
           } else {
-            const message = `Manual bulk save failed. Status: ${responseManual.status}.`;
-            console.error(`saveAllPending: ${message}`);
-            toastStore.addToast({ message, type: 'error' });
-            // console.warn underlying UI message is removed.
+            const messageBase = `Manual bulk save failed. Status: ${responseManual.status}.`;
+            const failedItemsInBatch = [...pendingAnswers.value]; // Items that were attempted
+
+            const failedMids = failedItemsInBatch.map(answerData => {
+              const img = images.value.find(i => i.id === answerData.id); // answerData.id is mediainfo_id in this context
+              return img ? img.properties.mediainfo_id : answerData.id;
+            });
+
+            console.error(`saveAllPending: ${messageBase} Failed MIDs: ${failedMids.join(', ')}`);
+            toastStore.addToast({ message: `${messageBase} MIDs: ${failedMids.slice(0,3).join(', ')}${failedMids.length > 3 ? '...' : ''}.`, type: 'error' });
+
+            failedItemsInBatch.forEach(answerData => {
+              selected.value.delete(answerData.id);
+              delete selectedMode[answerData.id];
+              // Clear any auto-save timer and countdown
+              if (timers.has(answerData.id)) clearTimeout(timers.get(answerData.id)); timers.delete(answerData.id);
+              if (countdownIntervals.has(answerData.id)) clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id);
+              countdownTimers.delete(answerData.id);
+            });
+            pendingAnswers.value = []; // Clear pending answers after a failed batch
           }
-        } else {
+        } else { // Regular mode
           const answersToSubmit = pendingAnswers.value.map(({ id, mode }) => ({
-            question_id: id,
+            question_id: id, // id here is question_id
             answer: mode,
           }));
           console.log('[GridMode] Sending regular bulk answers:', answersToSubmit);
@@ -873,55 +893,73 @@ export default {
           const regularOptions = {
             method: 'POST',
             headers,
-            body: JSON.stringify({ answers: answersToSubmit }), // Ensure payload matches API expectation if it's { "answers": [...] }
+            body: JSON.stringify({ answers: answersToSubmit }),
           };
           const responseRegular = await fetchAnswerWithRetry(regularUrl, regularOptions);
 
           console.log('[GridMode] Regular bulk answer response:', responseRegular.status, responseRegular.statusText);
           if (responseRegular.ok) {
             console.log('saveAllPending: Regular bulk answers successfully sent.');
-            // Apply UI updates for each successfully saved item
-            for (const {id, mode} of pendingAnswers.value) {
+            const currentSavedItems = [...pendingAnswers.value]; // Copy before clearing
+            for (const {id, mode} of currentSavedItems) { // id here is question_id
               answered.value.add(id);
               answeredMode[id] = mode;
               selected.value.delete(id);
               delete selectedMode[id];
+              // Clear any auto-save timer and countdown
+              if (timers.has(id)) clearTimeout(timers.get(id)); timers.delete(id);
+              if (countdownIntervals.has(id)) clearInterval(countdownIntervals.get(id)); countdownIntervals.delete(id);
+              countdownTimers.delete(id);
             }
             pendingAnswers.value = []; // Clear pending answers only on full success
             console.log('[GridMode] saveAllPending complete for regular mode, UI updated.');
             toastStore.addToast({ message: `${answersToSubmit.length} answers saved successfully!`, type: 'success' });
           } else {
-            const message = `Regular bulk save failed. Status: ${responseRegular.status}.`;
-            console.error(`saveAllPending: ${message}`);
-            toastStore.addToast({ message, type: 'error' });
-          }
-        }
-        // Mark as answered in UI and clear timers/intervals for all processed IDs
-        const answersToProcess = [...pendingAnswers.value]; // Iterate over a copy
-        for (const {id, mode} of answersToProcess) {
-          answered.value.add(id);
-          answeredMode[id] = mode;
-          selected.value.delete(id); // Ensure it's removed from selection
-          delete selectedMode[id];   // And from selection mode mapping
+            const messageBase = `Regular bulk save failed. Status: ${responseRegular.status}.`;
+            const failedItemsInBatch = [...pendingAnswers.value]; // Items that were attempted (question_id, mode)
 
-          // Clear any auto-save timer that might still exist for this ID
-          if (timers.has(id)) {
-            clearTimeout(timers.get(id));
-            timers.delete(id);
+            const failedMids = failedItemsInBatch.map(answerData => {
+              const img = images.value.find(i => i.id === answerData.id); // answerData.id is question_id
+              return img ? img.properties.mediainfo_id : answerData.id;
+            });
+
+            console.error(`saveAllPending: ${messageBase} Failed MIDs: ${failedMids.join(', ')}`);
+            toastStore.addToast({ message: `${messageBase} MIDs: ${failedMids.slice(0,3).join(', ')}${failedMids.length > 3 ? '...' : ''}.`, type: 'error' });
+
+            failedItemsInBatch.forEach(answerData => {
+              selected.value.delete(answerData.id); // answerData.id is question_id
+              delete selectedMode[answerData.id];
+               // Clear any auto-save timer and countdown
+              if (timers.has(answerData.id)) clearTimeout(timers.get(answerData.id)); timers.delete(answerData.id);
+              if (countdownIntervals.has(answerData.id)) clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id);
+              countdownTimers.delete(answerData.id);
+            });
+            pendingAnswers.value = []; // Clear pending answers after a failed batch
           }
-          // Clear any countdown display and interval for this ID
-          if (countdownIntervals.has(id)) {
-            clearInterval(countdownIntervals.get(id));
-            countdownIntervals.delete(id);
-          }
-          countdownTimers.delete(id);
         }
-        pendingAnswers.value = []; // Clear the list after processing
-        console.log('[GridMode] saveAllPending complete, UI updated.');
+        // The general loop for UI updates and clearing timers is removed from here,
+        // as it's now handled within success/failure blocks.
       } catch (e) {
-        const message = `Bulk save failed due to network/critical error: ${e.message}`;
-        console.error('[GridMode] Error in saveAllPending:', e);
-        toastStore.addToast({ message, type: 'error' });
+        // This catch block handles network errors or other critical failures from fetchAnswerWithRetry
+        const messageBase = `Bulk save failed due to network/critical error: ${e.message}`;
+        const failedItemsInBatch = [...pendingAnswers.value]; // Items that were attempted
+
+        const failedMids = failedItemsInBatch.map(answerData => {
+            const img = images.value.find(i => i.id === answerData.id);
+            return img ? img.properties.mediainfo_id : answerData.id;
+        });
+
+        console.error(`[GridMode] Error in saveAllPending: ${messageBase}. Failed MIDs: ${failedMids.join(', ')}`, e);
+        toastStore.addToast({ message: `${messageBase} MIDs: ${failedMids.slice(0,3).join(', ')}${failedMids.length > 3 ? '...' : ''}.`, type: 'error' });
+
+        failedItemsInBatch.forEach(answerData => {
+            selected.value.delete(answerData.id);
+            delete selectedMode[answerData.id];
+            if (timers.has(answerData.id)) clearTimeout(timers.get(answerData.id)); timers.delete(answerData.id);
+            if (countdownIntervals.has(answerData.id)) clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id);
+            countdownTimers.delete(answerData.id);
+        });
+        pendingAnswers.value = []; // Clear pending answers after a failed batch due to exception
       }
     };
 
