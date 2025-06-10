@@ -314,6 +314,7 @@ onMounted(async () => {
     manualCategory.value = category;
     manualQid.value = item;
     await checkIfCategoryQid(item);
+    loadAll.value = false; // Ensure dynamic grid mode
     showGrid.value = canShowGrid();
     return;
   }
