@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use App\Models\Question;
 use App\Models\Answer;
 use Addwiki\Wikimedia\Api\WikimediaFactory;
@@ -109,11 +110,30 @@ class ManualQuestionController extends Controller
                     ],
                 ]
             );
-            $answer = Answer::create([
-                'question_id' => $question->id,
-                'user_id' => $user ? $user->id : null,
-                'answer' => $input['answer'],
-            ]);
+            $answer = Answer::updateOrCreate(
+                [
+                    'question_id' => $question->id,
+                    'user_id' => $user ? $user->id : null,
+                ],
+                [
+                    'answer' => $input['answer'],
+                ]
+            );
+
+            if (!$answer->wasRecentlyCreated && $answer->wasChanged()) {
+                Log::info('Answer already existed and was updated.', [
+                    'question_id' => $question->id,
+                    'user_id' => $user ? $user->id : null,
+                    'new_answer' => $input['answer']
+                ]);
+            } elseif (!$answer->wasRecentlyCreated && !$answer->wasChanged()) {
+                Log::info('Answer already existed and was not changed.', [
+                    'question_id' => $question->id,
+                    'user_id' => $user ? $user->id : null,
+                    'existing_answer' => $input['answer']
+                ]);
+            }
+
             if ($input['answer'] === 'yes') {
                 $oldQid = $this->getSuperclassDepictsQid($input['mediainfo_id'], $input['qid']);
                 if ($oldQid) {
