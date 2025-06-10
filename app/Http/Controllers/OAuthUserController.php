@@ -44,7 +44,7 @@ class OAuthUserController extends Controller
             ]);
         }
 
-        Auth::login($user, false);
+        Auth::login($user, true);
 
         // Create a Sanctum token for the user after login
         // You can define specific abilities (permissions) for the token if needed
