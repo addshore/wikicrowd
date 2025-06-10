@@ -1136,8 +1136,6 @@ export default {
           imageClickQueue.value.push({ id, mode: selectedMode[id] }); // Use selectedMode[id] which is answerMode.value
 
           // Start/reset the main 1-second batchTimer
-          if (batchTimer.value) clearTimeout(batchTimer.value);
-          batchTimer.value = setTimeout(processClickQueue, 1000);
         }
       }
     };
