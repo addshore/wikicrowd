@@ -974,6 +974,42 @@ export default {
     };
 
     const clearAnswered = () => {
+      const imagesToClear = images.value.filter(img => answered.value.has(img.id));
+      const clearedCount = imagesToClear.length;
+
+      if (clearedCount === 0) {
+        toastStore.addToast({ message: "No answered images to clear.", type: 'info' });
+        return;
+      }
+
+      const answerCounts = {
+        yes: 0,
+        no: 0,
+        skip: 0,
+        unknown: 0 // For any modes not explicitly 'yes', 'no', or 'skip'
+      };
+
+      imagesToClear.forEach(img => {
+        const mode = answeredMode[img.id];
+        if (mode === 'yes') {
+          answerCounts.yes++;
+        } else if (mode === 'no') {
+          answerCounts.no++;
+        } else if (mode === 'skip') {
+          answerCounts.skip++;
+        } else {
+          answerCounts.unknown++;
+        }
+      });
+
+      let message = `Cleared ${clearedCount} image${clearedCount > 1 ? 's' : ''}: `;
+      message += `${answerCounts.yes} yes, ${answerCounts.no} no, ${answerCounts.skip} skip.`;
+      if (answerCounts.unknown > 0) {
+        message += ` (${answerCounts.unknown} unknown mode)`;
+      }
+
+      toastStore.addToast({ message, type: 'info' });
+
       images.value = images.value.filter(img => !answered.value.has(img.id));
     }
 
