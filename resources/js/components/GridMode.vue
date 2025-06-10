@@ -708,29 +708,30 @@ export default {
                 if (loading.value && images.value.length > 0) {
                   loading.value = false;
                 }
-                // If too many images are loaded below the fold, pause until user scrolls (unless loadAll is true)
-                if (!props.loadAll) {
-                  const visible = window.innerHeight;
-                  const pageHeight = document.documentElement.scrollHeight;
-                  const scrollY = window.scrollY || window.pageYOffset;
-                  const atBottom = (scrollY + visible + 10) >= pageHeight;
-                  if (pageHeight > visible + 1200 && !atBottom) {
-                    await new Promise(resolve => {
-                      function onScroll() {
-                        const scrollY2 = window.scrollY || window.pageYOffset;
-                        const pageHeight2 = document.documentElement.scrollHeight;
-                        if (scrollY2 + visible + 1000 >= pageHeight2 || (scrollY2 + visible + 10) >= pageHeight2) {
-                          window.removeEventListener('scroll', onScroll);
-                          resolve();
-                        }
-                      }
-                      window.addEventListener('scroll', onScroll);
-                    });
-                  }
-                }
                 if (onImagePushed) onImagePushed();
               }
             }
+          }
+        }
+        // If too many images are loaded below the fold, pause until user scrolls (unless loadAll is true)
+        // This block was moved from inside the files loop to after it.
+        if (!props.loadAll) {
+          const visible = window.innerHeight;
+          const pageHeight = document.documentElement.scrollHeight;
+          const scrollY = window.scrollY || window.pageYOffset;
+          const atBottom = (scrollY + visible + 10) >= pageHeight;
+          if (pageHeight > visible + 1200 && !atBottom) {
+            await new Promise(resolve => {
+              function onScroll() {
+                const scrollY2 = window.scrollY || window.pageYOffset;
+                const pageHeight2 = document.documentElement.scrollHeight;
+                if (scrollY2 + visible + 1000 >= pageHeight2 || (scrollY2 + visible + 10) >= pageHeight2) {
+                  window.removeEventListener('scroll', onScroll);
+                  resolve();
+                }
+              }
+              window.addEventListener('scroll', onScroll);
+            });
           }
         }
         // Only after top-level images are pushed, recurse into subcategories
