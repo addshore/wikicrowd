@@ -308,11 +308,11 @@
                 "https://query.wikidata.org/sparql",
                 PrefixSets::WIKIDATA
             ))->newWikibaseQueryService();
-            $result = $query->query( "SELECT DISTINCT ?i WHERE{wd:${itemId} wdt:P279+ ?i }" );
+            $result = $query->query( "SELECT DISTINCT ?item ?itemLabel WHERE { {wd:${itemId} (wdt:P31/wdt:P279)+ ?item.} UNION {wd:${itemId} (wdt:P31/wdt:P279|wdt:P279)+ ?item .} SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". } }" );
 
             $ids = [];
             foreach ( $result['results']['bindings'] as $binding ) {
-                $ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
+                $ids[] = $this->getLastPartOfUrlPath( $binding['item']['value'] );
             }
             return $ids;
         }
