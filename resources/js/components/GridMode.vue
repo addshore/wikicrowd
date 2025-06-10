@@ -598,6 +598,7 @@ export default {
 
     // If manualMode, fetch images from Commons API instead of API
     async function fetchManualImages() {
+      console.log('[CustomGrid] Fetching manual images for category:', props.manualCategory, 'and QID:', props.manualQid);
       loading.value = true;
       let error = '';
       images.value = [];
@@ -640,7 +641,7 @@ export default {
       while (pageIdsCopy.length > 0) {
         const currentChunkPageIds = pageIdsCopy.splice(0, 50); // Take 50 IDs
         const idsParam = currentChunkPageIds.join('|');
-        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&iiurlwidth=300&pageids=${idsParam}&format=json&origin=*`;
+        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&iiurlwidth=600&pageids=${idsParam}&format=json&origin=*`;
 
         try {
           const resp = await fetchWithRetry(infoUrl);
@@ -739,7 +740,7 @@ export default {
               }
               const imageId = mediainfo_id || ('M' + p.pageid); // Fallback to M+pageid if wikibase_item is missing
 
-              if (p.imageinfo?.[0]?.url) { // imageinfo is now directly attached to p
+              if (p?.imageinfo?.url) {
                 const depicted = depictsMap[mediainfo_id] || [];
                 if (!depicted.some(qid => qidSet.has(qid))) {
                   if (currentAddedImageIds.has(imageId)) {
@@ -750,7 +751,7 @@ export default {
                     id: imageId,
                     properties: {
                       mediainfo_id: imageId,
-                      img_url: p.imageinfo[0].url,
+                      img_url: p.imageinfo.thumburl,
                       depicts_id: props.manualQid,
                       manual: true,
                       category: props.manualCategory, // The root category
@@ -764,6 +765,8 @@ export default {
                   }
                   if (onImagePushed) onImagePushed();
                 }
+              } else {
+                console.warn(`[CustomGrid] Image ${imageId} (${p.title}) has no valid imageinfo URL, got :`, p.imageinfo);
               }
             }
           }
