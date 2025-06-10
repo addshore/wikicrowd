@@ -85,7 +85,7 @@ class AddDepicts implements ShouldQueue
         $entity = $wbServices->newEntityLookup()->getEntity( $mid );
         if($entity === null) {
             // TODO could still create statements for this condition...
-            \Log::error("MediaInfo entity not found");
+            \Log::error("{$mid} MediaInfo entity not found");
             return;
         }
         $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $depictsValue->getSerialization() );
@@ -113,7 +113,7 @@ class AddDepicts implements ShouldQueue
         // TODO code reuse section end
 
         if($foundDepicts !== false) {
-            \Log::info("Already has {$foundDepicts} depicts");
+            \Log::info("{$mid} already has {$foundDepicts} depicts");
             return;
         } else {
             // Build custom summary if manual
