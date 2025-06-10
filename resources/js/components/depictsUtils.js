@@ -64,5 +64,6 @@ export async function fetchDepictsForMediaInfoIds(mids) {
       console.log('[depictsUtils] MediaInfo', mid, 'depicts:', depicts[mid]);
     }
   }
+  console.log('[depictsUtils] Final depicts map:', depicts);
   return depicts;
 }

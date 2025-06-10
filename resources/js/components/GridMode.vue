@@ -598,6 +598,7 @@ export default {
 
     // If manualMode, fetch images from Commons API instead of API
     async function fetchManualImages() {
+      console.log('[CustomGrid] Fetching manual images for category:', props.manualCategory, 'and QID:', props.manualQid);
       loading.value = true;
       let error = '';
       images.value = [];
@@ -633,34 +634,85 @@ export default {
       }
     }
 
+    async function fetchImageInfoInBatches(allPageIds) {
+      const resultsMap = {};
+      const pageIdsCopy = [...allPageIds]; // Operate on a copy
+
+      while (pageIdsCopy.length > 0) {
+        const currentChunkPageIds = pageIdsCopy.splice(0, 50); // Take 50 IDs
+        const idsParam = currentChunkPageIds.join('|');
+        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&iiurlwidth=600&pageids=${idsParam}&format=json&origin=*`;
+
+        try {
+          const resp = await fetchWithRetry(infoUrl);
+          const data = await resp.json();
+          if (data.query && data.query.pages) {
+            for (const pageId in data.query.pages) {
+              const page = data.query.pages[pageId];
+              if (page.imageinfo && page.imageinfo.length > 0) {
+                resultsMap[page.pageid] = page.imageinfo[0];
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching image info for page IDs ${idsParam}:`, error);
+          // Decide if we want to mark these IDs as failed or skip them
+        }
+      }
+      return resultsMap;
+    }
+
     // Recursive function to fetch images and push to UI as soon as found
-    async function fetchImagesRecursivelyAndPush(categoryName, visitedCategories, depth, maxDepth, onImagePushed, currentAddedImageIds) {
+    async function fetchImagesRecursivelyAndPush(categoryName, visitedCategories, depth, maxDepth, onImagePushed, currentAddedImageIds, gcmcontinueToken = null) {
       if (depth >= maxDepth) return;
-      // Log category being iterated
-      console.log('[CustomGrid] Iterating category:', categoryName);
-      // Sleep 2 seconds before starting each new category
-      await new Promise(resolve => setTimeout(resolve, 2000));
+
       const normalizedCat = categoryName.replace(/^Category:/, '');
       const fullCatName = `Category:${normalizedCat}`;
-      if (visitedCategories.has(fullCatName)) return;
-      visitedCategories.add(fullCatName);
+
+      // Initial visit check for the category itself (not for subsequent pages of the same category)
+      if (!gcmcontinueToken) { // Only log and sleep on the first fetch for a category
+          console.log('[CustomGrid] Iterating category:', categoryName, 'Depth:', depth);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Sleep before starting a new category
+          if (visitedCategories.has(fullCatName)) {
+              console.log('[CustomGrid] Already visited (or visiting) category:', fullCatName);
+              return;
+          }
+          visitedCategories.add(fullCatName);
+      } else {
+          console.log('[CustomGrid] Continuing category:', categoryName, 'with token:', gcmcontinueToken);
+          await new Promise(resolve => setTimeout(resolve, 500)); // Shorter sleep for paginated calls within the same category
+      }
+
       try {
-        const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${encodeURIComponent(normalizedCat)}&gcmtype=file|subcat&gcmlimit=500&prop=imageinfo|pageprops&iiprop=url&iiurlwidth=300&format=json&origin=*`;
+        let url = `https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${encodeURIComponent(normalizedCat)}&gcmtype=file|subcat&gcmlimit=50&prop=pageprops&format=json&origin=*`;
+        if (gcmcontinueToken) {
+          url += `&gcmcontinue=${encodeURIComponent(gcmcontinueToken)}`;
+        }
+
         const resp = await fetchWithRetry(url);
         const data = await resp.json();
-        if (!data.query || !data.query.pages) return;
-        const pages = Object.values(data.query.pages);
-        const files = [];
-        const subcategories = [];
-        for (const page of pages) {
-          if (page.ns === 6) files.push(page);
-          else if (page.ns === 14) subcategories.push(page);
+
+        if (!data.query || !data.query.pages) {
+          console.warn('[CustomGrid] No query.pages in API response for category:', fullCatName, 'Token:', gcmcontinueToken, data);
+          return;
         }
-        // --- Filtering logic: fetch depicts for all files, filter before pushing ---
-        if (files.length > 0) {
+
+        const pages = Object.values(data.query.pages);
+        const filesFromGenerator = pages.filter(p => p.ns === 6);
+        const subcategoriesFromGenerator = pages.filter(p => p.ns === 14);
+        const nextGcmContinueToken = data.continue?.gcmcontinue;
+
+        if (filesFromGenerator.length > 0) {
+          const filePageIds = filesFromGenerator.map(p => p.pageid);
+          const imageInfoMap = await fetchImageInfoInBatches(filePageIds);
+
+          const currentBatchFilesWithInfo = filesFromGenerator.map(p => ({
+            ...p,
+            imageinfo: imageInfoMap[p.pageid] // Attach imageinfo
+          })).filter(p => p.imageinfo); // Ensure imageinfo exists (successfully fetched)
+
           // Filter by allowed file extensions
-          const filteredFiles = files.filter(p => {
-            // Only keep files with valid image extensions IMAGE_FILE_EXTENSIONS
+          const filteredFiles = currentBatchFilesWithInfo.filter(p => {
             const ext = p.title.split('.').pop().toLowerCase();
             if (!IMAGE_FILE_EXTENSIONS.includes(ext)) {
               console.log(`[CustomGrid] Skipping file ${p.pageid} (${p.title}) with unsupported extension: ${ext}`);
@@ -668,86 +720,97 @@ export default {
             }
             return true;
           });
-          const qidSet = await fetchSubclassesAndInstances(props.manualQid);
-          const mids = filteredFiles.map(p => {
-            let mid = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
-            if (!mid && p.title && p.title.startsWith('File:')) {
-              mid = 'M' + p.pageid;
-            }
-            return mid;
-          });
-          const depictsMap = await fetchDepictsForMediaInfoIds(mids);
-          for (const p of filteredFiles) {
-            let mediainfo_id = p.pageprops && p.pageprops.wikibase_item ? p.pageprops.wikibase_item : null;
-            if (!mediainfo_id && p.title && p.title.startsWith('File:')) {
-              mediainfo_id = 'M' + p.pageid;
-            }
-            const imageId = mediainfo_id || ('M' + p.pageid);
-            if (p.imageinfo?.[0]?.url) {
-              const depicted = depictsMap[mediainfo_id] || [];
-              // Only push if none of the depicted QIDs are in the ignore tree
-              if (!depicted.some(qid => qidSet.has(qid))) {
-                if (currentAddedImageIds.has(imageId)) {
-                  console.log(`[CustomGrid] Duplicate image ID ${imageId} found in category ${categoryName}. Skipping.`);
-                  continue;
-                }
-                images.value.push({
-                  id: imageId,
-                  properties: {
-                    mediainfo_id: imageId,
-                    img_url: p.imageinfo[0].url,
-                    depicts_id: props.manualQid,
-                    manual: true,
-                    category: props.manualCategory,
-                    source_category: fullCatName
-                  },
-                  title: p.title
-                });
-                currentAddedImageIds.add(imageId);
-                // Hide loading spinner as soon as any images are found
-                if (loading.value && images.value.length > 0) {
-                  loading.value = false;
-                }
-                // If too many images are loaded below the fold, pause until user scrolls (unless loadAll is true)
-                if (!props.loadAll) {
-                  const visible = window.innerHeight;
-                  const pageHeight = document.documentElement.scrollHeight;
-                  const scrollY = window.scrollY || window.pageYOffset;
-                  const atBottom = (scrollY + visible + 10) >= pageHeight;
-                  if (pageHeight > visible + 1200 && !atBottom) {
-                    await new Promise(resolve => {
-                      function onScroll() {
-                        const scrollY2 = window.scrollY || window.pageYOffset;
-                        const pageHeight2 = document.documentElement.scrollHeight;
-                        if (scrollY2 + visible + 1000 >= pageHeight2 || (scrollY2 + visible + 10) >= pageHeight2) {
-                          window.removeEventListener('scroll', onScroll);
-                          resolve();
-                        }
-                      }
-                      window.addEventListener('scroll', onScroll);
-                    });
+
+          if (filteredFiles.length > 0) {
+            const qidSet = await fetchSubclassesAndInstances(props.manualQid); // Potentially optimize by fetching once per category if QID doesn't change
+            const mids = filteredFiles.map(p => {
+              let mid = p.pageprops?.wikibase_item || null;
+              if (!mid && p.title?.startsWith('File:')) {
+                mid = 'M' + p.pageid;
+              }
+              return mid;
+            }).filter(Boolean); // Ensure MID exists
+
+            const depictsMap = await fetchDepictsForMediaInfoIds(mids);
+
+            for (const p of filteredFiles) {
+              let mediainfo_id = p.pageprops?.wikibase_item || null;
+              if (!mediainfo_id && p.title?.startsWith('File:')) {
+                mediainfo_id = 'M' + p.pageid;
+              }
+              const imageId = mediainfo_id || ('M' + p.pageid); // Fallback to M+pageid if wikibase_item is missing
+
+              if (p?.imageinfo?.url) {
+                const depicted = depictsMap[mediainfo_id] || [];
+                if (!depicted.some(qid => qidSet.has(qid))) {
+                  if (currentAddedImageIds.has(imageId)) {
+                    console.log(`[CustomGrid] Duplicate image ID ${imageId} found in category ${categoryName}. Skipping.`);
+                    continue;
                   }
+                  images.value.push({
+                    id: imageId,
+                    properties: {
+                      mediainfo_id: imageId,
+                      img_url: p.imageinfo.thumburl,
+                      depicts_id: props.manualQid,
+                      manual: true,
+                      category: props.manualCategory, // The root category
+                      source_category: fullCatName // The category this image was found in
+                    },
+                    title: p.title
+                  });
+                  currentAddedImageIds.add(imageId);
+                  if (loading.value && images.value.length > 0) {
+                    loading.value = false;
+                  }
+                  if (onImagePushed) onImagePushed();
                 }
-                if (onImagePushed) onImagePushed();
+              } else {
+                console.warn(`[CustomGrid] Image ${imageId} (${p.title}) has no valid imageinfo URL, got :`, p.imageinfo);
               }
             }
           }
         }
-        // Only after top-level images are pushed, recurse into subcategories
-        for (let i = 0; i < subcategories.length; i++) {
-          const subcat = subcategories[i];
-          const subcatName = subcat.title;
-          try {
-            await fetchImagesRecursivelyAndPush(subcatName, visitedCategories, depth + 1, maxDepth, onImagePushed, currentAddedImageIds);
-            if (i < subcategories.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 200));
-            }
-          } catch (error) {
-            console.error(`Error processing subcategory ${subcatName}:`, error);
+
+        // Scroll-pause logic: After processing all files from the current gcm batch
+        if (!props.loadAll) {
+          const visible = window.innerHeight;
+          const pageHeight = document.documentElement.scrollHeight;
+          const scrollY = window.scrollY || window.pageYOffset;
+          const atBottom = (scrollY + visible + 10) >= pageHeight;
+          if (pageHeight > visible + 1200 && !atBottom) {
+            await new Promise(resolve => {
+              function onScroll() {
+                const scrollY2 = window.scrollY || window.pageYOffset;
+                const pageHeight2 = document.documentElement.scrollHeight;
+                if (scrollY2 + visible + 1000 >= pageHeight2 || (scrollY2 + visible + 10) >= pageHeight2) {
+                  window.removeEventListener('scroll', onScroll);
+                  resolve();
+                }
+              }
+              window.addEventListener('scroll', onScroll);
+            });
           }
         }
+
+        // Process subcategories from the current gcm batch
+        for (let i = 0; i < subcategoriesFromGenerator.length; i++) {
+          const subcat = subcategoriesFromGenerator[i];
+          const subcatName = subcat.title;
+          // Pass null for gcmcontinueToken for new subcategory exploration
+          await fetchImagesRecursivelyAndPush(subcatName, visitedCategories, depth + 1, maxDepth, onImagePushed, currentAddedImageIds, null);
+          if (i < subcategoriesFromGenerator.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 200)); // Brief pause between subcategories
+          }
+        }
+
+        // If there's a gcmcontinue token, fetch the next batch for the current category
+        if (nextGcmContinueToken) {
+          await fetchImagesRecursivelyAndPush(categoryName, visitedCategories, depth, maxDepth, onImagePushed, currentAddedImageIds, nextGcmContinueToken);
+        }
+
       } catch (error) {
-        console.error(`Error fetching from category ${fullCatName}:`, error);
+        console.error(`Error fetching from category ${fullCatName} (token: ${gcmcontinueToken}):`, error);
       }
     }
 
