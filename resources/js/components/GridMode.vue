@@ -14,6 +14,18 @@
             {{ images[0].properties.depicts_id }}
           </a>
           <span class="ml-1">(<WikidataLabel :qid="images[0].properties.depicts_id" :fallback="images[0].properties.depicts_name" />)</span>
+          <span class="ml-2 text-sm">
+            <a
+              :href="`https://query.wikidata.org/embed.html#SELECT%20%3Fitem%20%3FitemLabel%0AWHERE%0A%7B%0A%20%20wd%3A${images[0].properties.depicts_id}%20wdt%3AP279%2B%20%3Fitem.%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cmul%2Cen%22.%20%7D%0A%7D`"
+              target="_blank"
+              class="text-blue-600 hover:underline"
+            >(up)</a>
+            <a
+              :href="`https://query.wikidata.org/embed.html#SELECT%20%3Fitem%20%3FitemLabel%0AWHERE%0A%7B%0A%20%20%3Fitem%20wdt%3AP31%2Fwdt%3AP279*|wdt%3AP279%2Fwdt%3AP279*%20wd%3A${images[0].properties.depicts_id}.%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cmul%2Cen%22.%20%7D%0A%7D`"
+              target="_blank"
+              class="ml-1 text-blue-600 hover:underline"
+            >(down)</a>
+          </span>
         </div>
         <div v-if="images[0]?.properties?.depicts_id" class="text-gray-600 text-sm mt-1">
           <WikidataDescription :qid="images[0].properties.depicts_id" />

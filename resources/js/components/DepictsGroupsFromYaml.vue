@@ -75,6 +75,7 @@
             <th class="p-2 border text-gray-900 dark:text-gray-100">Name</th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Depicts</th>
             <th class="p-2 border text-gray-900 dark:text-gray-100">Categories</th>
+            <th class="p-2 border text-gray-900 dark:text-gray-100">Conflict Links</th>
             <th class="p-2 border text-gray-900 dark:text-gray-100 flex items-center" @click="toggleSort('unanswered')" style="cursor: pointer;">
               <span>Unanswered</span>
               <span class="ml-1">
@@ -108,6 +109,25 @@
                 <span v-for="(cat, idx) in q.categories" :key="cat">
                   <a :href="getCategoryUrl(cat)" target="_blank" class="text-blue-700 hover:underline">{{ getCategoryName(cat) }}</a><span v-if="idx < q.categories.length - 1">, </span>
                 </span>
+              </template>
+              <template v-else>-</template>
+            </td>
+            <td class="p-2 border text-gray-900 dark:text-gray-100">
+              <template v-if="q.depictsId">
+                <div class="text-xs">
+                  <a
+                    :href="`https://query.wikidata.org/embed.html#SELECT%20%3Fitem%20%3FitemLabel%0AWHERE%0A%7B%0A%20%20wd%3A${q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')}%20wdt%3AP279%2B%20%3Fitem.%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cmul%2Cen%22.%20%7D%0A%7D`"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-blue-700 hover:underline"
+                  >(up)</a>
+                  <a
+                    :href="`https://query.wikidata.org/embed.html#SELECT%20%3Fitem%20%3FitemLabel%0AWHERE%0A%7B%0A%20%20%3Fitem%20wdt%3AP31%2Fwdt%3AP279*|wdt%3AP279%2Fwdt%3AP279*%20wd%3A${q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')}.%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cmul%2Cen%22.%20%7D%0A%7D`"
+                    target="_blank"
+                    rel="noopener"
+                    class="ml-1 text-blue-700 hover:underline"
+                  >(down)</a>
+                </div>
               </template>
               <template v-else>-</template>
             </td>
