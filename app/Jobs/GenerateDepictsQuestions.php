@@ -48,6 +48,7 @@
         private $category;
         private $ignoreCategories;
         private $ignoreCategoriesRegex;
+        private $ignoreCategoriesRegexFlags;
         private $depictItemId;
         private $depictName;
         private $limit;
@@ -93,7 +94,15 @@
                 }
             }
             $this->ignoreCategories = $normalized;
-            $this->ignoreCategoriesRegex = $ignoreCategoriesRegex;
+
+            if (preg_match('/^\/(.+)\/([a-zA-Z]*)$/', $ignoreCategoriesRegex, $matches)) {
+                $this->ignoreCategoriesRegex = $matches[1];
+                $this->ignoreCategoriesRegexFlags = $matches[2];
+            } else {
+                $this->ignoreCategoriesRegex = $ignoreCategoriesRegex;
+                $this->ignoreCategoriesRegexFlags = '';
+            }
+
             $this->depictItemId = $depictItemId;
             $this->depictName = $depictName;
             $this->limit = $limit;
@@ -184,7 +193,7 @@
                         \Log::info("Ignoring text match $memberText");
                         return false;
                     }
-                    if($this->ignoreCategoriesRegex !== "" && preg_match($this->ignoreCategoriesRegex, $memberText)) {
+                    if ($this->ignoreCategoriesRegex !== "" && preg_match('/' . $this->ignoreCategoriesRegex . '/' . $this->ignoreCategoriesRegexFlags, $memberText)) {
                         \Log::info("Ignoring regex match $memberText");
                         return false;
                     }
