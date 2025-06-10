@@ -116,7 +116,7 @@
               <template v-if="q.depictsId">
                 <div class="text-xs">
                   <a
-                    :href="`https://query.wikidata.org/embed.html#${encodeURIComponent(`SELECT DISTINCT ?item ?itemLabel WHERE { {wd:${q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')} (wdt:P31/wdt:P279)+ ?item.} UNION {wd:${q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')} (wdt:P31/wdt:P279|wdt:P279)+ ?item .} SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". } }`)}`"
+                    :href="getDepictsUpQueryUrl(q.depictsId)"
                     target="_blank"
                     rel="noopener"
                     class="text-blue-700 hover:underline"
@@ -500,6 +500,13 @@ const clearUnanswered = async (q) => {
     console.error('Error clearing unanswered questions:', e);
   }
   // Do not re-enable the button
+};
+
+const getDepictsUpQueryUrl = (depictsId) => {
+  if (!depictsId) return '';
+  const cleanId = depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1');
+  const sparql = `SELECT DISTINCT ?item ?itemLabel WHERE { {wd:${cleanId} (wdt:P31/wdt:P279)+ ?item.} UNION {wd:${cleanId} (wdt:P31/wdt:P279|wdt:P279)+ ?item .} SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". } }`;
+  return 'https://query.wikidata.org/embed.html#' + encodeURIComponent(sparql);
 };
 
 </script>

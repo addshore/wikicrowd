@@ -16,7 +16,7 @@
           <span class="ml-1">(<WikidataLabel :qid="images[0].properties.depicts_id" :fallback="images[0].properties.depicts_name" />)</span>
           <span class="ml-2 text-sm">
             <a
-              :href="`https://query.wikidata.org/embed.html#${encodeURIComponent(`SELECT DISTINCT ?item ?itemLabel WHERE { {wd:${images[0].properties.depicts_id} (wdt:P31/wdt:P279)+ ?item.} UNION {wd:${images[0].properties.depicts_id} (wdt:P31/wdt:P279|wdt:P279)+ ?item .} SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". } }`)}`"
+              :href="depictsUpQueryUrl"
               target="_blank"
               class="text-blue-600 hover:underline"
             >(up)</a>
@@ -232,7 +232,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, reactive, watch } from 'vue'; // Added watch
+import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue'; // Added computed
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
 import { fetchSubclassesAndInstances, fetchDepictsForMediaInfoIds } from './depictsUtils';
@@ -1286,6 +1286,14 @@ export default {
       imageLoadingStates[image.id] = 'loading';
     };
 
+    // --- Add computed property for the (up) SPARQL query link ---
+    const depictsUpQueryUrl = computed(() => {
+      const depictsId = images.value[0]?.properties?.depicts_id;
+      if (!depictsId) return '';
+      const sparql = `SELECT DISTINCT ?item ?itemLabel WHERE { {wd:${depictsId} (wdt:P31/wdt:P279)+ ?item.} UNION {wd:${depictsId} (wdt:P31/wdt:P279|wdt:P279)+ ?item .} SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". } }`;
+      return 'https://query.wikidata.org/embed.html#' + encodeURIComponent(sparql);
+    });
+
     // On mount, always add keyboard shortcuts
     let keydownHandler;
     onMounted(() => {
@@ -1468,6 +1476,7 @@ export default {
       openFullscreen,
       closeFullscreen,
       countdownTimers, // Added for template access
+      depictsUpQueryUrl, // Added computed property
     };
   },
 };
