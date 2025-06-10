@@ -3,7 +3,7 @@
     <div class="sticky top-0 z-20 bg-white bg-opacity-95 pb-2 mb-2 shadow">
       <h2 class="text-xl font-bold mb-2 flex flex-col items-center">
         <p class="text-lg leading-7 text-gray-500 mb-1">
-          Does this image clearly depict
+          Does this image clearly <a href="https://commons.wikimedia.org/wiki/Commons:Depicts" target="_blank" class="text-blue-600 hover:underline">depict</a>
         </p>
         <div v-if="images[0]?.properties?.depicts_id" class="text-lg font-semibold flex items-center mb-1">
           <a
