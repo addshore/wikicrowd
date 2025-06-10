@@ -254,6 +254,8 @@ export default {
     const autoSave = ref(true);
     const autoSaveDelay = ref(10); // seconds
     const pendingAnswers = ref([]); // {id, mode}
+    const imageClickQueue = ref([]); // {id, mode}
+    const batchTimer = ref(null);
 
     // Fullscreen modal state
     const showFullscreen = ref(false);
@@ -374,6 +376,32 @@ export default {
           return fetchWithRetry(url, options, retryCount + 1);
         }
         throw error; // Re-throw if not a TypeError or retries exhausted
+      }
+    };
+
+    const processClickQueue = () => {
+      if (batchTimer.value) {
+        clearTimeout(batchTimer.value);
+        batchTimer.value = null;
+      }
+      if (imageClickQueue.value.length > 0) {
+        imageClickQueue.value.forEach(item => {
+          // Add to pendingAnswers, ensuring no duplicates
+          if (!pendingAnswers.value.some(pa => pa.id === item.id)) {
+            pendingAnswers.value.push(item);
+          } else {
+            // If item already exists, update its mode if different
+            // This handles rapid clicks changing mode before batch processing
+            const existingItem = pendingAnswers.value.find(pa => pa.id === item.id);
+            if (existingItem && existingItem.mode !== item.mode) {
+              existingItem.mode = item.mode;
+            }
+          }
+        });
+        imageClickQueue.value = [];
+        if (pendingAnswers.value.length > 0) {
+          saveAllPending();
+        }
       }
     };
 
@@ -901,74 +929,94 @@ export default {
       if (answered.value.has(id)) return;
       const image = images.value.find(img => img.id === id); // Get image ref once
 
-      if (selected.value.has(id)) {
+      if (selected.value.has(id)) { // Unselecting
         selected.value.delete(id);
         delete selectedMode[id];
+
+        // Remove from imageClickQueue if present
+        imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== id);
 
         if (timers.has(id)) {
           clearTimeout(timers.get(id));
           timers.delete(id);
         }
-        // Clear countdown interval and timer display on unselect
         if (countdownIntervals.has(id)) {
           clearInterval(countdownIntervals.get(id));
           countdownIntervals.delete(id);
         }
         countdownTimers.delete(id);
 
-        // Remove from pending if present
+        // Remove from pendingAnswers if present (e.g., if it was added by a previous interaction)
         pendingAnswers.value = pendingAnswers.value.filter(a => a.id !== id);
-      } else {
+
+      } else { // Selecting
         selected.value.add(id);
         selectedMode[id] = answerMode.value;
+        const clickData = { id, mode: answerMode.value };
+
+        // Always remove existing entry for this id from queue to prevent duplicates/stale modes
+        imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== id);
+        imageClickQueue.value.push(clickData);
 
         if (autoSave.value && image) {
-          // Set main auto-save timer
-          const timer = setTimeout(() => {
-            (props.manualMode ? sendAnswerManual : sendAnswer)(image); // Pass the image object
-            timers.delete(image.id); // Use image.id
-            // Ensure countdown is cleared when auto-save fires
-            if (countdownIntervals.has(image.id)) {
-                clearInterval(countdownIntervals.get(image.id));
-                countdownIntervals.delete(image.id);
+          // Clear existing auto-save timer for this specific image if one exists
+          if (timers.has(id)) {
+            clearTimeout(timers.get(id));
+            timers.delete(id);
+          }
+          // Clear existing countdown interval for this specific image
+          if (countdownIntervals.has(id)) {
+            clearInterval(countdownIntervals.get(id));
+            countdownIntervals.delete(id);
+          }
+
+          // Set main auto-save timer (for individual image visual countdown)
+          const autoSaveTimerForImage = setTimeout(() => {
+            // When this timer fires, the item should already be in imageClickQueue.
+            // We just need to ensure the batchTimer is running.
+            if (!batchTimer.value) {
+              batchTimer.value = setTimeout(processClickQueue, 1000);
             }
-            countdownTimers.delete(image.id);
+            // Clear its own timer and countdown
+            timers.delete(id);
+            if (countdownIntervals.has(id)) {
+              clearInterval(countdownIntervals.get(id));
+              countdownIntervals.delete(id);
+            }
+            countdownTimers.delete(id);
           }, autoSaveDelay.value * 1000);
-          timers.set(id, timer);
+          timers.set(id, autoSaveTimerForImage);
 
           // Start visual countdown
           countdownTimers.set(id, autoSaveDelay.value);
-          // Clear any existing interval for this image before starting a new one
-          if (countdownIntervals.has(id)) {
-            clearInterval(countdownIntervals.get(id));
-          }
           const intervalId = setInterval(() => {
             if (countdownTimers.has(id)) {
               const currentTime = countdownTimers.get(id);
               if (currentTime > 1) {
                 countdownTimers.set(id, currentTime - 1);
               } else {
-                // Timer reaches 0 (or 1 and will then hit 0 via normal save)
                 clearInterval(countdownIntervals.get(id));
                 countdownIntervals.delete(id);
-                countdownTimers.delete(id); // Remove when it effectively hits zero.
+                countdownTimers.delete(id);
               }
             } else {
-              // Safeguard: if somehow countdownTimers doesn't have id, or id is no longer in countdownIntervals, clear the specific interval.
-              clearInterval(intervalId); // Corrected: use intervalId from closure
-              if(countdownIntervals.has(id)) { // defensive deletion
+              clearInterval(intervalId);
+              if(countdownIntervals.has(id)) {
                 countdownIntervals.delete(id);
               }
             }
           }, 1000);
           countdownIntervals.set(id, intervalId);
 
-        } else {
-          // Not auto-saving, add to pending answers
-          // Ensure no duplicates if user clicks multiple times without autoSave
-          if (!pendingAnswers.value.some(a => a.id === id)) {
-            pendingAnswers.value.push({id, mode: answerMode.value});
-          }
+          // Regardless of autoSaveDelay, ensure the 1-second batch timer is running or reset
+          if (batchTimer.value) clearTimeout(batchTimer.value);
+          batchTimer.value = setTimeout(processClickQueue, 1000);
+
+        } else { // autoSave is OFF
+          // Add to imageClickQueue (already done above)
+          // Clear any existing batchTimer and start a new one
+          if (batchTimer.value) clearTimeout(batchTimer.value);
+          batchTimer.value = setTimeout(processClickQueue, 1000);
         }
       }
     };
@@ -1127,22 +1175,51 @@ export default {
     // Also call ensureViewportFilled after each fetch
     const sendAnswerToUse = props.manualMode ? sendAnswerManual : sendAnswer;
     console.log('[GridMode] manualMode:', props.manualMode, 'Using', props.manualMode ? '/api/manual-question/answer' : '/api/answers');
-    // Add a wrapper to ensure timers are cleared and answers are saved immediately
-    const onSaveClick = () => {
-      console.log('[GridMode] onSaveClick called');
-      // For all selected images that are not answered, ensure they're in pendingAnswers
+
+    const onSaveClickHandler = () => {
+      console.log('[GridMode] onSaveClickHandler called');
+
+      // 1. Process imageClickQueue immediately
+      if (batchTimer.value) {
+        clearTimeout(batchTimer.value);
+        batchTimer.value = null;
+      }
+      if (imageClickQueue.value.length > 0) {
+        imageClickQueue.value.forEach(item => {
+          if (!pendingAnswers.value.some(pa => pa.id === item.id)) {
+            pendingAnswers.value.push(item);
+          } else {
+            const existingItem = pendingAnswers.value.find(pa => pa.id === item.id);
+            if (existingItem && existingItem.mode !== item.mode) {
+              existingItem.mode = item.mode;
+            }
+          }
+        });
+        imageClickQueue.value = [];
+      }
+
+      // 2. Ensure all selected (but not yet answered) images are added to pendingAnswers
       selected.value.forEach(id => {
         if (!answered.value.has(id)) {
           // If not already in pendingAnswers, add it
+          // Check selectedMode for its mode, fallback to current answerMode
+          const mode = selectedMode[id] || answerMode.value;
           if (!pendingAnswers.value.some(a => a.id === id)) {
-            pendingAnswers.value.push({ id, mode: selectedMode[id] || answerMode.value });
+            pendingAnswers.value.push({ id, mode });
+          } else {
+            // If already in pending, update mode if different
+            const existingPending = pendingAnswers.value.find(a => a.id === id);
+            if (existingPending.mode !== mode) {
+              existingPending.mode = mode;
+            }
           }
-          // Clear any running timer for this id
+
+          // Clear any running auto-save timer for this id as we are saving manually
           if (timers.has(id)) {
             clearTimeout(timers.get(id));
             timers.delete(id);
           }
-          // Clear countdown for items being manually saved via "Save" button
+          // Clear countdown for items being manually saved
           if (countdownIntervals.has(id)) {
             clearInterval(countdownIntervals.get(id));
             countdownIntervals.delete(id);
@@ -1150,12 +1227,13 @@ export default {
           countdownTimers.delete(id);
         }
       });
-      saveAllPending(); // saveAllPending will handle its own items if any were missed.
-    };
-    // Use a wrapper to ensure Vue always updates the handler
-    const onSaveClickHandler = (...args) => {
-      console.log('[GridMode] onSaveClickHandler called', args);
-      onSaveClick();
+
+      // 3. Call saveAllPending if there's anything to save
+      if (pendingAnswers.value.length > 0) {
+        saveAllPending();
+      } else {
+        console.log('[GridMode] onSaveClickHandler: No pending answers to save after processing queue and selected items.');
+      }
     };
 
     // Watch for changes in autoSave to clear timers if disabled
@@ -1179,12 +1257,28 @@ export default {
 
         // Optional: move currently selected items to pendingAnswers, or clear selection.
         // For now, just clearing timers. Users will need to re-engage if they want to save.
-        // selected.value.forEach(id => {
-        //   if (!pendingAnswers.value.some(a => a.id === id)) {
-        //     pendingAnswers.value.push({ id, mode: selectedMode[id] || answerMode.value });
-        //   }
-        // });
-        // selected.value.clear(); // Or just clear selection
+        // Move items from imageClickQueue to pendingAnswers
+        if (imageClickQueue.value.length > 0) {
+          imageClickQueue.value.forEach(item => {
+            if (!pendingAnswers.value.some(pa => pa.id === item.id)) {
+              pendingAnswers.value.push(item);
+            } else {
+              // Update mode if item exists and mode is different
+              const existingItem = pendingAnswers.value.find(pa => pa.id === item.id);
+              if (existingItem && existingItem.mode !== item.mode) {
+                existingItem.mode = item.mode;
+              }
+            }
+          });
+          imageClickQueue.value = [];
+          console.log('[GridMode] autoSave turned off. Moved items from imageClickQueue to pendingAnswers.');
+        }
+        // Also clear the batch timer if it's running
+        if (batchTimer.value) {
+          clearTimeout(batchTimer.value);
+          batchTimer.value = null;
+          console.log('[GridMode] autoSave turned off. Cleared batchTimer.');
+        }
       }
     });
 
