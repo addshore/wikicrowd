@@ -72,7 +72,7 @@
         </label>
       </div>
 
-      <small>
+      <small class="text-center w-full">
         Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.
       </small>
     </div>
