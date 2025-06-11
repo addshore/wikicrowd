@@ -138,9 +138,14 @@
             @loadstart="markImageLoading(image)"
           />
           <!-- Countdown Timer Overlay -->
-          <div v-if="countdownTimers.has(image.id) && countdownTimers.get(image.id) > 0"
+          <div v-if="(countdownTimers.has(image.id) && countdownTimers.get(image.id) > 0) || imageSavingStates.get(image.id)"
                class="absolute top-2 right-2 bg-black bg-opacity-75 text-white text-xs font-bold px-2 py-1 rounded z-10">
-            Saving in {{ countdownTimers.get(image.id) }}s
+            <template v-if="imageSavingStates.get(image.id)">
+              Saving...
+            </template>
+            <template v-else>
+              Saving in {{ countdownTimers.get(image.id) }}s
+            </template>
           </div>
         </div>
         
@@ -288,6 +293,8 @@ export default {
     const imageLoadingStates = reactive({});
     const fetchRetryCount = ref(0);
     const MAX_FETCH_RETRIES = 5; // Used by existing fetchWithRetry
+
+    const imageSavingStates = reactive(new Map());
 
     // Only allow certain image file extensions
     const IMAGE_FILE_EXTENSIONS = [
@@ -941,7 +948,8 @@ export default {
               delete selectedMode[id];
                // Clear any auto-save timer and countdown
               if (timers.has(id)) clearTimeout(timers.get(id)); timers.delete(id);
-              if (countdownIntervals.has(id)) clearInterval(countdownIntervals.get(id)); countdownIntervals.delete(id);
+              imageSavingStates.delete(id);
+              if (countdownIntervals.has(id)) { clearInterval(countdownIntervals.get(id)); countdownIntervals.delete(id); }
               countdownTimers.delete(id);
             }
             pendingAnswers.value = []; // Clear pending answers only on full success
@@ -964,7 +972,8 @@ export default {
               delete selectedMode[answerData.id];
               // Clear any auto-save timer and countdown
               if (timers.has(answerData.id)) clearTimeout(timers.get(answerData.id)); timers.delete(answerData.id);
-              if (countdownIntervals.has(answerData.id)) clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id);
+              imageSavingStates.delete(answerData.id);
+              if (countdownIntervals.has(answerData.id)) { clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id); }
               countdownTimers.delete(answerData.id);
             });
             pendingAnswers.value = []; // Clear pending answers after a failed batch
@@ -994,7 +1003,8 @@ export default {
               delete selectedMode[id];
               // Clear any auto-save timer and countdown
               if (timers.has(id)) clearTimeout(timers.get(id)); timers.delete(id);
-              if (countdownIntervals.has(id)) clearInterval(countdownIntervals.get(id)); countdownIntervals.delete(id);
+              imageSavingStates.delete(id);
+              if (countdownIntervals.has(id)) { clearInterval(countdownIntervals.get(id)); countdownIntervals.delete(id); }
               countdownTimers.delete(id);
             }
             pendingAnswers.value = []; // Clear pending answers only on full success
@@ -1017,7 +1027,8 @@ export default {
               delete selectedMode[answerData.id];
                // Clear any auto-save timer and countdown
               if (timers.has(answerData.id)) clearTimeout(timers.get(answerData.id)); timers.delete(answerData.id);
-              if (countdownIntervals.has(answerData.id)) clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id);
+              imageSavingStates.delete(answerData.id);
+              if (countdownIntervals.has(answerData.id)) { clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id); }
               countdownTimers.delete(answerData.id);
             });
             pendingAnswers.value = []; // Clear pending answers after a failed batch
@@ -1042,7 +1053,8 @@ export default {
             selected.value.delete(answerData.id);
             delete selectedMode[answerData.id];
             if (timers.has(answerData.id)) clearTimeout(timers.get(answerData.id)); timers.delete(answerData.id);
-            if (countdownIntervals.has(answerData.id)) clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id);
+            imageSavingStates.delete(answerData.id);
+            if (countdownIntervals.has(answerData.id)) { clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id); }
             countdownTimers.delete(answerData.id);
         });
         pendingAnswers.value = []; // Clear pending answers after a failed batch due to exception
@@ -1085,17 +1097,15 @@ export default {
               // Timer expired, add to imageClickQueue using the latest selectedMode
               const currentMode = selectedMode[id] || answerMode.value; // Fallback just in case
 
+              imageSavingStates.set(id, true);
               // Remove any existing entry for this id from queue to use the latest one from autoSaveDelay
               imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== id);
               imageClickQueue.value.push({ id, mode: currentMode });
 
-              // Clear its own timer and countdown
+              // Clear its own functional timer. Visual countdown clearing is handled elsewhere or not needed once "Saving..." shows.
               timers.delete(id);
-              if (countdownIntervals.has(id)) {
-                clearInterval(countdownIntervals.get(id));
-                countdownIntervals.delete(id);
-              }
-              countdownTimers.delete(id);
+              // Removed: if (countdownIntervals.has(id)) { clearInterval(countdownIntervals.get(id)); countdownIntervals.delete(id); }
+              // Removed: countdownTimers.delete(id);
 
               // Start/reset the main 1-second batchTimer
               if (batchTimer.value) clearTimeout(batchTimer.value);
@@ -1471,6 +1481,7 @@ export default {
       closeFullscreen,
       countdownTimers, // Added for template access
       depictsUpQueryUrl, // Added computed property
+      imageSavingStates,
     };
   },
 };
