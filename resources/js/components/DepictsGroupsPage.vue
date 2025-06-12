@@ -18,7 +18,7 @@
           Commons:&nbsp;
           <a target="_blank" href="https://commons.wikimedia.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2" class="text-blue-700 dark:text-blue-400 underline">All edits</a>
           <span v-if="isAuthed">/
-            <a target="_blank" href="https://commons.wikimedia.org/w/index.php?hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special:RecentChanges&urlversion=2&hidebyothers=1" class="text-blue-700 dark:text-blue-400 underline">Your edits</a>
+            <a target="_blank" href="https://commons.wikimedia.org/w/index.php?hidebyothers=1&hidebots=1&translations=filter&hideWikibase=1&tagfilter=OAuth+CID%3A+2642&limit=500&days=7&title=Special%3ARecentChanges&urlversion=2" class="text-blue-700 dark:text-blue-400 underline">Your edits</a>
           </span>
         </p>
       </div>
@@ -34,6 +34,7 @@ const stats = ref({ questions: 0, answers: 0, edits: 0, users: 0 });
 const isAuthed = ref(false);
 
 onMounted(async () => {
+  isAuthed.value = window.apiToken !== null;
   try {
     const resp = await fetch('/api/stats');
     if (resp.ok) {
