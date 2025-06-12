@@ -1339,24 +1339,20 @@ export default {
             }
           }
 
-          // If autoSave is off, mark this ID for setting the saving state later
-          if (!autoSave.value) {
-            idsToSetSavingState.push(id);
-          }
+          // Mark this ID for setting the saving state later, as it's part of this manual save batch.
+          idsToSetSavingState.push(id);
 
-          // Clear any running auto-save timer for this id as we are saving manually
-          // cleanupImageState will clear timers, countdowns, and also imageSavingStates.
+          // Clear any running auto-save timer for this id as we are saving manually.
+          // cleanupImageState will clear timers, countdowns, and also any pre-existing imageSavingStates.
           // This is fine because we will re-set imageSavingStates for manual saves just after this loop.
           cleanupImageState(id);
         }
       });
 
-      // If autoSave is off, set the "Saving..." state for all images that were processed
-      if (!autoSave.value) {
-        idsToSetSavingState.forEach(id => {
-          imageSavingStates.set(id, true);
-        });
-      }
+      // Set the "Saving..." state for all images that were processed by this manual save click.
+      idsToSetSavingState.forEach(id => {
+        imageSavingStates.set(id, true);
+      });
 
       // 3. Call saveAllPending if there's anything to save
       if (pendingAnswers.value.length > 0) {
