@@ -944,13 +944,7 @@ export default {
             for (const {id, mode} of currentSavedItems) {
               answered.value.add(id);
               answeredMode[id] = mode;
-              selected.value.delete(id);
-              delete selectedMode[id];
-               // Clear any auto-save timer and countdown
-              if (timers.has(id)) clearTimeout(timers.get(id)); timers.delete(id);
-              imageSavingStates.delete(id);
-              if (countdownIntervals.has(id)) { clearInterval(countdownIntervals.get(id)); countdownIntervals.delete(id); }
-              countdownTimers.delete(id);
+              cleanupImageState(id); // Replaced cleanup logic
             }
             pendingAnswers.value = []; // Clear pending answers only on full success
             console.log('[GridMode] saveAllPending complete for manual mode, UI updated.');
@@ -968,13 +962,7 @@ export default {
             toastStore.addToast({ message: `${messageBase} MIDs: ${failedMids.slice(0,3).join(', ')}${failedMids.length > 3 ? '...' : ''}.`, type: 'error' });
 
             failedItemsInBatch.forEach(answerData => {
-              selected.value.delete(answerData.id);
-              delete selectedMode[answerData.id];
-              // Clear any auto-save timer and countdown
-              if (timers.has(answerData.id)) clearTimeout(timers.get(answerData.id)); timers.delete(answerData.id);
-              imageSavingStates.delete(answerData.id);
-              if (countdownIntervals.has(answerData.id)) { clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id); }
-              countdownTimers.delete(answerData.id);
+              cleanupImageState(answerData.id); // Replaced cleanup logic
             });
             pendingAnswers.value = []; // Clear pending answers after a failed batch
           }
@@ -999,13 +987,7 @@ export default {
             for (const {id, mode} of currentSavedItems) { // id here is question_id
               answered.value.add(id);
               answeredMode[id] = mode;
-              selected.value.delete(id);
-              delete selectedMode[id];
-              // Clear any auto-save timer and countdown
-              if (timers.has(id)) clearTimeout(timers.get(id)); timers.delete(id);
-              imageSavingStates.delete(id);
-              if (countdownIntervals.has(id)) { clearInterval(countdownIntervals.get(id)); countdownIntervals.delete(id); }
-              countdownTimers.delete(id);
+              cleanupImageState(id); // Replaced cleanup logic
             }
             pendingAnswers.value = []; // Clear pending answers only on full success
             console.log('[GridMode] saveAllPending complete for regular mode, UI updated.');
@@ -1023,13 +1005,7 @@ export default {
             toastStore.addToast({ message: `${messageBase} MIDs: ${failedMids.slice(0,3).join(', ')}${failedMids.length > 3 ? '...' : ''}.`, type: 'error' });
 
             failedItemsInBatch.forEach(answerData => {
-              selected.value.delete(answerData.id); // answerData.id is question_id
-              delete selectedMode[answerData.id];
-               // Clear any auto-save timer and countdown
-              if (timers.has(answerData.id)) clearTimeout(timers.get(answerData.id)); timers.delete(answerData.id);
-              imageSavingStates.delete(answerData.id);
-              if (countdownIntervals.has(answerData.id)) { clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id); }
-              countdownTimers.delete(answerData.id);
+              cleanupImageState(answerData.id); // Replaced cleanup logic
             });
             pendingAnswers.value = []; // Clear pending answers after a failed batch
           }
@@ -1050,12 +1026,7 @@ export default {
         toastStore.addToast({ message: `${messageBase} MIDs: ${failedMids.slice(0,3).join(', ')}${failedMids.length > 3 ? '...' : ''}.`, type: 'error' });
 
         failedItemsInBatch.forEach(answerData => {
-            selected.value.delete(answerData.id);
-            delete selectedMode[answerData.id];
-            if (timers.has(answerData.id)) clearTimeout(timers.get(answerData.id)); timers.delete(answerData.id);
-            imageSavingStates.delete(answerData.id);
-            if (countdownIntervals.has(answerData.id)) { clearInterval(countdownIntervals.get(answerData.id)); countdownIntervals.delete(answerData.id); }
-            countdownTimers.delete(answerData.id);
+            cleanupImageState(answerData.id); // Replaced cleanup logic
         });
         pendingAnswers.value = []; // Clear pending answers after a failed batch due to exception
       }
@@ -1066,22 +1037,10 @@ export default {
       const image = images.value.find(img => img.id === id); // Get image ref once
 
       if (selected.value.has(id)) { // Unselecting
-        selected.value.delete(id);
-        delete selectedMode[id];
+        cleanupImageState(id); // Replaced cleanup logic
 
         // Remove from imageClickQueue if present
         imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== id);
-
-        // Clear individual auto-save timer and countdown if active for this image
-        if (timers.has(id)) {
-          clearTimeout(timers.get(id));
-          timers.delete(id);
-        }
-        if (countdownIntervals.has(id)) {
-          clearInterval(countdownIntervals.get(id));
-          countdownIntervals.delete(id);
-        }
-        countdownTimers.delete(id);
 
         // Remove from pendingAnswers if present
         pendingAnswers.value = pendingAnswers.value.filter(a => a.id !== id);
@@ -1104,8 +1063,6 @@ export default {
 
               // Clear its own functional timer. Visual countdown clearing is handled elsewhere or not needed once "Saving..." shows.
               timers.delete(id);
-              // Removed: if (countdownIntervals.has(id)) { clearInterval(countdownIntervals.get(id)); countdownIntervals.delete(id); }
-              // Removed: countdownTimers.delete(id);
 
               // Start/reset the main 1-second batchTimer
               if (batchTimer.value) clearTimeout(batchTimer.value);
@@ -1384,16 +1341,7 @@ export default {
           }
 
           // Clear any running auto-save timer for this id as we are saving manually
-          if (timers.has(id)) {
-            clearTimeout(timers.get(id));
-            timers.delete(id);
-          }
-          // Clear countdown for items being manually saved
-          if (countdownIntervals.has(id)) {
-            clearInterval(countdownIntervals.get(id));
-            countdownIntervals.delete(id);
-          }
-          countdownTimers.delete(id);
+          cleanupImageState(id); // Replaced cleanup logic
         }
       });
 
@@ -1451,6 +1399,30 @@ export default {
       }
     });
 
+    /**
+     * Cleans up all state associated with a given image ID.
+     * This includes removing the image from selection, clearing any
+     * auto-save timers, countdowns, and saving indicators.
+     *
+     * @param {string|number} id - The ID of the image to clean up state for.
+     */
+    const cleanupImageState = (id) => {
+      selected.value.delete(id);
+      delete selectedMode[id];
+
+      if (timers.has(id)) {
+        clearTimeout(timers.get(id));
+        timers.delete(id);
+      }
+      imageSavingStates.delete(id);
+
+      if (countdownIntervals.has(id)) {
+        clearInterval(countdownIntervals.get(id));
+        countdownIntervals.delete(id);
+      }
+      countdownTimers.delete(id);
+    };
+
     return {
       images,
       selected,
@@ -1482,6 +1454,7 @@ export default {
       countdownTimers, // Added for template access
       depictsUpQueryUrl, // Added computed property
       imageSavingStates,
+      cleanupImageState, // Added new function
     };
   },
 };
