@@ -90,7 +90,7 @@
     
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
       <div v-for="image in images" :key="image.id"
-        @click="!answered.has(image.id) && toggleSelect(image.id)"
+        @click="!imageSavingStates.get(image.id) && !answered.has(image.id) && toggleSelect(image.id)"
         :class="[
           'relative flex flex-col rounded overflow-hidden transition-all',
           answered.has(image.id)
@@ -1324,25 +1324,34 @@ export default {
         imageClickQueue.value = [];
       }
 
+      const idsToSetSavingState = [];
+
       // 2. Ensure all selected (but not yet answered) images are added to pendingAnswers
       selected.value.forEach(id => {
         if (!answered.value.has(id)) {
-          // If not already in pendingAnswers, add it
-          // Check selectedMode for its mode, fallback to current answerMode
           const mode = selectedMode[id] || answerMode.value;
           if (!pendingAnswers.value.some(a => a.id === id)) {
             pendingAnswers.value.push({ id, mode });
           } else {
-            // If already in pending, update mode if different
             const existingPending = pendingAnswers.value.find(a => a.id === id);
             if (existingPending.mode !== mode) {
               existingPending.mode = mode;
             }
           }
 
-          // Clear any running auto-save timer for this id as we are saving manually
-          cleanupImageState(id); // Replaced cleanup logic
+          // Mark this ID for setting the saving state later, as it's part of this manual save batch.
+          idsToSetSavingState.push(id);
+
+          // Clear any running auto-save timer for this id as we are saving manually.
+          // cleanupImageState will clear timers, countdowns, and also any pre-existing imageSavingStates.
+          // This is fine because we will re-set imageSavingStates for manual saves just after this loop.
+          cleanupImageState(id);
         }
+      });
+
+      // Set the "Saving..." state for all images that were processed by this manual save click.
+      idsToSetSavingState.forEach(id => {
+        imageSavingStates.set(id, true);
       });
 
       // 3. Call saveAllPending if there's anything to save
