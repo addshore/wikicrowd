@@ -6,7 +6,7 @@
         <div class="relative">
           <label class='block font-semibold mb-1 text-gray-800 dark:text-gray-200'>Commons Category</label>
           <div class="flex items-center gap-2">
-            <input v-model="manualCategory" @input="onCategoryInput" @focus="showCategoryDropdown = true" @blur="hideCategoryDropdown" class='border rounded px-2 py-1 w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700' placeholder='e.g. Paintings by Vincent van Gogh' required autocomplete="off" />
+            <input v-model="manualCategory" @input="onCategoryInput" @focus="showCategoryDropdown = true" @blur="onCategoryBlur" class='border rounded px-2 py-1 w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700' placeholder='e.g. Paintings by Vincent van Gogh' required autocomplete="off" />
             <a v-if="manualCategory" :href="categoryUrl" target="_blank" rel="noopener" class="ml-1 text-blue-600 dark:text-blue-400" title="Open category"><svg xmlns="http://www.w3.org/2000/svg" class="inline w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3h7v7m0 0L10 21l-7-7L21 10z"/></svg></a>
             <button type="button" @click="autoFillQidFromCategory" class="ml-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600" title="Auto-fill Qid from category">Auto Wikidata ID</button>
           </div>
@@ -124,14 +124,104 @@ function onCategoryInput() {
     });
     showCategoryDropdown.value = true;
   }, 250);
+  // handleCategoryRedirect() call removed from here
 }
+
+async function handleCategoryRedirect(isBlurEvent = false) {
+  const originalUserInput = manualCategory.value; // Store the raw user input for messages
+  let categoryNameForAPI = manualCategory.value;
+
+  if (!categoryNameForAPI || categoryNameForAPI.trim() === '') {
+    if (autoError.value.includes("redirected from")) autoError.value = '';
+    return;
+  }
+
+  // Ensure "Category:" prefix for API call, especially for blur events
+  if (isBlurEvent && !/^Category:/i.test(categoryNameForAPI)) {
+    categoryNameForAPI = 'Category:' + categoryNameForAPI;
+  } else if (!/^Category:/i.test(categoryNameForAPI)) {
+    // If not a blur event, and still no prefix, it implies an issue or direct call with bad data.
+    // Or user somehow submitted non-prefixed data. For safety, add prefix or return.
+    // For now, let's assume it should have the prefix if not a blur-triggered event.
+    // If it's from selectCategory, `val` should already be prefixed.
+    // If it's empty or just spaces, we should return.
+     if (autoError.value.includes("redirected from")) autoError.value = ''; // Clear previous redirect message
+     return; // Or, decide to prefix: categoryNameForAPI = 'Category:' + categoryNameForAPI;
+  }
+
+
+  try {
+    const apiUrl = `https://commons.wikimedia.org/w/api.php?action=query&prop=redirects&titles=${encodeURIComponent(categoryNameForAPI)}&format=json&origin=*`;
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+    const data = await response.json();
+
+    const pages = data.query?.pages;
+    if (pages) {
+      const pageId = Object.keys(pages)[0];
+      const page = pages[pageId];
+
+      if (page.redirects && page.redirects.length > 0) {
+        const targetCategory = page.redirects[0].title;
+        if (targetCategory !== categoryNameForAPI && targetCategory !== originalUserInput) {
+          manualCategory.value = targetCategory; // Update input with the redirect target
+          // Use originalUserInput for the "from" part of the message if it was a blur event without "Category:"
+          const fromCategory = (isBlurEvent && !/^Category:/i.test(originalUserInput)) ? originalUserInput : categoryNameForAPI;
+          autoError.value = `Category redirected from "${fromCategory}" to "${targetCategory}".`;
+          updateUrl();
+        } else if (targetCategory === categoryNameForAPI || targetCategory === originalUserInput) {
+          // It's a redirect but to the same name (e.g. case normalization handled by server)
+          if (autoError.value.includes("redirected from")) autoError.value = '';
+        }
+      } else { // No redirect found
+        if (autoError.value.includes("redirected from")) autoError.value = '';
+      }
+    } else { // No pages found
+        if (autoError.value.includes("redirected from")) autoError.value = '';
+    }
+  } catch (error) {
+    console.error("Error checking category redirect:", error);
+    if (autoError.value.includes("redirected from")) autoError.value = '';
+    // autoError.value = "Failed to check category redirect."; // Optional: show generic error
+  }
+}
+
 function selectCategory(val) {
   manualCategory.value = val;
-  showCategoryDropdown.value = false;
+  showCategoryDropdown.value = false; // Hide dropdown immediately on selection
   updateUrl();
+  handleCategoryRedirect(false); // Check for redirect after selection
 }
+
+function onCategoryBlur() {
+  // Timeout to allow click on dropdown to register before checking redirect & hiding
+  setTimeout(() => {
+    // Check if the dropdown is still visible OR if the active element is within the dropdown
+    // This helps prevent running redirect if a dropdown item was just clicked
+    const activeElementIsDropdownItem = document.activeElement && document.activeElement.closest('.absolute.z-10');
+
+    if (!showCategoryDropdown.value && !activeElementIsDropdownItem) {
+      handleCategoryRedirect(true);
+    }
+    // In any case, after a slight delay, ensure the dropdown is hidden if not already by selection.
+    // This mainly helps if user clicks outside input AND dropdown.
+    if (showCategoryDropdown.value && !activeElementIsDropdownItem) {
+       hideCategoryDropdown(); // Hide it if it wasn't closed by selection
+    }
+
+  }, 200); // Slightly increased delay
+}
+
 function hideCategoryDropdown() {
-  setTimeout(() => { showCategoryDropdown.value = false; }, 150);
+  // This function is now simpler, primarily for hiding the dropdown.
+  // The @blur event on input calls onCategoryBlur, which then calls this if needed.
+  // setTimeout(() => { showCategoryDropdown.value = false; }, 150);
+  // No longer needs its own timeout if called from onCategoryBlur's timeout.
+  // However, if called directly, a timeout might be useful.
+  // For now, assume it's called when hiding is definitely needed.
+  showCategoryDropdown.value = false;
 }
 const categoryUrl = computed(() => manualCategory.value ? `https://commons.wikimedia.org/wiki/${encodeURIComponent(manualCategory.value)}` : '#');
 
