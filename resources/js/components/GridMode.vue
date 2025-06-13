@@ -76,6 +76,23 @@
         </label>
       </div>
 
+      <!-- Image Size Slider -->
+      <div class="flex justify-center items-center mt-2 mb-2">
+        <label class="flex items-center text-sm text-gray-700">
+          <span class="mr-3">Image Size:</span>
+          <span class="mr-2">Large</span>
+          <input 
+            type="range" 
+            min="1" 
+            max="12" 
+            v-model.number="imageSize"
+            class="mx-2 w-32"
+          />
+          <span class="ml-2">Small</span>
+          <span class="ml-3 text-xs text-gray-500">({{ imageSize }} col{{ imageSize === 1 ? '' : 's' }})</span>
+        </label>
+      </div>
+
       <div class="flex justify-center w-full">
         <small class="text-center">Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.</small>
       </div>
@@ -92,7 +109,7 @@
       <div class="text-gray-500 text-lg">No images available to review.</div>
     </div>
     
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+    <div v-else :class="gridClasses">
       <div v-for="image in images" :key="image.id"
         @click="!imageSavingStates.get(image.id) && !answered.has(image.id) && toggleSelect(image.id)"
         :class="[
@@ -116,7 +133,7 @@
               : 'border-4 border-transparent cursor-pointer'
         ]"
       >
-        <div class="relative w-full h-[22vw] min-h-[180px] max-h-[320px] bg-gray-100">
+        <div :class="['relative w-full bg-gray-100', imageHeightClass]">
           <!-- Loading spinner -->
           <div v-if="!imageLoadingStates[image.id] || imageLoadingStates[image.id] === 'loading'" 
                class="absolute inset-0 flex items-center justify-center bg-gray-100">
@@ -268,6 +285,9 @@ export default {
     const imageClickQueue = ref([]); // {id, mode}
     const batchTimer = ref(null);
     const addedImageIds = new Set(); // Set to track added image IDs for manual mode
+
+    // Image size control
+    const imageSize = ref(5); // 1=largest, 12=smallest (matches grid-cols-1 to grid-cols-12)
 
     // Fullscreen modal state
     const showFullscreen = ref(false); // Controls visibility of the FullscreenImageView component
@@ -1330,6 +1350,44 @@ export default {
       return fullscreenImage.value?.properties?.img_url || null;
     });
 
+    // Dynamic grid classes based on image size
+    const gridClasses = computed(() => {
+      const sizeMap = {
+        1: 'grid-cols-1',
+        2: 'grid-cols-1 sm:grid-cols-2',
+        3: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3', 
+        4: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+        5: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
+        6: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6',
+        7: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7',
+        8: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8',
+        9: 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-9',
+        10: 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10',
+        11: 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-11',
+        12: 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12'
+      };
+      return `grid ${sizeMap[imageSize.value]} gap-2`;
+    });
+
+    // Dynamic image height classes based on grid size
+    const imageHeightClass = computed(() => {
+      const heightMap = {
+        1: 'h-[70vh] max-h-[600px] min-h-[300px]',    // Very large - 1 column
+        2: 'h-[45vh] max-h-[400px] min-h-[250px]',    // Large - 2 columns
+        3: 'h-[35vh] max-h-[320px] min-h-[220px]',    // Medium-large - 3 columns
+        4: 'h-[30vh] max-h-[280px] min-h-[200px]',    // Medium - 4 columns
+        5: 'h-[25vh] max-h-[250px] min-h-[180px]',    // Medium-small - 5 columns
+        6: 'h-[22vh] max-h-[220px] min-h-[160px]',    // Small - 6 columns
+        7: 'h-[20vh] max-h-[200px] min-h-[150px]',    // Smaller - 7 columns
+        8: 'h-[18vh] max-h-[180px] min-h-[140px]',    // Very small - 8 columns
+        9: 'h-[16vh] max-h-[160px] min-h-[130px]',    // Tiny - 9 columns
+        10: 'h-[15vh] max-h-[150px] min-h-[120px]',   // Very tiny - 10 columns
+        11: 'h-[14vh] max-h-[140px] min-h-[110px]',   // Micro - 11 columns
+        12: 'h-[13vh] max-h-[130px] min-h-[100px]'    // Ultra-micro - 12 columns
+      };
+      return heightMap[imageSize.value] || heightMap[3]; // default to 3 columns
+    });
+
     // On mount, always add keyboard shortcuts
     let keydownHandler;
     onMounted(() => {
@@ -1342,7 +1400,7 @@ export default {
       } else {
         // Estimate how many images are needed to fill the viewport, plus 2 extra rows for preloading
         const imageHeight = 250; // px, including padding/margin
-        const columns = 5; // max columns in grid
+        const columns = imageSize.value; // max columns in grid based on current setting
         const rows = Math.ceil(window.innerHeight / imageHeight);
         const initialCount = Math.max(1, (rows + 2) * columns); // Ensure at least 1 image
         fetchNextImages(initialCount).then(() => {
@@ -1576,6 +1634,9 @@ export default {
       nextImageUrl, // Added computed property for next image URL
       prevImageUrl, // Added computed property for previous image URL
       fullscreenThumbnailUrl, // Added computed property for fullscreen thumbnail URL
+      imageSize, // Added image size control
+      gridClasses, // Added dynamic grid classes
+      imageHeightClass, // Added dynamic image height classes
     };
   },
 };
