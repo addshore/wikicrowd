@@ -225,10 +225,6 @@
           >
             {{ fullscreenImage.properties?.mediainfo_id || fullscreenImage.id }}
           </a>
-          <!-- Image Index Display -->
-          <div v-if="images.length > 0" class="mt-2 text-sm text-gray-400">
-            {{ currentFullscreenIndex + 1 }} / {{ images.length }}
-          </div>
         </div>
       </div>
     </div>
