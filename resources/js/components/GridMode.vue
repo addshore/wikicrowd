@@ -906,6 +906,7 @@ export default {
         console.log('[GridMode] No pending answers to save.');
         return;
       }
+      const answersToProcess = [...pendingAnswers.value];
       try {
         const headers = {
           'Content-Type': 'application/json',
@@ -918,7 +919,7 @@ export default {
         }
         if (props.manualMode) {
           // Bulk save for manual/custom questions
-          const answers = pendingAnswers.value.map(({ id, mode }) => {
+          const answers = answersToProcess.map(({ id, mode }) => {
             const img = images.value.find(img => img.id === id);
             return {
               category: props.manualCategory,
@@ -951,7 +952,7 @@ export default {
             toastStore.addToast({ message: `${answers.length} manual answers saved successfully!`, type: 'success' });
           } else {
             const messageBase = `Manual bulk save failed. Status: ${responseManual.status}.`;
-            const failedItemsInBatch = [...pendingAnswers.value]; // Items that were attempted
+            const failedItemsInBatch = [...answersToProcess]; // Items that were attempted
 
             const failedMids = failedItemsInBatch.map(answerData => {
               const img = images.value.find(i => i.id === answerData.id); // answerData.id is mediainfo_id in this context
@@ -967,7 +968,7 @@ export default {
             pendingAnswers.value = []; // Clear pending answers after a failed batch
           }
         } else { // Regular mode
-          const answersToSubmit = pendingAnswers.value.map(({ id, mode }) => ({
+          const answersToSubmit = answersToProcess.map(({ id, mode }) => ({
             question_id: id, // id here is question_id
             answer: mode,
           }));
@@ -994,7 +995,7 @@ export default {
             toastStore.addToast({ message: `${answersToSubmit.length} answers saved successfully!`, type: 'success' });
           } else {
             const messageBase = `Regular bulk save failed. Status: ${responseRegular.status}.`;
-            const failedItemsInBatch = [...pendingAnswers.value]; // Items that were attempted (question_id, mode)
+            const failedItemsInBatch = [...answersToProcess]; // Items that were attempted (question_id, mode)
 
             const failedMids = failedItemsInBatch.map(answerData => {
               const img = images.value.find(i => i.id === answerData.id); // answerData.id is question_id
@@ -1015,7 +1016,7 @@ export default {
       } catch (e) {
         // This catch block handles network errors or other critical failures from fetchAnswerWithRetry
         const messageBase = `Bulk save failed due to network/critical error: ${e.message}`;
-        const failedItemsInBatch = [...pendingAnswers.value]; // Items that were attempted
+        const failedItemsInBatch = [...answersToProcess]; // Items that were attempted
 
         const failedMids = failedItemsInBatch.map(answerData => {
             const img = images.value.find(i => i.id === answerData.id);
