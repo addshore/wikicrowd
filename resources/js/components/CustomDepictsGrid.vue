@@ -499,11 +499,6 @@ onMounted(async () => {
 
   showGrid.value = canShowGrid();
 });
-        showGrid.value = true;
-      }
-    }
-  }
-});
 </script>
 
 <style>
