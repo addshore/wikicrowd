@@ -225,6 +225,10 @@
           >
             {{ fullscreenImage.properties?.mediainfo_id || fullscreenImage.id }}
           </a>
+          <!-- Image Index Display -->
+          <div v-if="images.length > 0" class="mt-2 text-sm text-gray-400">
+            {{ currentFullscreenIndex + 1 }} / {{ images.length }}
+          </div>
         </div>
       </div>
     </div>
@@ -280,6 +284,7 @@ export default {
     const showFullscreen = ref(false);
     const fullscreenImage = ref(null);
     const fullscreenImageUrl = ref('');
+    const currentFullscreenIndex = ref(0);
 
     // Batch for progressive fill
     const batch = ref([]);
@@ -1183,6 +1188,7 @@ export default {
       event.stopPropagation(); // Prevent triggering the image selection
       fullscreenImage.value = image;
       fullscreenImageUrl.value = await getFullSizeImageUrl(image);
+      currentFullscreenIndex.value = images.value.findIndex(img => img.id === image.id);
       showFullscreen.value = true;
       
       // Disable scrolling on body
@@ -1194,9 +1200,24 @@ export default {
       showFullscreen.value = false;
       fullscreenImage.value = null;
       fullscreenImageUrl.value = '';
+      currentFullscreenIndex.value = 0;
       
       // Re-enable scrolling on body
       document.body.style.overflow = '';
+    };
+
+    const nextImage = async () => {
+      if (!showFullscreen.value) return;
+      currentFullscreenIndex.value = (currentFullscreenIndex.value + 1) % images.value.length;
+      fullscreenImage.value = images.value[currentFullscreenIndex.value];
+      fullscreenImageUrl.value = await getFullSizeImageUrl(fullscreenImage.value);
+    };
+
+    const prevImage = async () => {
+      if (!showFullscreen.value) return;
+      currentFullscreenIndex.value = (currentFullscreenIndex.value - 1 + images.value.length) % images.value.length;
+      fullscreenImage.value = images.value[currentFullscreenIndex.value];
+      fullscreenImageUrl.value = await getFullSizeImageUrl(fullscreenImage.value);
     };
 
     // Handle image load errors with retry logic
@@ -1295,8 +1316,15 @@ export default {
           closeFullscreen();
           return;
         }
-        // Answer mode shortcuts (only when not in fullscreen)
-        if (!showFullscreen.value) {
+        // Fullscreen navigation
+        if (showFullscreen.value) {
+          if (e.key === 'ArrowRight') {
+            nextImage();
+          } else if (e.key === 'ArrowLeft') {
+            prevImage();
+          }
+        } else {
+          // Answer mode shortcuts (only when not in fullscreen)
           if (e.key === '1') answerMode.value = 'yes';
           if (e.key === '2') answerMode.value = 'no';
           if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
@@ -1470,6 +1498,8 @@ export default {
       fullscreenImageUrl,
       openFullscreen,
       closeFullscreen,
+      nextImage,
+      prevImage,
       countdownTimers, // Added for template access
       depictsUpQueryUrl, // Added computed property
       depictsLinkHref, // Added computed property
