@@ -1,6 +1,6 @@
 <template>
   <!-- Fullscreen Modal -->
-  <div vif="isVisible && image"
+  <div v-if="isVisible && image"
        class="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
        @click="close">
     <div class="relative max-w-full max-h-full flex flex-col">
@@ -17,14 +17,31 @@
 
       <!-- Main image -->
       <div class="relative"> <!-- Added relative positioning for overlay -->
-        <!-- Allow clicking image to close only if not answered/saving -->
+        <!-- Thumbnail image (loads first for immediate display) -->
+        <img
+          v-if="thumbnailUrl && !highQualityLoaded"
+          :src="thumbnailUrl"
+          :alt="`Thumbnail ${image.id}`"
+          class="max-h-[80vh] max-w-full object-contain cursor-pointer blur-sm"
+          @click="close"
+          draggable="false"
+        />
+        <!-- High quality image (loads in background) -->
         <img
           :src="imageUrl"
           :alt="`Fullscreen Image ${image.id}`"
           class="max-h-[80vh] max-w-full object-contain cursor-pointer"
+          :class="{ 'opacity-0': !highQualityLoaded }"
           @click="close"
           draggable="false"
+          @load="onHighQualityImageLoad"
+          @error="onImageError"
+          style="transition: opacity 0.3s ease-in-out;"
         />
+        <!-- Loading Overlay -->
+        <div v-if="isImageLoading && !thumbnailUrl" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 z-20">
+          <div class="text-white text-2xl font-bold">Loading...</div>
+        </div>
         <!-- Answer/Saving Overlay -->
         <div
           v-if="isAnswered || isSaving"
@@ -147,6 +164,11 @@ export default {
       type: String,
       required: true,
     },
+    thumbnailUrl: {
+      type: String,
+      required: false,
+      default: null,
+    },
     isVisible: {
       type: Boolean,
       default: false,
@@ -162,7 +184,24 @@ export default {
     isSaving: {
       type: Boolean,
       default: false,
+    },
+    nextImageUrl: {
+      type: String,
+      required: false,
+      default: null,
+    },
+    prevImageUrl: {
+      type: String,
+      required: false,
+      default: null,
     }
+  },
+  data() {
+    return {
+      isImageLoading: true,
+      highQualityLoaded: false,
+      preloadedImages: {},
+    };
   },
   emits: ['close', 'next', 'prev', 'answer'],
   methods: {
@@ -180,6 +219,33 @@ export default {
       // Decide on auto-close behavior later. For now, it stays open.
       // this.close();
     },
+    onHighQualityImageLoad() {
+      this.isImageLoading = false;
+      this.highQualityLoaded = true;
+      this.preloadedImages[this.imageUrl] = true;
+    },
+    onImageError() {
+      this.isImageLoading = false;
+      this.highQualityLoaded = true; // Show whatever we have, even if it's just thumbnail
+    },
+    preloadImage(url) {
+      if (!url || this.preloadedImages[url]) return;
+      const img = new window.Image();
+      img.onload = () => {
+        // Mark as preloaded and update loading state if this is the current imageUrl
+        this.preloadedImages[url] = true;
+        if (url === this.imageUrl) {
+          this.isImageLoading = false;
+        }
+      };
+      img.onerror = () => {
+        // If error, still allow to hide loading overlay to avoid stuck state
+        if (url === this.imageUrl) {
+          this.isImageLoading = false;
+        }
+      };
+      img.src = url;
+    },
   },
   // Watch for visibility changes to manage body scroll
   watch: {
@@ -189,10 +255,40 @@ export default {
       } else {
         document.body.style.overflow = '';
       }
+    },
+    image() {
+      this.isImageLoading = !this.thumbnailUrl; // Don't show loading if we have a thumbnail
+      this.highQualityLoaded = false;
+    },
+    imageUrl() {
+      // If already preloaded, skip loading overlay
+      if (this.preloadedImages[this.imageUrl]) {
+        this.isImageLoading = false;
+        this.highQualityLoaded = true;
+      } else {
+        this.isImageLoading = !this.thumbnailUrl; // Don't show loading if we have a thumbnail
+        this.highQualityLoaded = false;
+      }
+    },
+    nextImageUrl: {
+      immediate: true,
+      handler(newUrl) {
+        this.preloadImage(newUrl);
+      }
+    },
+    prevImageUrl: {
+      immediate: true,
+      handler(newUrl) {
+        this.preloadImage(newUrl);
+      }
     }
   },
   // Handle keyboard navigation
   mounted() {
+    // Preload initial images
+    this.preloadImage(this.nextImageUrl);
+    this.preloadImage(this.prevImageUrl);
+    
     this.keydownHandler = (e) => {
       if (!this.isVisible) return;
 

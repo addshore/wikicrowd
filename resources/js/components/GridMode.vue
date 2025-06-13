@@ -208,6 +208,9 @@
       v-if="fullscreenImage"
       :image="fullscreenImage"
       :image-url="fullscreenImageUrl"
+      :thumbnail-url="fullscreenThumbnailUrl"
+      :next-image-url="nextImageUrl"
+      :prev-image-url="prevImageUrl"
       :is-visible="showFullscreen"
       :is-answered="answered.has(fullscreenImage?.id)"
       :answered-with-mode="fullscreenImage ? answeredMode[fullscreenImage.id] : null"
@@ -1274,6 +1277,59 @@ export default {
       return 'https://commons.wikimedia.org/wiki/Commons:Depicts';
     });
 
+    // Computed properties for next/prev image URLs and thumbnails
+    const nextImageUrl = computed(() => {
+      if (images.value.length === 0 || currentFullscreenIndex.value === -1) return null;
+      const nextIndex = (currentFullscreenIndex.value + 1) % images.value.length;
+      const nextImg = images.value[nextIndex];
+      if (!nextImg) return null;
+      
+      // Use the same logic as getFullSizeImageUrl but synchronously
+      if (props.manualMode && nextImg.title) {
+        // For manual mode, we'll use the thumbnail URL and let preloading handle the full size
+        const currentUrl = nextImg.properties.img_url;
+        if (currentUrl.includes('/thumb/') && currentUrl.includes('px-')) {
+          return currentUrl.replace(/\/thumb\/(.+?)\/\d+px-.+$/, '/$1');
+        }
+        return currentUrl;
+      }
+      
+      // For regular images, remove width parameter to get full size
+      const currentUrl = nextImg.properties.img_url;
+      if (currentUrl.includes('/thumb/') && currentUrl.includes('px-')) {
+        return currentUrl.replace(/\/thumb\/(.+?)\/\d+px-.+$/, '/$1');
+      }
+      return currentUrl;
+    });
+
+    const prevImageUrl = computed(() => {
+      if (images.value.length === 0 || currentFullscreenIndex.value === -1) return null;
+      const prevIndex = (currentFullscreenIndex.value - 1 + images.value.length) % images.value.length;
+      const prevImg = images.value[prevIndex];
+      if (!prevImg) return null;
+      
+      // Use the same logic as getFullSizeImageUrl but synchronously
+      if (props.manualMode && prevImg.title) {
+        // For manual mode, we'll use the thumbnail URL and let preloading handle the full size
+        const currentUrl = prevImg.properties.img_url;
+        if (currentUrl.includes('/thumb/') && currentUrl.includes('px-')) {
+          return currentUrl.replace(/\/thumb\/(.+?)\/\d+px-.+$/, '/$1');
+        }
+        return currentUrl;
+      }
+      
+      // For regular images, remove width parameter to get full size
+      const currentUrl = prevImg.properties.img_url;
+      if (currentUrl.includes('/thumb/') && currentUrl.includes('px-')) {
+        return currentUrl.replace(/\/thumb\/(.+?)\/\d+px-.+$/, '/$1');
+      }
+      return currentUrl;
+    });
+
+    const fullscreenThumbnailUrl = computed(() => {
+      return fullscreenImage.value?.properties?.img_url || null;
+    });
+
     // On mount, always add keyboard shortcuts
     let keydownHandler;
     onMounted(() => {
@@ -1391,7 +1447,6 @@ export default {
 
           // Clear any running auto-save timer for this id as we are saving manually.
           // cleanupImageState will clear timers, countdowns, and also any pre-existing imageSavingStates.
-          // This is fine because we will re-set imageSavingStates for manual saves just after this loop.
           cleanupImageState(id);
         }
       });
@@ -1512,9 +1567,15 @@ export default {
       countdownTimers, // Added for template access
       depictsUpQueryUrl, // Added computed property
       depictsLinkHref, // Added computed property
+      nextImageUrl, // Added computed property for preloading
+      prevImageUrl, // Added computed property for preloading
+      fullscreenThumbnailUrl, // Added computed property for progressive loading
       imageSavingStates,
       cleanupImageState, // Added new function
       handleFullscreenAnswer, // Added new method for handling answers from fullscreen
+      nextImageUrl, // Added computed property for next image URL
+      prevImageUrl, // Added computed property for previous image URL
+      fullscreenThumbnailUrl, // Added computed property for fullscreen thumbnail URL
     };
   },
 };
@@ -1529,14 +1590,6 @@ function handleFullscreenAnswer({ image, mode }) {
   // For now, we'll assume sendAnswerToUse is accessible and can be called.
   // Note: This is a simplified call. sendAnswer might need specific properties from the image object
   // or might rely on selected/answered sets which need to be handled carefully here.
-
-  // Directly call the appropriate sendAnswer function (sendAnswerToUse is already defined in setup)
-  // We need to ensure sendAnswerToUse can handle being called this way,
-  // potentially by-passing some of its logic that relies on `selected.value` or `answerMode.value`
-  // if we provide `mode` directly.
-
-  // For now, let's assume sendAnswerToUse is robust enough or we will adjust it.
-  // The key is that `image` here is the full image object, and `mode` is the string for the answer.
 
   // This function is outside the `setup` return object, so it won't be directly callable
   // from the template in the same way as methods returned from `setup`.
