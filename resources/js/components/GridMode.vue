@@ -1257,9 +1257,11 @@ export default {
 
     const depictsLinkHref = computed(() => {
       if (images.value.length > 0 && images.value[0]?.properties?.depicts_id) {
-        return `https://commons.wikimedia.org/wiki/Special:Search/haswbstatement:P180=${images.value[0].properties.depicts_id}`;
+        return `https://commons.wikimedia.org/w/index.php?title=Special%3AMediaSearch&search=haswbstatement%3AP180%3D${images.value[0].properties.depicts_id}&type=image`;
       }
-      return 'https://commons.wikimedia.org/wiki/Commons:Depicts'; // Fallback URL
+      // Fallback URL should also be updated or kept generic if a direct MediaSearch equivalent isn't suitable for a general fallback.
+      // For now, let's keep the old fallback, but ideally, this would also point to a relevant MediaSearch or a general help page.
+      return 'https://commons.wikimedia.org/wiki/Commons:Depicts';
     });
 
     // On mount, always add keyboard shortcuts
