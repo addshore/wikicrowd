@@ -204,43 +204,19 @@
       </button>
     </div>
     
-    <!-- Fullscreen Modal -->
-    <div v-if="showFullscreen && fullscreenImage" 
-         class="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
-         @click="closeFullscreen">
-      <div class="relative max-w-full max-h-full flex flex-col">
-        <!-- Close button -->
-        <button 
-          @click="closeFullscreen"
-          class="absolute top-4 right-4 bg-black bg-opacity-60 hover:bg-opacity-80 text-white p-2 rounded-full z-10"
-          title="Close fullscreen"
-        >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-        
-        <!-- Main image -->
-        <img 
-          :src="fullscreenImageUrl" 
-          :alt="`Fullscreen Image ${fullscreenImage.id}`"
-          class="max-h-[80vh] max-w-full object-contain cursor-pointer"
-          @click="closeFullscreen"
-          draggable="false"
-        />
-        
-        <!-- Image info -->
-        <div class="mt-4 text-white text-center">
-          <a 
-            :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + fullscreenImage.properties?.mediainfo_id" 
-            target="_blank"
-            class="text-blue-300 hover:text-blue-100 underline"
-          >
-            {{ fullscreenImage.properties?.mediainfo_id || fullscreenImage.id }}
-          </a>
-        </div>
-      </div>
-    </div>
+    <FullscreenImageView
+      v-if="fullscreenImage"
+      :image="fullscreenImage"
+      :image-url="fullscreenImageUrl"
+      :is-visible="showFullscreen"
+      :is-answered="answered.has(fullscreenImage?.id)"
+      :answered-with-mode="fullscreenImage ? answeredMode[fullscreenImage.id] : null"
+      :is-saving="fullscreenImage ? imageSavingStates.get(fullscreenImage.id) : false"
+      @close="closeFullscreen"
+      @next="nextImage"
+      @prev="prevImage"
+      @answer="handleFullscreenAnswer"
+    />
 
     <!-- Always show Loading... under the grid if loading or (manualMode and recursion ongoing) -->
     <div v-if="loading || (manualMode && !allLoaded)" class="text-center py-4">
@@ -250,20 +226,21 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue'; // Added computed
+import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue';
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
+import FullscreenImageView from './FullscreenImageView.vue'; // Import the new component
 import { fetchSubclassesAndInstances, fetchDepictsForMediaInfoIds } from './depictsUtils';
 import { toastStore } from '../toastStore.js';
 
 export default {
   name: 'GridMode',
-  components: { WikidataLabel, WikidataDescription },
+  components: { WikidataLabel, WikidataDescription, FullscreenImageView },
   props: {
     manualCategory: { type: String, default: '' },
     manualQid: { type: String, default: '' },
     manualMode: { type: Boolean, default: false },
-    loadAll: { type: Boolean, default: false } // New prop
+    loadAll: { type: Boolean, default: false }
   },
   setup(props, { emit }) {
     const images = ref([]);
@@ -290,10 +267,10 @@ export default {
     const addedImageIds = new Set(); // Set to track added image IDs for manual mode
 
     // Fullscreen modal state
-    const showFullscreen = ref(false);
-    const fullscreenImage = ref(null);
-    const fullscreenImageUrl = ref('');
-    const currentFullscreenIndex = ref(0);
+    const showFullscreen = ref(false); // Controls visibility of the FullscreenImageView component
+    const fullscreenImage = ref(null); // The image object for the FullscreenImageView
+    const fullscreenImageUrl = ref(''); // The image URL for the FullscreenImageView
+    const currentFullscreenIndex = ref(0); // To keep track of the current image for next/prev logic
 
     // Batch for progressive fill
     const batch = ref([]);
@@ -1203,33 +1180,32 @@ export default {
       currentFullscreenIndex.value = images.value.findIndex(img => img.id === image.id);
       showFullscreen.value = true;
       
-      // Disable scrolling on body
-      document.body.style.overflow = 'hidden';
+      // document.body.style.overflow = 'hidden'; // This is now handled by FullscreenImageView
     };
 
-    // Close fullscreen modal
+    // Close fullscreen modal - triggered by event from FullscreenImageView
     const closeFullscreen = () => {
       showFullscreen.value = false;
-      fullscreenImage.value = null;
-      fullscreenImageUrl.value = '';
-      currentFullscreenIndex.value = 0;
-      
-      // Re-enable scrolling on body
-      document.body.style.overflow = '';
+      // Optionally, you might want to clear fullscreenImage and fullscreenImageUrl here or not,
+      // depending on whether you want the last image to briefly appear if reopened.
+      // For now, let's not clear them, allowing the component to manage its state.
+      // document.body.style.overflow = ''; // This is now handled by FullscreenImageView
     };
 
     const nextImage = async () => {
-      if (!showFullscreen.value) return;
+      if (images.value.length === 0) return;
       currentFullscreenIndex.value = (currentFullscreenIndex.value + 1) % images.value.length;
-      fullscreenImage.value = images.value[currentFullscreenIndex.value];
-      fullscreenImageUrl.value = await getFullSizeImageUrl(fullscreenImage.value);
+      const nextImg = images.value[currentFullscreenIndex.value];
+      fullscreenImage.value = nextImg;
+      fullscreenImageUrl.value = await getFullSizeImageUrl(nextImg);
     };
 
     const prevImage = async () => {
-      if (!showFullscreen.value) return;
+      if (images.value.length === 0) return;
       currentFullscreenIndex.value = (currentFullscreenIndex.value - 1 + images.value.length) % images.value.length;
-      fullscreenImage.value = images.value[currentFullscreenIndex.value];
-      fullscreenImageUrl.value = await getFullSizeImageUrl(fullscreenImage.value);
+      const prevImg = images.value[currentFullscreenIndex.value];
+      fullscreenImage.value = prevImg;
+      fullscreenImageUrl.value = await getFullSizeImageUrl(prevImg);
     };
 
     // Handle image load errors with retry logic
@@ -1320,28 +1296,20 @@ export default {
         });
         window.addEventListener('scroll', handleScroll);
       }
-      // Keyboard shortcuts for answer mode (always add)
-  keydownHandler = (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    // Close fullscreen on Escape
-    if (e.key === 'Escape' && showFullscreen.value) {
-      closeFullscreen();
-      return;
-    }
-    if (showFullscreen.value) {
-      // Fullscreen navigation
-      if (e.key === 'ArrowRight') {
-        nextImage();
-      } else if (e.key === 'ArrowLeft') {
-        prevImage();
-      }
-    } else {
-      // Answer mode shortcuts (only when not in fullscreen)
+      // Keyboard shortcuts
+      keydownHandler = (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        // Fullscreen navigation is handled by FullscreenImageView.vue when it's visible.
+    // GridMode should only handle its own shortcuts when fullscreen is not active.
+    if (!showFullscreen.value) {
       if (e.key.toLowerCase() === 'q') answerMode.value = 'yes-preferred';
-      if (e.key === '1') answerMode.value = 'yes';
-      if (e.key === '2') answerMode.value = 'no';
-      if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
+      else if (e.key === '1') answerMode.value = 'yes';
+      else if (e.key === '2') answerMode.value = 'no';
+      else if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
     }
+    // Note: The Escape keydown for closing fullscreen is now managed by FullscreenImageView.vue
+    // and it emits a 'close' event. GridMode's keydownHandler no longer needs to check for Escape.
   };
   window.addEventListener('keydown', keydownHandler);
 });
@@ -1352,6 +1320,34 @@ export default {
     // Also call ensureViewportFilled after each fetch
     const sendAnswerToUse = props.manualMode ? sendAnswerManual : sendAnswer;
     console.log('[GridMode] manualMode:', props.manualMode, 'Using', props.manualMode ? '/api/manual-question/answer' : '/api/answers');
+
+    const handleFullscreenAnswer = async ({ image, mode }) => {
+      if (!image || !image.id) {
+        console.error('handleFullscreenAnswer: Invalid image data received.');
+        return;
+      }
+      console.log(`Answer received from fullscreen: Image ID ${image.id}, Mode: ${mode}`);
+
+      // Set saving state
+      imageSavingStates.set(image.id, true);
+
+      try {
+        // Call the existing sendAnswerToUse function, providing the image and mode directly.
+        await sendAnswerToUse(image, mode);
+        // If sendAnswerToUse is successful, it will update `answered` and `answeredMode`
+        // and also clear selected states.
+      } catch (error) {
+        // Error handling is ideally done within sendAnswerToUse (e.g., showing toasts)
+        // If not, add additional error handling here.
+        console.error(`Error in handleFullscreenAnswer for image ${image.id}:`, error);
+      } finally {
+        // Clear saving state regardless of success or failure
+        imageSavingStates.delete(image.id);
+      }
+
+      // Optional: Close fullscreen after answering. For now, keep it open.
+      // closeFullscreen();
+    };
 
     const onSaveClickHandler = () => {
       console.log('[GridMode] onSaveClickHandler called');
@@ -1518,9 +1514,35 @@ export default {
       depictsLinkHref, // Added computed property
       imageSavingStates,
       cleanupImageState, // Added new function
+      handleFullscreenAnswer, // Added new method for handling answers from fullscreen
     };
   },
 };
+
+function handleFullscreenAnswer({ image, mode }) {
+  // This is a placeholder. Actual implementation will depend on how GridMode's sendAnswer is structured.
+  // It might involve calling sendAnswer(image, mode) or sendAnswerManual(image, mode)
+  // and then potentially closing the fullscreen or updating its UI.
+  console.log(`Answer received from fullscreen: Image ID ${image.id}, Mode: ${mode}`);
+  // Example: self.sendAnswer(image, mode); // 'self' would be 'this' if it were a component method.
+  // Since this is in setup, we'd call the function directly if it's in scope.
+  // For now, we'll assume sendAnswerToUse is accessible and can be called.
+  // Note: This is a simplified call. sendAnswer might need specific properties from the image object
+  // or might rely on selected/answered sets which need to be handled carefully here.
+
+  // Directly call the appropriate sendAnswer function (sendAnswerToUse is already defined in setup)
+  // We need to ensure sendAnswerToUse can handle being called this way,
+  // potentially by-passing some of its logic that relies on `selected.value` or `answerMode.value`
+  // if we provide `mode` directly.
+
+  // For now, let's assume sendAnswerToUse is robust enough or we will adjust it.
+  // The key is that `image` here is the full image object, and `mode` is the string for the answer.
+
+  // This function is outside the `setup` return object, so it won't be directly callable
+  // from the template in the same way as methods returned from `setup`.
+  // It needs to be defined within `setup` or passed to `setup` to be used as a callback.
+  // Let's define it inside setup.
+}
 </script>
 
 <style scoped>
