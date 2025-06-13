@@ -3,7 +3,7 @@
     <div class="sticky top-0 z-20 bg-white bg-opacity-95 pb-2 mb-2 shadow">
       <h2 class="text-xl font-bold mb-2 flex flex-col items-center">
         <p class="text-lg leading-7 text-gray-500 mb-1">
-          Does this image clearly <a href="https://commons.wikimedia.org/wiki/Commons:Depicts" target="_blank" class="text-blue-600 hover:underline">depict</a>
+          Does this image clearly <a :href="depictsLinkHref" target="_blank" class="text-blue-600 hover:underline">depict</a>
         </p>
         <div v-if="images[0]?.properties?.depicts_id" class="text-lg font-semibold flex items-center mb-1">
           <a
@@ -1255,6 +1255,15 @@ export default {
       return 'https://query.wikidata.org/embed.html#' + encodeURIComponent(sparql);
     });
 
+    const depictsLinkHref = computed(() => {
+      if (images.value.length > 0 && images.value[0]?.properties?.depicts_id) {
+        return `https://commons.wikimedia.org/w/index.php?title=Special%3AMediaSearch&search=haswbstatement%3AP180%3D${images.value[0].properties.depicts_id}&type=image`;
+      }
+      // Fallback URL should also be updated or kept generic if a direct MediaSearch equivalent isn't suitable for a general fallback.
+      // For now, let's keep the old fallback, but ideally, this would also point to a relevant MediaSearch or a general help page.
+      return 'https://commons.wikimedia.org/wiki/Commons:Depicts';
+    });
+
     // On mount, always add keyboard shortcuts
     let keydownHandler;
     onMounted(() => {
@@ -1462,6 +1471,7 @@ export default {
       closeFullscreen,
       countdownTimers, // Added for template access
       depictsUpQueryUrl, // Added computed property
+      depictsLinkHref, // Added computed property
       imageSavingStates,
       cleanupImageState, // Added new function
     };
