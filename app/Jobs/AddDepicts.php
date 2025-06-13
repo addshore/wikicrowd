@@ -128,45 +128,35 @@ class AddDepicts implements ShouldQueue
                 $qid = $question->properties['depicts_id'];
                 $editInfo = new EditInfo("From custom inputs [[:$cat]] and [[wikidata:$qid]]");
             }
-            $createdClaimGuid = $wbServices->newStatementCreator()->create(
-                new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) ),
-                $mid,
-                $editInfo
-            );
-
-            if ($this->rank === 'preferred' && $createdClaimGuid !== null) {
-                try {
-                    $statementGetter = $wbServices->newStatementGetter();
-                    $statement = $statementGetter->getStatementByGuid(new StatementId($createdClaimGuid));
-
-                    if ($statement !== null) {
-                        $statement->setRank(Statement::RANK_PREFERRED);
-
-                        $statementSetter = $wbServices->newStatementSetter();
-                        // Assuming $editInfo used for creation is suitable for setting rank.
-                        // If StatementSetter->set doesn't take EditInfo, it might need to be omitted
-                        // or the library might handle summaries differently for this operation.
-                        // For now, let's assume it takes $editInfo similar to other setters/creators.
-                        $statementSetter->set($statement, $editInfo);
-                    } else {
-                        \Log::warning("AddDepicts: Could not find statement with GUID: " . $createdClaimGuid . " for entity " . $mid->getSerialization() . " to set preferred rank.");
-                    }
-                } catch (\Exception $e) {
-                    \Log::error("AddDepicts: Failed to set preferred rank using StatementSetter for statement GUID: " . $createdClaimGuid . ". Error: " . $e->getMessage());
-                }
-            }
+            $snak = new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) );
+            $createdClaimGuid = $wbServices->newStatementCreator()->create( $snak, $mid, $editInfo );
 
             $mwServices = new MediawikiFactory( $mwApi );
 
             $pageIdentifier = new PageIdentifier( null, str_replace( 'M', '', $mid->getSerialization() ) );
-            $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
-            $revId = $page->getRevisions()->getLatest()->getId();
+            $revId = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
+
+            if ($this->rank === 'preferred' && $createdClaimGuid !== null) {
+                $statement = new Statement($snak, null, null, $createdClaimGuid);
+                $statement->setRank(Statement::RANK_PREFERRED);
+                $statementSetter = $wbServices->newStatementSetter();
+                $statementSetter->set($statement, $editInfo);
+                $revId2 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
+            }
 
             Edit::create([
                 'question_id' => $question->id,
                 'user_id' => $user->id,
                 'revision_id' => (int)$revId,
             ]);
+
+            if (isset($revId2)) {
+                Edit::create([
+                    'question_id' => $question->id,
+                    'user_id' => $user->id,
+                    'revision_id' => (int)$revId2,
+                ]);
+            }
         }
     }
 

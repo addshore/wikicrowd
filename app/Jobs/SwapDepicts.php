@@ -155,35 +155,18 @@ class SwapDepicts implements ShouldQueue
         // TODO fix the DUMB way of getting the new revision IDs here..
         // TODO this probably requires fixes in addwiki (if we are to continue using it)
         $mwServices = new MediawikiFactory( $mwApi );
-        $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
-        $revId1 = $page->getRevisions()->getLatest()->getId();
+        $revId1 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
 
-        $newlyCreatedClaimGuid = $wbServices->newStatementCreator()->create(
-            new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) ),
-            $mid,
-            $editInfo
-        );
-
-        $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
-        $revId2 = $page->getRevisions()->getLatest()->getId();
-
+        $snak = new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) );
+        $newlyCreatedClaimGuid = $wbServices->newStatementCreator()->create( $snak, $mid, $editInfo);
+        $revId2 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
+    
         if ($this->rank === 'preferred' && $newlyCreatedClaimGuid !== null) {
-            try {
-                $statementGetter = $wbServices->newStatementGetter();
-                $statement = $statementGetter->getStatementByGuid(new StatementId($newlyCreatedClaimGuid));
-
-                if ($statement !== null) {
-                    $statement->setRank(Statement::RANK_PREFERRED);
-
-                        $statementSetter = $wbServices->newStatementSetter();
-                        // Assuming $editInfo used for creation is suitable for setting rank.
-                        $statementSetter->set($statement, $editInfo);
-                } else {
-                    \Log::warning("SwapDepicts: Could not find newly created statement with GUID: " . $newlyCreatedClaimGuid . " for entity " . $mid->getSerialization() . " to set preferred rank.");
-                }
-            } catch (\Exception $e) {
-                    \Log::error("SwapDepicts: Failed to set preferred rank using StatementSetter for new statement GUID: " . $newlyCreatedClaimGuid . ". Error: " . $e->getMessage());
-            }
+            $statement = new Statement($snak, null, null, $newlyCreatedClaimGuid);
+            $statement->setRank(Statement::RANK_PREFERRED);
+            $statementSetter = $wbServices->newStatementSetter();
+            $statementSetter->set($statement, $editInfo);
+            $revId3 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
         }
 
         Edit::create([
@@ -196,6 +179,13 @@ class SwapDepicts implements ShouldQueue
             'user_id' => $user->id,
             'revision_id' => (int)$revId2,
         ]);
+        if (isset($revId3)) {
+            Edit::create([
+                'question_id' => $question->id,
+                'user_id' => $user->id,
+                'revision_id' => (int)$revId3,
+            ]);
+        }
     }
 
     private function instancesOfAndSubclassesOf( string $itemId ) : array {
