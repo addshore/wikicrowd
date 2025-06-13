@@ -98,7 +98,7 @@
       <div class="text-gray-500 text-lg">No images available to review.</div>
     </div>
     
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+    <div ref="gridContainerRef" v-else class="grid gap-2" :style="dynamicGridStyle">
       <div v-for="image in images" :key="image.id"
         @click="!imageSavingStates.get(image.id) && !answered.has(image.id) && toggleSelect(image.id)"
         :class="[
@@ -317,15 +317,28 @@ export default {
     const imageSavingStates = reactive(new Map());
     const imageSizePercentage = ref(100);
 
+    const gridContainerRef = ref(null);
+    const gridContainerWidth = ref(0);
+    const numberOfColumns = ref(5);
+
     const imageContainerStyle = computed(() => {
       const scaleFactor = imageSizePercentage.value / 100;
       const newVwHeight = 22 * scaleFactor;
       const newMinHeight = 180 * scaleFactor;
       const newMaxHeight = 320 * scaleFactor;
+      const effectiveWidth = newMinHeight; // Use newMinHeight as the basis for width
+
       return {
         height: `${newVwHeight}vw`,
         minHeight: `${newMinHeight}px`,
         maxHeight: `${newMaxHeight}px`,
+        width: `${effectiveWidth}px` // Adding width style for the container itself
+      };
+    });
+
+    const dynamicGridStyle = computed(() => {
+      return {
+        'grid-template-columns': `repeat(${numberOfColumns.value}, minmax(0, 1fr))`
       };
     });
 
@@ -1319,6 +1332,7 @@ export default {
 
     // On mount, always add keyboard shortcuts
     let keydownHandler;
+    let resizeObserver;
     onMounted(() => {
       // Load image size percentage from localStorage
       const savedSize = localStorage.getItem('imageGridSizePercentage');
@@ -1348,6 +1362,18 @@ export default {
         });
         window.addEventListener('scroll', handleScroll);
       }
+
+      if (gridContainerRef.value) {
+        resizeObserver = new ResizeObserver(entries => {
+          for (let entry of entries) {
+            gridContainerWidth.value = entry.contentRect.width;
+          }
+        });
+        resizeObserver.observe(gridContainerRef.value);
+        // Initial width set
+        gridContainerWidth.value = gridContainerRef.value.offsetWidth;
+      }
+
       // Keyboard shortcuts for answer mode (always add)
   keydownHandler = (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -1376,12 +1402,33 @@ export default {
     onUnmounted(() => {
       if (keydownHandler) window.removeEventListener('keydown', keydownHandler);
       window.removeEventListener('scroll', handleScroll);
+      if (resizeObserver && gridContainerRef.value) {
+        resizeObserver.unobserve(gridContainerRef.value);
+      }
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
     });
 
     // Watch for changes in imageSizePercentage and save to localStorage
     watch(imageSizePercentage, (newValue) => {
       localStorage.setItem('imageGridSizePercentage', newValue);
     });
+
+    watch([gridContainerWidth, imageSizePercentage], () => {
+      const gapInPixels = 8; // 0.5rem assuming 1rem = 16px
+      // Use parseFloat to get the numerical value from width (e.g., "180px")
+      const effectiveImgWidth = parseFloat(imageContainerStyle.value.width);
+
+      if (gridContainerWidth.value > 0 && effectiveImgWidth > 0) {
+        const newNumCols = Math.max(1, Math.floor(
+          (gridContainerWidth.value + gapInPixels) / (effectiveImgWidth + gapInPixels)
+        ));
+        if (numberOfColumns.value !== newNumCols) {
+          numberOfColumns.value = newNumCols;
+        }
+      }
+    }, { immediate: true }); // immediate: true to run on mount
 
     // Also call ensureViewportFilled after each fetch
     const sendAnswerToUse = props.manualMode ? sendAnswerManual : sendAnswer;
@@ -1554,6 +1601,9 @@ export default {
       cleanupImageState, // Added new function
       imageSizePercentage, // Added for template access
       imageContainerStyle, // Added for template access
+      gridContainerRef, // Added for template ref
+      numberOfColumns, // Added for styling grid
+      dynamicGridStyle, // Added for styling grid
     };
   },
 };
