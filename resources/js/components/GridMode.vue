@@ -1487,14 +1487,7 @@ export default {
           selected.value.add(imageId);
           selectedMode[imageId] = answerMode.value; // answerMode is the component's current answer mode
 
-          // 2. Add to imageClickQueue for batch processing
-          // Avoid duplicates if somehow already in queue (defensive)
-          if (!imageClickQueue.value.some(item => item.id === imageId)) {
-            imageClickQueue.value.push({ id: imageId, mode: answerMode.value });
-            itemsAddedToQueueCount++;
-          }
-
-          // 3. Initiate visual countdown if autoSave is ON
+          // 2. Set up auto-save timer if autoSave is ON
           if (autoSave.value) {
             // Clear any pre-existing functional timer or countdown for this image.
             if (timers.has(imageId)) {
@@ -1505,6 +1498,25 @@ export default {
               clearInterval(countdownIntervals.get(imageId));
               countdownIntervals.delete(imageId);
             }
+
+            // Set up the main auto-save timer
+            const autoSaveTimerForImage = setTimeout(() => {
+              // Timer expired, add to imageClickQueue using the latest selectedMode
+              const currentMode = selectedMode[imageId] || answerMode.value; // Fallback just in case
+
+              imageSavingStates.set(imageId, true);
+              // Remove any existing entry for this id from queue to use the latest one from autoSaveDelay
+              imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== imageId);
+              imageClickQueue.value.push({ id: imageId, mode: currentMode });
+
+              // Clear its own functional timer. Visual countdown clearing is handled elsewhere or not needed once "Saving..." shows.
+              timers.delete(imageId);
+
+              // Start/reset the main 1-second batchTimer
+              if (batchTimer.value) clearTimeout(batchTimer.value);
+              batchTimer.value = setTimeout(processClickQueue, 1000);
+            }, autoSaveDelay.value * 1000);
+            timers.set(imageId, autoSaveTimerForImage);
 
             // Start the visual countdown.
             countdownTimers.set(imageId, autoSaveDelay.value);
@@ -1517,28 +1529,29 @@ export default {
                 } else {
                   clearInterval(intervalId);
                   countdownIntervals.delete(imageId);
-                  // If countdown finished and item is still selected & not answered, show "Saving..."
-                  if (currentTime <= 1 && selected.value.has(imageId) && !answered.value.has(imageId)) {
-                    imageSavingStates.set(imageId, true);
-                  }
+                  // countdownTimers.delete(id) will be handled by the main timer's expiry
                 }
               } else {
+                // Image unselected or saved manually during countdown
                 clearInterval(intervalId);
-                countdownIntervals.delete(imageId);
+                if (countdownIntervals.has(imageId)) {
+                  countdownIntervals.delete(imageId);
+                }
               }
             }, 1000);
             countdownIntervals.set(imageId, intervalId);
+          } else {
+            // 3. If autoSave is OFF, add to imageClickQueue for manual saving
+            if (!imageClickQueue.value.some(item => item.id === imageId)) {
+              imageClickQueue.value.push({ id: imageId, mode: answerMode.value });
+              itemsAddedToQueueCount++;
+            }
           }
         }
         // Unconditionally remove drag highlight after processing the item.
         removeDragHighlight(imageId);
       });
 
-      // After the loop, if items were added to the queue, trigger batch processing.
-      if (itemsAddedToQueueCount > 0) {
-        if (batchTimer.value) clearTimeout(batchTimer.value);
-        batchTimer.value = setTimeout(processClickQueue, 1000);
-      }
 
       // Reset dragging state
       isDragging.value = false;
@@ -1672,13 +1685,7 @@ export default {
             selected.value.add(imageId);
             selectedMode[imageId] = answerMode.value;
 
-            // 2. Add to imageClickQueue
-            if (!imageClickQueue.value.some(item => item.id === imageId)) {
-              imageClickQueue.value.push({ id: imageId, mode: answerMode.value });
-              itemsAddedToQueueCount++;
-            }
-
-            // 3. Visual countdown for autoSave
+            // 2. Set up auto-save timer if autoSave is ON
             if (autoSave.value) {
               if (timers.has(imageId)) {
                 clearTimeout(timers.get(imageId));
@@ -1688,6 +1695,27 @@ export default {
                 clearInterval(countdownIntervals.get(imageId));
                 countdownIntervals.delete(imageId);
               }
+
+              // Set up the main auto-save timer
+              const autoSaveTimerForImage = setTimeout(() => {
+                // Timer expired, add to imageClickQueue using the latest selectedMode
+                const currentMode = selectedMode[imageId] || answerMode.value; // Fallback just in case
+
+                imageSavingStates.set(imageId, true);
+                // Remove any existing entry for this id from queue to use the latest one from autoSaveDelay
+                imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== imageId);
+                imageClickQueue.value.push({ id: imageId, mode: currentMode });
+
+                // Clear its own functional timer. Visual countdown clearing is handled elsewhere or not needed once "Saving..." shows.
+                timers.delete(imageId);
+
+                // Start/reset the main 1-second batchTimer
+                if (batchTimer.value) clearTimeout(batchTimer.value);
+                batchTimer.value = setTimeout(processClickQueue, 1000);
+              }, autoSaveDelay.value * 1000);
+              timers.set(imageId, autoSaveTimerForImage);
+
+              // Start the visual countdown
               countdownTimers.set(imageId, autoSaveDelay.value);
               const intervalId = setInterval(() => {
                 if (countdownTimers.has(imageId)) {
@@ -1697,27 +1725,28 @@ export default {
                   } else {
                     clearInterval(intervalId);
                     countdownIntervals.delete(imageId);
-                    if (currentTime <= 1 && selected.value.has(imageId) && !answered.value.has(imageId)) {
-                      imageSavingStates.set(imageId, true);
-                    }
+                    // countdownTimers.delete(id) will be handled by the main timer's expiry
                   }
                 } else {
+                  // Image unselected or saved manually during countdown
                   clearInterval(intervalId);
-                  countdownIntervals.delete(imageId);
+                  if (countdownIntervals.has(imageId)) {
+                    countdownIntervals.delete(imageId);
+                  }
                 }
               }, 1000);
               countdownIntervals.set(imageId, intervalId);
+            } else {
+              // 3. If autoSave is OFF, add to imageClickQueue for manual saving
+              if (!imageClickQueue.value.some(item => item.id === imageId)) {
+                imageClickQueue.value.push({ id: imageId, mode: answerMode.value });
+                itemsAddedToQueueCount++;
+              }
             }
           }
           // Unconditionally remove drag highlight after processing the item.
           removeDragHighlight(imageId);
         });
-
-        // After the loop, if items were added to the queue, trigger batch processing.
-        if (itemsAddedToQueueCount > 0) {
-            if (batchTimer.value) clearTimeout(batchTimer.value);
-            batchTimer.value = setTimeout(processClickQueue, 1000);
-        }
       }
 
       // Reset all relevant states, regardless of whether it was a drag or just a cancelled/short tap
