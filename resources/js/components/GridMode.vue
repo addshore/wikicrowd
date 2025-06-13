@@ -253,12 +253,7 @@
     <div
       v-if="isDragging && dragSelectionRect.width > 0 && dragSelectionRect.height > 0"
       class="drag-selection-rectangle"
-      :style="{
-        left: dragSelectionRect.x + 'px',
-        top: dragSelectionRect.y + 'px',
-        width: dragSelectionRect.width + 'px',
-        height: dragSelectionRect.height + 'px'
-      }"
+      :style="dragRectangleStyle"
     ></div>
   </div>
 </template>
@@ -1337,31 +1332,62 @@ export default {
     // On mount, always add keyboard shortcuts
     let keydownHandler;
 
-    const imageGridContainer = ref(null); // Ref for the grid container for mouse move relative calculations if needed
+    const imageGridContainer = ref(null);
 
-    // Drag selection helper functions
-
-    /**
-     * Applies a visual highlight to an image element.
-     * @param {string|number} imageId - The ID of the image to highlight.
-     */
-    const applyDragHighlight = (imageId) => {
-      const element = document.querySelector(`[data-image-id="${imageId}"]`);
-      if (element) {
-        element.classList.add('is-drag-highlighted');
-      }
+    // --- Dynamic Styling for Drag Selection ---
+    const answerModeStyles = {
+      'yes': { classSuffix: 'yes', color: 'rgba(74, 170, 74, 0.7)', lightColor: 'rgba(74, 170, 74, 0.2)', outlineColor: 'rgba(74, 170, 74, 0.9)' },
+      'no': { classSuffix: 'no', color: 'rgba(220, 53, 69, 0.7)', lightColor: 'rgba(220, 53, 69, 0.2)', outlineColor: 'rgba(220, 53, 69, 0.9)' },
+      'skip': { classSuffix: 'skip', color: 'rgba(0, 123, 255, 0.7)', lightColor: 'rgba(0, 123, 255, 0.2)', outlineColor: 'rgba(0, 123, 255, 0.9)' },
+      'yes-preferred': { classSuffix: 'yes-preferred', color: 'rgba(30, 120, 30, 0.8)', lightColor: 'rgba(30, 120, 30, 0.3)', outlineColor: 'rgba(30, 120, 30, 0.9)' }
     };
 
     /**
-     * Removes visual highlight from an image element.
+     * Removes all possible drag highlight classes from an image element.
      * @param {string|number} imageId - The ID of the image to unhighlight.
      */
     const removeDragHighlight = (imageId) => {
       const element = document.querySelector(`[data-image-id="${imageId}"]`);
       if (element) {
-        element.classList.remove('is-drag-highlighted');
+        Object.values(answerModeStyles).forEach(style => {
+          element.classList.remove(`is-drag-highlighted-${style.classSuffix}`);
+        });
       }
     };
+
+    /**
+     * Applies a visual highlight to an image element based on the current answerMode.
+     * @param {string|number} imageId - The ID of the image to highlight.
+     */
+    const applyDragHighlight = (imageId) => {
+      removeDragHighlight(imageId); // Clear existing highlights first
+      const element = document.querySelector(`[data-image-id="${imageId}"]`);
+      if (element) {
+        const currentStyleKey = answerMode.value || 'skip'; // Default to 'skip' style if answerMode.value is undefined
+        const currentStyle = answerModeStyles[currentStyleKey];
+        if (currentStyle) {
+          element.classList.add(`is-drag-highlighted-${currentStyle.classSuffix}`);
+        }
+      }
+    };
+
+    const dragRectangleStyle = computed(() => {
+      const baseStyle = {
+        left: dragSelectionRect.value.x + 'px',
+        top: dragSelectionRect.value.y + 'px',
+        width: dragSelectionRect.value.width + 'px',
+        height: dragSelectionRect.value.height + 'px',
+      };
+      // Default to 'skip' style (blue) if answerMode.value is not a key in answerModeStyles
+      const currentStyleKey = answerMode.value && answerModeStyles[answerMode.value] ? answerMode.value : 'skip';
+      const modeStyle = answerModeStyles[currentStyleKey];
+
+      return {
+        ...baseStyle,
+        backgroundColor: modeStyle.lightColor,
+        borderColor: modeStyle.color,
+      };
+    });
 
     /**
      * Handles the mousedown event on an image, initiating drag selection if Shift key is pressed.
@@ -1451,18 +1477,73 @@ export default {
     const handleMouseUp = (event) => {
       if (!isDragging.value) return; // Only run if dragging was active
 
-      // Process all images that were part of the multi-selection
-      multiSelectedImageIds.value.forEach(imageId => {
-        if (!answered.value.has(imageId)) {
-            toggleSelect(imageId); // Apply the standard selection logic
+      const itemsToProcess = Array.from(multiSelectedImageIds.value);
+      let itemsAddedToQueueCount = 0;
+
+      itemsToProcess.forEach(imageId => {
+        const image = images.value.find(img => img.id === imageId);
+        if (image && !answered.value.has(imageId)) {
+          // 1. Mark as selected (core of original toggleSelect's selection part)
+          selected.value.add(imageId);
+          selectedMode[imageId] = answerMode.value; // answerMode is the component's current answer mode
+
+          // 2. Add to imageClickQueue for batch processing
+          // Avoid duplicates if somehow already in queue (defensive)
+          if (!imageClickQueue.value.some(item => item.id === imageId)) {
+            imageClickQueue.value.push({ id: imageId, mode: answerMode.value });
+            itemsAddedToQueueCount++;
+          }
+
+          // 3. Initiate visual countdown if autoSave is ON
+          if (autoSave.value) {
+            // Clear any pre-existing functional timer or countdown for this image.
+            if (timers.has(imageId)) {
+              clearTimeout(timers.get(imageId));
+              timers.delete(imageId);
+            }
+            if (countdownIntervals.has(imageId)) {
+              clearInterval(countdownIntervals.get(imageId));
+              countdownIntervals.delete(imageId);
+            }
+
+            // Start the visual countdown.
+            countdownTimers.set(imageId, autoSaveDelay.value);
+            const intervalId = setInterval(() => {
+              if (countdownTimers.has(imageId)) {
+                const currentTime = countdownTimers.get(imageId);
+                // Only decrement if still selected and not yet answered
+                if (currentTime > 1 && selected.value.has(imageId) && !answered.value.has(imageId)) {
+                  countdownTimers.set(imageId, currentTime - 1);
+                } else {
+                  clearInterval(intervalId);
+                  countdownIntervals.delete(imageId);
+                  // If countdown finished and item is still selected & not answered, show "Saving..."
+                  if (currentTime <= 1 && selected.value.has(imageId) && !answered.value.has(imageId)) {
+                    imageSavingStates.set(imageId, true);
+                  }
+                }
+              } else {
+                clearInterval(intervalId);
+                countdownIntervals.delete(imageId);
+              }
+            }, 1000);
+            countdownIntervals.set(imageId, intervalId);
+          }
         }
-        removeDragHighlight(imageId); // Remove highlight after processing
+        // Unconditionally remove drag highlight after processing the item.
+        removeDragHighlight(imageId);
       });
+
+      // After the loop, if items were added to the queue, trigger batch processing.
+      if (itemsAddedToQueueCount > 0) {
+        if (batchTimer.value) clearTimeout(batchTimer.value);
+        batchTimer.value = setTimeout(processClickQueue, 1000);
+      }
 
       // Reset dragging state
       isDragging.value = false;
-      multiSelectedImageIds.value.clear(); // Clear the set of selected image IDs
-      dragSelectionRect.value = { x: 0, y: 0, width: 0, height: 0 }; // Reset selection rectangle
+      multiSelectedImageIds.value.clear();
+      dragSelectionRect.value = { x: 0, y: 0, width: 0, height: 0 };
     };
 
     /**
@@ -1581,13 +1662,62 @@ export default {
       if (isDragging.value && isLongPressActive.value) {
         event.preventDefault(); // Crucial: Prevent click event from firing after a drag selection
 
-        // Process all images in the multi-selection set
-        multiSelectedImageIds.value.forEach(imageId => {
-          if (!answered.value.has(imageId)) {
-            toggleSelect(imageId); // Apply standard selection logic
+        const itemsToProcess = Array.from(multiSelectedImageIds.value);
+        let itemsAddedToQueueCount = 0;
+
+        itemsToProcess.forEach(imageId => {
+          const image = images.value.find(img => img.id === imageId);
+          if (image && !answered.value.has(imageId)) {
+            // 1. Mark as selected
+            selected.value.add(imageId);
+            selectedMode[imageId] = answerMode.value;
+
+            // 2. Add to imageClickQueue
+            if (!imageClickQueue.value.some(item => item.id === imageId)) {
+              imageClickQueue.value.push({ id: imageId, mode: answerMode.value });
+              itemsAddedToQueueCount++;
+            }
+
+            // 3. Visual countdown for autoSave
+            if (autoSave.value) {
+              if (timers.has(imageId)) {
+                clearTimeout(timers.get(imageId));
+                timers.delete(imageId);
+              }
+              if (countdownIntervals.has(imageId)) {
+                clearInterval(countdownIntervals.get(imageId));
+                countdownIntervals.delete(imageId);
+              }
+              countdownTimers.set(imageId, autoSaveDelay.value);
+              const intervalId = setInterval(() => {
+                if (countdownTimers.has(imageId)) {
+                  const currentTime = countdownTimers.get(imageId);
+                  if (currentTime > 1 && selected.value.has(imageId) && !answered.value.has(imageId)) {
+                    countdownTimers.set(imageId, currentTime - 1);
+                  } else {
+                    clearInterval(intervalId);
+                    countdownIntervals.delete(imageId);
+                    if (currentTime <= 1 && selected.value.has(imageId) && !answered.value.has(imageId)) {
+                      imageSavingStates.set(imageId, true);
+                    }
+                  }
+                } else {
+                  clearInterval(intervalId);
+                  countdownIntervals.delete(imageId);
+                }
+              }, 1000);
+              countdownIntervals.set(imageId, intervalId);
+            }
           }
-          removeDragHighlight(imageId); // Remove highlight
+          // Unconditionally remove drag highlight after processing the item.
+          removeDragHighlight(imageId);
         });
+
+        // After the loop, if items were added to the queue, trigger batch processing.
+        if (itemsAddedToQueueCount > 0) {
+            if (batchTimer.value) clearTimeout(batchTimer.value);
+            batchTimer.value = setTimeout(processClickQueue, 1000);
+        }
       }
 
       // Reset all relevant states, regardless of whether it was a drag or just a cancelled/short tap
@@ -1597,7 +1727,6 @@ export default {
 
       // Ensure any remaining highlights are cleared (e.g., if touchend occurred unexpectedly)
       images.value.forEach(img => {
-        // Check if the element exists and has the class before trying to remove it.
         const elem = document.querySelector(`[data-image-id="${img.id}"]`);
         if (elem?.classList.contains('is-drag-highlighted')) {
             removeDragHighlight(img.id);
@@ -1850,23 +1979,44 @@ export default {
       maxTouchMoveThreshold,
       handleTouchStart,
       // handleTouchMove and handleTouchEnd are global listeners
+      dragRectangleStyle, // For dynamic rectangle styling
     };
   },
 };
 </script>
 
 <style scoped>
-.is-drag-highlighted {
-  outline: 3px dashed #52a4ff; /* A distinct, yet not overly aggressive blue */
-  outline-offset: -1px; /* Draw inside to avoid increasing element size */
-  box-shadow: 0 0 0 2px rgba(82, 164, 255, 0.3), inset 0 0 0 2px rgba(82, 164, 255, 0.3); /* Softer glow */
+/* Mode-specific highlights for individual images */
+.is-drag-highlighted-yes {
+  outline: 3px dashed rgba(74, 170, 74, 0.9); /* Green */
+  outline-offset: -2px;
+  box-shadow: 0 0 0 3px rgba(74, 170, 74, 0.4), inset 0 0 0 3px rgba(74, 170, 74, 0.4);
+}
+
+.is-drag-highlighted-no {
+  outline: 3px dashed rgba(220, 53, 69, 0.9); /* Red */
+  outline-offset: -2px;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.4), inset 0 0 0 3px rgba(220, 53, 69, 0.4);
+}
+
+.is-drag-highlighted-skip {
+  outline: 3px dashed rgba(0, 123, 255, 0.9); /* Blue */
+  outline-offset: -2px;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.4), inset 0 0 0 3px rgba(0, 123, 255, 0.4);
+}
+
+.is-drag-highlighted-yes-preferred {
+  outline: 3px dashed rgba(30, 120, 30, 0.9); /* Darker Green */
+  outline-offset: -2px;
+  box-shadow: 0 0 0 3px rgba(30, 120, 30, 0.4), inset 0 0 0 3px rgba(30, 120, 30, 0.4);
 }
 
 .drag-selection-rectangle {
   position: fixed;
-  background-color: rgba(0, 100, 255, 0.2);
-  border: 1px solid rgba(0, 100, 255, 0.5);
-  pointer-events: none; /* Important: allows clicks/touches to pass through to elements underneath */
-  z-index: 100; /* High enough to be visible over images, but adjust if other elements (like modals) need to be higher */
+  pointer-events: none;
+  z-index: 100;
+  border-width: 1px;
+  border-style: solid;
+  /* Dynamic styles (backgroundColor, borderColor, left, top, width, height) are applied via :style binding */
 }
 </style>
