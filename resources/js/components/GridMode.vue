@@ -33,7 +33,11 @@
       </h2>
       <div class="flex justify-center mt-2 mb-2">
         <button
-          :class="['px-2 py-1 text-sm rounded-l font-bold', answerMode === 'yes' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
+          :class="['px-2 py-1 text-sm rounded-l font-bold', answerMode === 'yes-preferred' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
+          @click="answerMode = 'yes-preferred'"
+        >Prominent (Q)</button>
+        <button
+          :class="['px-2 py-1 text-sm font-bold', answerMode === 'yes' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
           @click="answerMode = 'yes'"
         >YES (1)</button>
         <button
@@ -97,13 +101,15 @@
             ? (
                 answeredMode[image.id] === 'no' ? 'border-4 border-red-500 cursor-default opacity-80' :
                 answeredMode[image.id] === 'skip' ? 'border-4 border-blue-500 cursor-default opacity-80' :
-                'border-4 border-green-500 cursor-default opacity-80'
+                (answeredMode[image.id] === 'yes' || answeredMode[image.id] === 'yes-preferred') ? 'border-4 border-green-500 cursor-default opacity-80' :
+                'border-4 border-transparent cursor-default opacity-80' // Should not happen if answeredMode is always set
               )
             : selected.has(image.id)
               ? (
                   selectedMode[image.id] === 'no' ? 'border-4 border-red-500 cursor-pointer' :
                   selectedMode[image.id] === 'skip' ? 'border-4 border-blue-500 cursor-pointer' :
-                  'border-4 border-green-500 cursor-pointer'
+                  (selectedMode[image.id] === 'yes' || selectedMode[image.id] === 'yes-preferred') ? 'border-4 border-green-500 cursor-pointer' :
+                  'border-4 border-transparent cursor-pointer' // Fallback if mode not set, though it should be
                 )
               : 'border-4 border-transparent cursor-pointer'
         ]"
@@ -165,7 +171,7 @@
           <a :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + image.properties?.mediainfo_id" target="_blank">{{ image.properties?.mediainfo_id || image.id }}</a>
         </div>
         <div v-if="answered.has(image.id)" class="absolute inset-0 flex items-center justify-center bg-opacity-60 pointer-events-none"
-          :class="answeredMode[image.id] === 'no' ? 'bg-red-500' : answeredMode[image.id] === 'skip' ? 'bg-blue-500' : 'bg-green-500'">
+          :class="(answeredMode[image.id] === 'yes' || answeredMode[image.id] === 'yes-preferred') ? 'bg-green-500' : answeredMode[image.id] === 'no' ? 'bg-red-500' : answeredMode[image.id] === 'skip' ? 'bg-blue-500' : ''">
           <template v-if="answeredMode[image.id] === 'no'">
             <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -176,7 +182,7 @@
               <text x="12" y="20" text-anchor="middle" font-size="18" font-family="Arial" dy="-2">?</text>
             </svg>
           </template>
-          <template v-else>
+          <template v-else-if="answeredMode[image.id] === 'yes' || answeredMode[image.id] === 'yes-preferred'">
             <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
             </svg>
@@ -1117,10 +1123,11 @@ export default {
       }
 
       const answerCounts = {
-        yes: 0,
-        no: 0,
-        skip: 0,
-        unknown: 0 // For any modes not explicitly 'yes', 'no', or 'skip'
+        'yes': 0,
+        'no': 0,
+        'skip': 0,
+        'yes-preferred': 0,
+        unknown: 0
       };
 
       imagesToClear.forEach(img => {
@@ -1131,13 +1138,15 @@ export default {
           answerCounts.no++;
         } else if (mode === 'skip') {
           answerCounts.skip++;
+        } else if (mode === 'yes-preferred') {
+          answerCounts['yes-preferred']++;
         } else {
           answerCounts.unknown++;
         }
       });
 
       let message = `Cleared ${clearedCount} image${clearedCount > 1 ? 's' : ''}: `;
-      message += `${answerCounts.yes} yes, ${answerCounts.no} no, ${answerCounts.skip} skip.`;
+      message += `${answerCounts.yes} yes, ${answerCounts['yes-preferred']} prominent, ${answerCounts.no} no, ${answerCounts.skip} skip.`;
       if (answerCounts.unknown > 0) {
         message += ` (${answerCounts.unknown} unknown mode)`;
       }
@@ -1287,6 +1296,7 @@ export default {
         }
         // Answer mode shortcuts (only when not in fullscreen)
         if (!showFullscreen.value) {
+          if (e.key.toLowerCase() === 'q') answerMode.value = 'yes-preferred';
           if (e.key === '1') answerMode.value = 'yes';
           if (e.key === '2') answerMode.value = 'no';
           if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';

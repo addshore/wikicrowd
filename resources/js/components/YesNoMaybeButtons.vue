@@ -1,11 +1,6 @@
 <template>
   <div class="py-2 flex justify-center pt-8 sm:justify-start sm:pt-0">
     <button
-      :class="['bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2', answer === 'yes-preferred' ? 'ring-4 ring-green-300' : '', loading ? 'opacity-50 pointer-events-none grayscale' : '']"
-      @click="submit('yes-preferred')"
-      :disabled="loading"
-    >Prominent (Q)</button>
-    <button
       :class="['bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2', answer === 'yes' ? 'ring-4 ring-green-300' : '', loading ? 'opacity-50 pointer-events-none grayscale' : '']"
       @click="submit('yes')"
       :disabled="loading"
@@ -47,7 +42,6 @@ export default {
   methods: {
     handleKey(e) {
       if (this.loading) return;
-      if (e.key.toLowerCase() === 'q') this.submit('yes-preferred');
       if (e.key === '1') this.submit('yes');
       if (e.key === '2') this.submit('no');
       if (e.key.toLowerCase() === 'e') this.submit('skip');
