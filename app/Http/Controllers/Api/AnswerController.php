@@ -23,7 +23,7 @@ class AnswerController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'question_id' => 'required|exists:App\Models\Question,id',
-            'answer' => 'required|in:yes,no,skip',
+            'answer' => 'required|in:yes,no,skip,yes-preferred',
         ]);
 
         if ($validator->fails()) {
@@ -48,15 +48,16 @@ class AnswerController extends Controller
             'answer' => $answerValue,
         ]);
 
-        // Dispatch the edit job if the answer is 'yes'
-        if ($answerValue === 'yes') {
+        // Dispatch the edit job if the answer is 'yes' or 'yes-preferred'
+        if ($answerValue === 'yes' || $answerValue === 'yes-preferred') {
             // Ensure group and parentGroup are loaded. The 'with' above should handle this.
             if ($question->group && $question->group->parentGroup) {
                 $parentGroupName = $question->group->parentGroup->name;
+                $rank = ($answerValue === 'yes-preferred') ? 'preferred' : null;
                 if ($parentGroupName === 'depicts') {
-                    dispatch(new AddDepicts($storedAnswer->id));
+                    dispatch(new AddDepicts($storedAnswer->id, $rank));
                 } elseif ($parentGroupName === 'depicts-refine') {
-                    dispatch(new SwapDepicts($storedAnswer->id));
+                    dispatch(new SwapDepicts($storedAnswer->id, $rank));
                 }
             } else {
                 // Log if group or parentGroup is missing, as jobs might not be dispatched correctly
@@ -81,7 +82,7 @@ class AnswerController extends Controller
         $validator = Validator::make($request->all(), [
             'answers' => 'required|array|min:1',
             'answers.*.question_id' => 'required|exists:App\\Models\\Question,id',
-            'answers.*.answer' => 'required|in:yes,no,skip',
+            'answers.*.answer' => 'required|in:yes,no,skip,yes-preferred',
         ]);
 
         if ($validator->fails()) {
@@ -99,13 +100,14 @@ class AnswerController extends Controller
                 'answer' => $answerData['answer'],
             ]);
             $createdAnswers[] = $storedAnswer;
-            if ($answerData['answer'] === 'yes') {
+            if ($answerData['answer'] === 'yes' || $answerData['answer'] === 'yes-preferred') {
                 if ($question->group && $question->group->parentGroup) {
                     $parentGroupName = $question->group->parentGroup->name;
+                    $rank = ($answerData['answer'] === 'yes-preferred') ? 'preferred' : null;
                     if ($parentGroupName === 'depicts') {
-                        dispatch(new AddDepicts($storedAnswer->id));
+                        dispatch(new AddDepicts($storedAnswer->id, $rank));
                     } elseif ($parentGroupName === 'depicts-refine') {
-                        dispatch(new SwapDepicts($storedAnswer->id));
+                        dispatch(new SwapDepicts($storedAnswer->id, $rank));
                     }
                 } else {
                     \Log::warning("Question {$question->id} is missing group or parentGroup information. Answer ID: {$storedAnswer->id}");

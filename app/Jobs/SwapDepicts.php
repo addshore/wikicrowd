@@ -20,6 +20,8 @@ use Wikibase\DataModel\Snak\PropertyValueSnak;
 use Wikibase\DataModel\Entity\EntityIdValue;
 use Illuminate\Support\Facades\Cache;
 use Addwiki\Mediawiki\DataModel\EditInfo;
+use Wikibase\DataModel\Statement\Statement;
+use Wikibase\DataModel\Statement\StatementId;
 
 class SwapDepicts implements ShouldQueue
 {
@@ -27,6 +29,7 @@ class SwapDepicts implements ShouldQueue
 
     private $answerId;
     private $instancesOfAndSubclassesOf;
+    private ?string $rank;
 
     /**
      * Create a new job instance.
@@ -34,10 +37,12 @@ class SwapDepicts implements ShouldQueue
      * @return void
      */
     public function __construct(
-        int $answerId
+        int $answerId,
+        ?string $rank = null
     )
     {
         $this->answerId = $answerId;
+        $this->rank = $rank;
     }
 
     /**
@@ -150,17 +155,27 @@ class SwapDepicts implements ShouldQueue
         // TODO fix the DUMB way of getting the new revision IDs here..
         // TODO this probably requires fixes in addwiki (if we are to continue using it)
         $mwServices = new MediawikiFactory( $mwApi );
-        $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
-        $revId1 = $page->getRevisions()->getLatest()->getId();
+        $revId1 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
 
-        $wbServices->newStatementCreator()->create(
-            new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) ),
-            $mid,
-            $editInfo
-        );
-
-        $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
-        $revId2 = $page->getRevisions()->getLatest()->getId();
+        $snak = new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) );
+        $newlyCreatedClaimGuid = $wbServices->newStatementCreator()->create( $snak, $mid, $editInfo);
+        $revId2 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
+    
+        if ($this->rank === 'preferred' && $newlyCreatedClaimGuid !== null) {
+            // Prepend preferred rank note to summary
+            $preferredPrefix = 'Marking prominent (preferred rank). ';
+            if ($editInfo !== null) {
+                $summary = $editInfo->getSummary();
+                $editInfo = new EditInfo($preferredPrefix . $summary, true);
+            } else {
+                $editInfo = new EditInfo($preferredPrefix, true);
+            }
+            $statement = new Statement($snak, null, null, $newlyCreatedClaimGuid);
+            $statement->setRank(Statement::RANK_PREFERRED);
+            $statementSetter = $wbServices->newStatementSetter();
+            $statementSetter->set($statement, $editInfo);
+            $revId3 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
+        }
 
         Edit::create([
             'question_id' => $question->id,
@@ -172,6 +187,13 @@ class SwapDepicts implements ShouldQueue
             'user_id' => $user->id,
             'revision_id' => (int)$revId2,
         ]);
+        if (isset($revId3)) {
+            Edit::create([
+                'question_id' => $question->id,
+                'user_id' => $user->id,
+                'revision_id' => (int)$revId3,
+            ]);
+        }
     }
 
     private function instancesOfAndSubclassesOf( string $itemId ) : array {

@@ -20,6 +20,8 @@ use Wikibase\DataModel\Snak\PropertyValueSnak;
 use Wikibase\DataModel\Entity\EntityIdValue;
 use Illuminate\Support\Facades\Cache;
 use Addwiki\Mediawiki\DataModel\EditInfo;
+use Wikibase\DataModel\Statement\Statement;
+use Wikibase\DataModel\Statement\StatementId;
 
 class AddDepicts implements ShouldQueue
 {
@@ -27,6 +29,7 @@ class AddDepicts implements ShouldQueue
 
     private $answerId;
     private $instancesOfAndSubclassesOf;
+    private ?string $rank;
 
     /**
      * Create a new job instance.
@@ -34,10 +37,12 @@ class AddDepicts implements ShouldQueue
      * @return void
      */
     public function __construct(
-        int $answerId
+        int $answerId,
+        ?string $rank = null
     )
     {
         $this->answerId = $answerId;
+        $this->rank = $rank;
     }
 
     /**
@@ -123,23 +128,43 @@ class AddDepicts implements ShouldQueue
                 $qid = $question->properties['depicts_id'];
                 $editInfo = new EditInfo("From custom inputs [[:$cat]] and [[wikidata:$qid]]");
             }
-            $wbServices->newStatementCreator()->create(
-                new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) ),
-                $mid,
-                $editInfo
-            );
+            $snak = new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) );
+            $createdClaimGuid = $wbServices->newStatementCreator()->create( $snak, $mid, $editInfo );
 
             $mwServices = new MediawikiFactory( $mwApi );
 
             $pageIdentifier = new PageIdentifier( null, str_replace( 'M', '', $mid->getSerialization() ) );
-            $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
-            $revId = $page->getRevisions()->getLatest()->getId();
+            $revId = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
+
+            if ($this->rank === 'preferred' && $createdClaimGuid !== null) {
+                // Prepend preferred rank note to summary
+                $preferredPrefix = 'Marking prominent (preferred rank). ';
+                if ($editInfo !== null) {
+                    $summary = $editInfo->getSummary();
+                    $editInfo = new EditInfo($preferredPrefix . $summary, true);
+                } else {
+                    $editInfo = new EditInfo($preferredPrefix, true);
+                }
+                $statement = new Statement($snak, null, null, $createdClaimGuid);
+                $statement->setRank(Statement::RANK_PREFERRED);
+                $statementSetter = $wbServices->newStatementSetter();
+                $statementSetter->set($statement, $editInfo);
+                $revId2 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
+            }
 
             Edit::create([
                 'question_id' => $question->id,
                 'user_id' => $user->id,
                 'revision_id' => (int)$revId,
             ]);
+
+            if (isset($revId2)) {
+                Edit::create([
+                    'question_id' => $question->id,
+                    'user_id' => $user->id,
+                    'revision_id' => (int)$revId2,
+                ]);
+            }
         }
     }
 
