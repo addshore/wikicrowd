@@ -111,7 +111,10 @@
     
     <div v-else :class="gridClasses">
       <div v-for="image in images" :key="image.id"
-        @click="!imageSavingStates.get(image.id) && !answered.has(image.id) && toggleSelect(image.id)"
+        :data-image-id="image.id"
+        @click="handleClick(image.id, $event)"
+        @mousedown.prevent="handleImageMouseDown(image, $event)"
+        @touchstart.prevent="handleTouchStart(image, $event)"
         :class="[
           'relative flex flex-col rounded overflow-hidden transition-all',
           answered.has(image.id)
@@ -242,6 +245,12 @@
     <div v-if="loading || (manualMode && !allLoaded)" class="text-center py-4">
       <span class="text-gray-600">Loading more images, please wait...</span>
     </div>
+    <!-- Drag Selection Rectangle -->
+    <div
+      v-if="isDragging && dragSelectionRect.width > 0 && dragSelectionRect.height > 0"
+      class="drag-selection-rectangle"
+      :style="dragRectangleStyle"
+    ></div>
   </div>
 </template>
 
@@ -285,6 +294,18 @@ export default {
     const imageClickQueue = ref([]); // {id, mode}
     const batchTimer = ref(null);
     const addedImageIds = new Set(); // Set to track added image IDs for manual mode
+
+    // Drag selection state
+    const isDragging = ref(false); // Used by both mouse and touch drag
+    const dragStartCoordinates = ref({ x: 0, y: 0 }); // Used by both
+    const multiSelectedImageIds = ref(new Set()); // Used by both
+    const dragSelectionRect = ref({ x: 0, y: 0, width: 0, height: 0 }); // Used by both
+
+    // Mobile long-press drag state
+    const longPressTimer = ref(null);
+    const touchStartCoordinates = ref({ x: 0, y: 0 });
+    const isLongPressActive = ref(false);
+    const maxTouchMoveThreshold = ref(10); // Pixels
 
     // Image size control
     const imageSize = ref(5); // 1=largest, 12=smallest (matches grid-cols-1 to grid-cols-12)
@@ -1047,7 +1068,17 @@ export default {
       }
     };
 
+    const handleClick = (id, event) => {
+      if (event.shiftKey || isDragging.value) { // If shift was held, it might be end of drag, or if isDragging is still true.
+        // event.stopPropagation(); // Optional: if needed to prevent further click processing, though mousedown.prevent should handle most.
+        return;
+      }
+      // Proceed with normal toggleSelect if not a shift-click related action
+      toggleSelect(id);
+    };
+
     const toggleSelect = (id) => {
+      if (isDragging.value) return; // Prevent selection during drag operation
       if (answered.value.has(id)) return;
       const image = images.value.find(img => img.id === id); // Get image ref once
 
@@ -1390,7 +1421,446 @@ export default {
 
     // On mount, always add keyboard shortcuts
     let keydownHandler;
+
+    const imageGridContainer = ref(null);
+
+    // --- Dynamic Styling for Drag Selection ---
+    const answerModeStyles = {
+      'yes': { classSuffix: 'yes', color: 'rgba(74, 170, 74, 0.7)', lightColor: 'rgba(74, 170, 74, 0.2)', outlineColor: 'rgba(74, 170, 74, 0.9)' },
+      'no': { classSuffix: 'no', color: 'rgba(220, 53, 69, 0.7)', lightColor: 'rgba(220, 53, 69, 0.2)', outlineColor: 'rgba(220, 53, 69, 0.9)' },
+      'skip': { classSuffix: 'skip', color: 'rgba(0, 123, 255, 0.7)', lightColor: 'rgba(0, 123, 255, 0.2)', outlineColor: 'rgba(0, 123, 255, 0.9)' },
+      'yes-preferred': { classSuffix: 'yes-preferred', color: 'rgba(30, 120, 30, 0.8)', lightColor: 'rgba(30, 120, 30, 0.3)', outlineColor: 'rgba(30, 120, 30, 0.9)' }
+    };
+
+    /**
+     * Removes all possible drag highlight classes from an image element.
+     * @param {string|number} imageId - The ID of the image to unhighlight.
+     */
+    const removeDragHighlight = (imageId) => {
+      const element = document.querySelector(`[data-image-id="${imageId}"]`);
+      if (element) {
+        Object.values(answerModeStyles).forEach(style => {
+          element.classList.remove(`is-drag-highlighted-${style.classSuffix}`);
+        });
+      }
+    };
+
+    /**
+     * Applies a visual highlight to an image element based on the current answerMode.
+     * @param {string|number} imageId - The ID of the image to highlight.
+     */
+    const applyDragHighlight = (imageId) => {
+      removeDragHighlight(imageId); // Clear existing highlights first
+      const element = document.querySelector(`[data-image-id="${imageId}"]`);
+      if (element) {
+        const currentStyleKey = answerMode.value || 'skip'; // Default to 'skip' style if answerMode.value is undefined
+        const currentStyle = answerModeStyles[currentStyleKey];
+        if (currentStyle) {
+          element.classList.add(`is-drag-highlighted-${currentStyle.classSuffix}`);
+        }
+      }
+    };
+
+    const dragRectangleStyle = computed(() => {
+      const baseStyle = {
+        left: dragSelectionRect.value.x + 'px',
+        top: dragSelectionRect.value.y + 'px',
+        width: dragSelectionRect.value.width + 'px',
+        height: dragSelectionRect.value.height + 'px',
+      };
+      // Default to 'skip' style (blue) if answerMode.value is not a key in answerModeStyles
+      const currentStyleKey = answerMode.value && answerModeStyles[answerMode.value] ? answerMode.value : 'skip';
+      const modeStyle = answerModeStyles[currentStyleKey];
+
+      return {
+        ...baseStyle,
+        backgroundColor: modeStyle.lightColor,
+        borderColor: modeStyle.color,
+      };
+    });
+
+    /**
+     * Handles the mousedown event on an image, initiating drag selection if Shift key is pressed.
+     * @param {object} image - The image object.
+     * @param {MouseEvent} event - The mousedown event.
+     */
+    const handleImageMouseDown = (image, event) => {
+      // Only proceed if Shift key is pressed
+      if (!event.shiftKey) return;
+
+      isDragging.value = true;
+      dragStartCoordinates.value = { x: event.clientX, y: event.clientY };
+
+      // Clear any existing multi-selection and highlights from previous drags
+      multiSelectedImageIds.value.clear();
+      images.value.forEach(img => removeDragHighlight(img.id));
+
+      // If the clicked image is not already answered, add it to the selection and highlight it
+      if (!answered.value.has(image.id)) {
+        multiSelectedImageIds.value.add(image.id);
+        applyDragHighlight(image.id);
+      }
+
+      // Initialize the drag selection rectangle at the mouse position
+      dragSelectionRect.value = {
+        x: event.clientX,
+        y: event.clientY,
+        width: 0,
+        height: 0,
+      };
+    };
+
+    /**
+     * Handles the mousemove event, updating the drag selection rectangle and highlighting images.
+     * This is a global listener attached to the window.
+     * @param {MouseEvent} event - The mousemove event.
+     */
+    const handleMouseMove = (event) => {
+      if (!isDragging.value) return; // Only run if dragging is active
+
+      const currentX = event.clientX;
+      const currentY = event.clientY;
+
+      // Update the visual selection rectangle's dimensions and position
+      dragSelectionRect.value = {
+        x: Math.min(dragStartCoordinates.value.x, currentX),
+        y: Math.min(dragStartCoordinates.value.y, currentY),
+        width: Math.abs(currentX - dragStartCoordinates.value.x),
+        height: Math.abs(currentY - dragStartCoordinates.value.y),
+      };
+
+      // Check each image for intersection with the selection rectangle
+      images.value.forEach(img => {
+        const element = document.querySelector(`[data-image-id="${img.id}"]`);
+        if (!element) return;
+
+        const rect = element.getBoundingClientRect(); // DOMRect of the image
+        const selectionRect = dragSelectionRect.value; // Current drag selection area
+
+        // Determine if the image intersects with the drag selection rectangle
+        const intersects = rect.left < selectionRect.x + selectionRect.width &&
+                           rect.left + rect.width > selectionRect.x &&
+                           rect.top < selectionRect.y + selectionRect.height &&
+                           rect.top + rect.height > selectionRect.y;
+
+        if (intersects && !answered.value.has(img.id)) {
+          // If intersects and not answered, add to selection and highlight (if not already)
+          if (!multiSelectedImageIds.value.has(img.id)) {
+            multiSelectedImageIds.value.add(img.id);
+            applyDragHighlight(img.id);
+          }
+        } else {
+          // If it does not intersect (or is answered), remove from selection and unhighlight
+          if (multiSelectedImageIds.value.has(img.id)) {
+            multiSelectedImageIds.value.delete(img.id);
+            removeDragHighlight(img.id);
+          }
+        }
+      });
+    };
+
+    /**
+     * Handles the mouseup event, finalizing the drag selection.
+     * This is a global listener attached to the window.
+     * @param {MouseEvent} event - The mouseup event.
+     */
+    const handleMouseUp = (event) => {
+      if (!isDragging.value) return; // Only run if dragging was active
+
+      const itemsToProcess = Array.from(multiSelectedImageIds.value);
+      let itemsAddedToQueueCount = 0;
+
+      itemsToProcess.forEach(imageId => {
+        const image = images.value.find(img => img.id === imageId);
+        if (image && !answered.value.has(imageId)) {
+          // 1. Mark as selected (core of original toggleSelect's selection part)
+          selected.value.add(imageId);
+          selectedMode[imageId] = answerMode.value; // answerMode is the component's current answer mode
+
+          // 2. Set up auto-save timer if autoSave is ON
+          if (autoSave.value) {
+            // Clear any pre-existing functional timer or countdown for this image.
+            if (timers.has(imageId)) {
+              clearTimeout(timers.get(imageId));
+              timers.delete(imageId);
+            }
+            if (countdownIntervals.has(imageId)) {
+              clearInterval(countdownIntervals.get(imageId));
+              countdownIntervals.delete(imageId);
+            }
+
+            // Set up the main auto-save timer
+            const autoSaveTimerForImage = setTimeout(() => {
+              // Timer expired, add to imageClickQueue using the latest selectedMode
+              const currentMode = selectedMode[imageId] || answerMode.value; // Fallback just in case
+
+              imageSavingStates.set(imageId, true);
+              // Remove any existing entry for this id from queue to use the latest one from autoSaveDelay
+              imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== imageId);
+              imageClickQueue.value.push({ id: imageId, mode: currentMode });
+
+              // Clear its own functional timer. Visual countdown clearing is handled elsewhere or not needed once "Saving..." shows.
+              timers.delete(imageId);
+
+              // Start/reset the main 1-second batchTimer
+              if (batchTimer.value) clearTimeout(batchTimer.value);
+              batchTimer.value = setTimeout(processClickQueue, 1000);
+            }, autoSaveDelay.value * 1000);
+            timers.set(imageId, autoSaveTimerForImage);
+
+            // Start the visual countdown.
+            countdownTimers.set(imageId, autoSaveDelay.value);
+            const intervalId = setInterval(() => {
+              if (countdownTimers.has(imageId)) {
+                const currentTime = countdownTimers.get(imageId);
+                // Only decrement if still selected and not yet answered
+                if (currentTime > 1 && selected.value.has(imageId) && !answered.value.has(imageId)) {
+                  countdownTimers.set(imageId, currentTime - 1);
+                } else {
+                  clearInterval(intervalId);
+                  countdownIntervals.delete(imageId);
+                  // countdownTimers.delete(id) will be handled by the main timer's expiry
+                }
+              } else {
+                // Image unselected or saved manually during countdown
+                clearInterval(intervalId);
+                if (countdownIntervals.has(imageId)) {
+                  countdownIntervals.delete(imageId);
+                }
+              }
+            }, 1000);
+            countdownIntervals.set(imageId, intervalId);
+          } else {
+            // 3. If autoSave is OFF, add to imageClickQueue for manual saving
+            if (!imageClickQueue.value.some(item => item.id === imageId)) {
+              imageClickQueue.value.push({ id: imageId, mode: answerMode.value });
+              itemsAddedToQueueCount++;
+            }
+          }
+        }
+        // Unconditionally remove drag highlight after processing the item.
+        removeDragHighlight(imageId);
+      });
+
+
+      // Reset dragging state
+      isDragging.value = false;
+      multiSelectedImageIds.value.clear();
+      dragSelectionRect.value = { x: 0, y: 0, width: 0, height: 0 };
+    };
+
+    /**
+     * Handles the touchstart event on an image, initiating long-press drag selection.
+     * @param {object} image - The image object.
+     * @param {TouchEvent} event - The touchstart event.
+     */
+    const handleTouchStart = (image, event) => {
+      // Ignore multi-touch gestures that could interfere
+      if (event.touches.length > 1) {
+        clearTimeout(longPressTimer.value);
+        return;
+      }
+      clearTimeout(longPressTimer.value); // Clear any existing long-press timer
+
+      // Store initial touch coordinates
+      touchStartCoordinates.value = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+      isLongPressActive.value = false; // Reset long-press active state
+
+      // Start a timer to detect a long press
+      longPressTimer.value = setTimeout(() => {
+        isLongPressActive.value = true; // Long press confirmed
+        isDragging.value = true;        // Enable general dragging logic
+
+        // Use touch start coordinates for the drag origin
+        dragStartCoordinates.value = { x: touchStartCoordinates.value.x, y: touchStartCoordinates.value.y };
+
+        // Clear previous multi-selection and highlights
+        multiSelectedImageIds.value.clear();
+        images.value.forEach(img => removeDragHighlight(img.id));
+
+        // If the touched image isn't answered, add it to selection and highlight
+        if (!answered.value.has(image.id)) {
+          multiSelectedImageIds.value.add(image.id);
+          applyDragHighlight(image.id);
+        }
+        // Initialize drag selection rectangle at the touch point
+        dragSelectionRect.value = {
+          x: dragStartCoordinates.value.x,
+          y: dragStartCoordinates.value.y,
+          width: 0,
+          height: 0,
+        };
+
+        // Optional: Haptic feedback for a more tactile response
+        if (navigator.vibrate) {
+          navigator.vibrate(50); // Vibrate for 50ms
+        }
+      }, 500); // 500ms delay to qualify as a long press
+    };
+
+    /**
+     * Handles the touchmove event, updating drag selection for long-press dragging.
+     * This is a global listener attached to the window.
+     * @param {TouchEvent} event - The touchmove event.
+     */
+    const handleTouchMove = (event) => {
+      if (event.touches.length === 0) return; // Should not happen if a touch is active
+      const touch = event.touches[0];
+
+      // If long press hasn't been activated yet, check if user is scrolling
+      if (!isLongPressActive.value) {
+        const deltaX = Math.abs(touch.clientX - touchStartCoordinates.value.x);
+        const deltaY = Math.abs(touch.clientY - touchStartCoordinates.value.y);
+        // If movement exceeds threshold, cancel long press (user is likely scrolling the page)
+        if (deltaX > maxTouchMoveThreshold.value || deltaY > maxTouchMoveThreshold.value) {
+          clearTimeout(longPressTimer.value);
+        }
+        return; // Don't proceed if long press is not active
+      }
+
+      if (!isDragging.value) return; // Dragging should be active if long press was confirmed
+
+      // Update selection rectangle based on touch movement (similar to handleMouseMove)
+      dragSelectionRect.value = {
+        x: Math.min(dragStartCoordinates.value.x, touch.clientX),
+        y: Math.min(dragStartCoordinates.value.y, touch.clientY),
+        width: Math.abs(touch.clientX - dragStartCoordinates.value.x),
+        height: Math.abs(touch.clientY - dragStartCoordinates.value.y),
+      };
+
+      // Check for intersection with images
+      images.value.forEach(img => {
+        const element = document.querySelector(`[data-image-id="${img.id}"]`);
+        if (!element) return;
+        const rect = element.getBoundingClientRect();
+        const selectionRect = dragSelectionRect.value;
+        const intersects = rect.left < selectionRect.x + selectionRect.width &&
+                           rect.left + rect.width > selectionRect.x &&
+                           rect.top < selectionRect.y + selectionRect.height &&
+                           rect.top + rect.height > selectionRect.y;
+
+        if (intersects && !answered.value.has(img.id)) {
+          if (!multiSelectedImageIds.value.has(img.id)) {
+            multiSelectedImageIds.value.add(img.id);
+            applyDragHighlight(img.id);
+          }
+        } else {
+          if (multiSelectedImageIds.value.has(img.id)) {
+            multiSelectedImageIds.value.delete(img.id);
+            removeDragHighlight(img.id);
+          }
+        }
+      });
+    };
+
+    /**
+     * Handles the touchend event, finalizing or canceling long-press drag selection.
+     * This is a global listener attached to the window.
+     * @param {TouchEvent} event - The touchend event.
+     */
+    const handleTouchEnd = (event) => {
+      clearTimeout(longPressTimer.value); // Always clear the long press timer
+
+      // If a drag operation was active (due to successful long press)
+      if (isDragging.value && isLongPressActive.value) {
+        event.preventDefault(); // Crucial: Prevent click event from firing after a drag selection
+
+        const itemsToProcess = Array.from(multiSelectedImageIds.value);
+        let itemsAddedToQueueCount = 0;
+
+        itemsToProcess.forEach(imageId => {
+          const image = images.value.find(img => img.id === imageId);
+          if (image && !answered.value.has(imageId)) {
+            // 1. Mark as selected
+            selected.value.add(imageId);
+            selectedMode[imageId] = answerMode.value;
+
+            // 2. Set up auto-save timer if autoSave is ON
+            if (autoSave.value) {
+              if (timers.has(imageId)) {
+                clearTimeout(timers.get(imageId));
+                timers.delete(imageId);
+              }
+              if (countdownIntervals.has(imageId)) {
+                clearInterval(countdownIntervals.get(imageId));
+                countdownIntervals.delete(imageId);
+              }
+
+              // Set up the main auto-save timer
+              const autoSaveTimerForImage = setTimeout(() => {
+                // Timer expired, add to imageClickQueue using the latest selectedMode
+                const currentMode = selectedMode[imageId] || answerMode.value; // Fallback just in case
+
+                imageSavingStates.set(imageId, true);
+                // Remove any existing entry for this id from queue to use the latest one from autoSaveDelay
+                imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== imageId);
+                imageClickQueue.value.push({ id: imageId, mode: currentMode });
+
+                // Clear its own functional timer. Visual countdown clearing is handled elsewhere or not needed once "Saving..." shows.
+                timers.delete(imageId);
+
+                // Start/reset the main 1-second batchTimer
+                if (batchTimer.value) clearTimeout(batchTimer.value);
+                batchTimer.value = setTimeout(processClickQueue, 1000);
+              }, autoSaveDelay.value * 1000);
+              timers.set(imageId, autoSaveTimerForImage);
+
+              // Start the visual countdown
+              countdownTimers.set(imageId, autoSaveDelay.value);
+              const intervalId = setInterval(() => {
+                if (countdownTimers.has(imageId)) {
+                  const currentTime = countdownTimers.get(imageId);
+                  if (currentTime > 1 && selected.value.has(imageId) && !answered.value.has(imageId)) {
+                    countdownTimers.set(imageId, currentTime - 1);
+                  } else {
+                    clearInterval(intervalId);
+                    countdownIntervals.delete(imageId);
+                    // countdownTimers.delete(id) will be handled by the main timer's expiry
+                  }
+                } else {
+                  // Image unselected or saved manually during countdown
+                  clearInterval(intervalId);
+                  if (countdownIntervals.has(imageId)) {
+                    countdownIntervals.delete(imageId);
+                  }
+                }
+              }, 1000);
+              countdownIntervals.set(imageId, intervalId);
+            } else {
+              // 3. If autoSave is OFF, add to imageClickQueue for manual saving
+              if (!imageClickQueue.value.some(item => item.id === imageId)) {
+                imageClickQueue.value.push({ id: imageId, mode: answerMode.value });
+                itemsAddedToQueueCount++;
+              }
+            }
+          }
+          // Unconditionally remove drag highlight after processing the item.
+          removeDragHighlight(imageId);
+        });
+      }
+
+      // Reset all relevant states, regardless of whether it was a drag or just a cancelled/short tap
+      isDragging.value = false;
+      isLongPressActive.value = false;
+      multiSelectedImageIds.value.clear();
+
+      // Ensure any remaining highlights are cleared (e.g., if touchend occurred unexpectedly)
+      images.value.forEach(img => {
+        const elem = document.querySelector(`[data-image-id="${img.id}"]`);
+        if (elem?.classList.contains('is-drag-highlighted')) {
+            removeDragHighlight(img.id);
+        }
+      });
+      dragSelectionRect.value = { x: 0, y: 0, width: 0, height: 0 }; // Reset selection rectangle
+    };
+
     onMounted(() => {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleTouchEnd);
+
+
       if (props.manualMode) {
         fetchManualImages().then(() => {
           setTimeout(() => {
@@ -1430,6 +1900,10 @@ export default {
     onUnmounted(() => {
       if (keydownHandler) window.removeEventListener('keydown', keydownHandler);
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
     });
     // Also call ensureViewportFilled after each fetch
     const sendAnswerToUse = props.manualMode ? sendAnswerManual : sendAnswer;
@@ -1630,6 +2104,22 @@ export default {
       fullscreenThumbnailUrl, // Added computed property for progressive loading
       imageSavingStates,
       cleanupImageState, // Added new function
+      // Drag selection refs
+      isDragging,
+      dragStartCoordinates,
+      multiSelectedImageIds,
+      dragSelectionRect,
+      // Drag selection methods
+      handleImageMouseDown,
+      handleClick, // New click handler
+      // Touch drag refs and methods
+      longPressTimer,
+      touchStartCoordinates,
+      isLongPressActive,
+      maxTouchMoveThreshold,
+      handleTouchStart,
+      // handleTouchMove and handleTouchEnd are global listeners
+      dragRectangleStyle, // For dynamic rectangle styling
       handleFullscreenAnswer, // Added new method for handling answers from fullscreen
       nextImageUrl, // Added computed property for next image URL
       prevImageUrl, // Added computed property for previous image URL
