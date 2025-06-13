@@ -137,6 +137,14 @@ class AddDepicts implements ShouldQueue
             $revId = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
 
             if ($this->rank === 'preferred' && $createdClaimGuid !== null) {
+                // Prepend preferred rank note to summary
+                $preferredPrefix = 'Marking prominent (preferred rank). ';
+                if ($editInfo !== null) {
+                    $summary = $editInfo->getSummary();
+                    $editInfo = new EditInfo($preferredPrefix . $summary, true);
+                } else {
+                    $editInfo = new EditInfo($preferredPrefix, true);
+                }
                 $statement = new Statement($snak, null, null, $createdClaimGuid);
                 $statement->setRank(Statement::RANK_PREFERRED);
                 $statementSetter = $wbServices->newStatementSetter();

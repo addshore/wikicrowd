@@ -162,6 +162,14 @@ class SwapDepicts implements ShouldQueue
         $revId2 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
     
         if ($this->rank === 'preferred' && $newlyCreatedClaimGuid !== null) {
+            // Prepend preferred rank note to summary
+            $preferredPrefix = 'Marking prominent (preferred rank). ';
+            if ($editInfo !== null) {
+                $summary = $editInfo->getSummary();
+                $editInfo = new EditInfo($preferredPrefix . $summary, true);
+            } else {
+                $editInfo = new EditInfo($preferredPrefix, true);
+            }
             $statement = new Statement($snak, null, null, $newlyCreatedClaimGuid);
             $statement->setRank(Statement::RANK_PREFERRED);
             $statementSetter = $wbServices->newStatementSetter();
