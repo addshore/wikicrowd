@@ -76,6 +76,12 @@
         </label>
       </div>
 
+      <div class="flex justify-center items-center mt-2 mb-1">
+        <label for="imageSizeSlider" class="mr-2 text-sm font-medium text-gray-700">Image Size:</label>
+        <input type="range" id="imageSizeSlider" min="50" max="200" v-model="imageSizePercentage" class="w-48 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+        <span class="ml-2 text-sm text-gray-700">{{ imageSizePercentage }}%</span>
+      </div>
+
       <div class="flex justify-center w-full">
         <small class="text-center">Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.</small>
       </div>
@@ -116,9 +122,9 @@
               : 'border-4 border-transparent cursor-pointer'
         ]"
       >
-        <div class="relative w-full h-[22vw] min-h-[180px] max-h-[320px] bg-gray-100">
+        <div :style="imageContainerStyle" class="relative w-full bg-gray-100">
           <!-- Loading spinner -->
-          <div v-if="!imageLoadingStates[image.id] || imageLoadingStates[image.id] === 'loading'" 
+          <div v-if="!imageLoadingStates[image.id] || imageLoadingStates[image.id] === 'loading'"
                class="absolute inset-0 flex items-center justify-center bg-gray-100">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
@@ -309,6 +315,19 @@ export default {
     const MAX_FETCH_RETRIES = 5; // Used by existing fetchWithRetry
 
     const imageSavingStates = reactive(new Map());
+    const imageSizePercentage = ref(100);
+
+    const imageContainerStyle = computed(() => {
+      const scaleFactor = imageSizePercentage.value / 100;
+      const newVwHeight = 22 * scaleFactor;
+      const newMinHeight = 180 * scaleFactor;
+      const newMaxHeight = 320 * scaleFactor;
+      return {
+        height: `${newVwHeight}vw`,
+        minHeight: `${newMinHeight}px`,
+        maxHeight: `${newMaxHeight}px`,
+      };
+    });
 
     // Only allow certain image file extensions
     const IMAGE_FILE_EXTENSIONS = [
@@ -1301,6 +1320,15 @@ export default {
     // On mount, always add keyboard shortcuts
     let keydownHandler;
     onMounted(() => {
+      // Load image size percentage from localStorage
+      const savedSize = localStorage.getItem('imageGridSizePercentage');
+      if (savedSize) {
+        const parsedSize = parseInt(savedSize, 10);
+        if (!isNaN(parsedSize) && parsedSize >= 50 && parsedSize <= 200) {
+          imageSizePercentage.value = parsedSize;
+        }
+      }
+
       if (props.manualMode) {
         fetchManualImages().then(() => {
           setTimeout(() => {
@@ -1349,6 +1377,12 @@ export default {
       if (keydownHandler) window.removeEventListener('keydown', keydownHandler);
       window.removeEventListener('scroll', handleScroll);
     });
+
+    // Watch for changes in imageSizePercentage and save to localStorage
+    watch(imageSizePercentage, (newValue) => {
+      localStorage.setItem('imageGridSizePercentage', newValue);
+    });
+
     // Also call ensureViewportFilled after each fetch
     const sendAnswerToUse = props.manualMode ? sendAnswerManual : sendAnswer;
     console.log('[GridMode] manualMode:', props.manualMode, 'Using', props.manualMode ? '/api/manual-question/answer' : '/api/answers');
@@ -1518,6 +1552,8 @@ export default {
       depictsLinkHref, // Added computed property
       imageSavingStates,
       cleanupImageState, // Added new function
+      imageSizePercentage, // Added for template access
+      imageContainerStyle, // Added for template access
     };
   },
 };
