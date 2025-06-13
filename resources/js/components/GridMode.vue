@@ -76,6 +76,23 @@
         </label>
       </div>
 
+      <!-- Image Size Slider -->
+      <div class="flex justify-center items-center mt-2 mb-2">
+        <label class="flex items-center text-sm text-gray-700">
+          <span class="mr-3">Image Size:</span>
+          <span class="mr-2">Large</span>
+          <input 
+            type="range" 
+            min="1" 
+            max="12" 
+            v-model.number="imageSize"
+            class="mx-2 w-32"
+          />
+          <span class="ml-2">Small</span>
+          <span class="ml-3 text-xs text-gray-500">({{ imageSize }} col{{ imageSize === 1 ? '' : 's' }})</span>
+        </label>
+      </div>
+
       <div class="flex justify-center w-full">
         <small class="text-center">Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.</small>
       </div>
@@ -92,7 +109,7 @@
       <div class="text-gray-500 text-lg">No images available to review.</div>
     </div>
     
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2" ref="imageGridContainer">
+    <div v-else :class="gridClasses">
       <div v-for="image in images" :key="image.id"
         :data-image-id="image.id"
         @click="handleClick(image.id, $event)"
@@ -119,7 +136,7 @@
               : 'border-4 border-transparent cursor-pointer'
         ]"
       >
-        <div class="relative w-full h-[22vw] min-h-[180px] max-h-[320px] bg-gray-100">
+        <div :class="['relative w-full bg-gray-100', imageHeightClass]">
           <!-- Loading spinner -->
           <div v-if="!imageLoadingStates[image.id] || imageLoadingStates[image.id] === 'loading'" 
                class="absolute inset-0 flex items-center justify-center bg-gray-100">
@@ -207,43 +224,22 @@
       </button>
     </div>
     
-    <!-- Fullscreen Modal -->
-    <div v-if="showFullscreen && fullscreenImage" 
-         class="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
-         @click="closeFullscreen">
-      <div class="relative max-w-full max-h-full flex flex-col">
-        <!-- Close button -->
-        <button 
-          @click="closeFullscreen"
-          class="absolute top-4 right-4 bg-black bg-opacity-60 hover:bg-opacity-80 text-white p-2 rounded-full z-10"
-          title="Close fullscreen"
-        >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-        
-        <!-- Main image -->
-        <img 
-          :src="fullscreenImageUrl" 
-          :alt="`Fullscreen Image ${fullscreenImage.id}`"
-          class="max-h-[80vh] max-w-full object-contain cursor-pointer"
-          @click="closeFullscreen"
-          draggable="false"
-        />
-        
-        <!-- Image info -->
-        <div class="mt-4 text-white text-center">
-          <a 
-            :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + fullscreenImage.properties?.mediainfo_id" 
-            target="_blank"
-            class="text-blue-300 hover:text-blue-100 underline"
-          >
-            {{ fullscreenImage.properties?.mediainfo_id || fullscreenImage.id }}
-          </a>
-        </div>
-      </div>
-    </div>
+    <FullscreenImageView
+      v-if="fullscreenImage"
+      :image="fullscreenImage"
+      :image-url="fullscreenImageUrl"
+      :thumbnail-url="fullscreenThumbnailUrl"
+      :next-image-url="nextImageUrl"
+      :prev-image-url="prevImageUrl"
+      :is-visible="showFullscreen"
+      :is-answered="answered.has(fullscreenImage?.id)"
+      :answered-with-mode="fullscreenImage ? answeredMode[fullscreenImage.id] : null"
+      :is-saving="fullscreenImage ? imageSavingStates.get(fullscreenImage.id) : false"
+      @close="closeFullscreen"
+      @next="nextImage"
+      @prev="prevImage"
+      @answer="handleFullscreenAnswer"
+    />
 
     <!-- Always show Loading... under the grid if loading or (manualMode and recursion ongoing) -->
     <div v-if="loading || (manualMode && !allLoaded)" class="text-center py-4">
@@ -259,20 +255,21 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue'; // Added computed
+import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue';
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
+import FullscreenImageView from './FullscreenImageView.vue'; // Import the new component
 import { fetchSubclassesAndInstances, fetchDepictsForMediaInfoIds } from './depictsUtils';
 import { toastStore } from '../toastStore.js';
 
 export default {
   name: 'GridMode',
-  components: { WikidataLabel, WikidataDescription },
+  components: { WikidataLabel, WikidataDescription, FullscreenImageView },
   props: {
     manualCategory: { type: String, default: '' },
     manualQid: { type: String, default: '' },
     manualMode: { type: Boolean, default: false },
-    loadAll: { type: Boolean, default: false } // New prop
+    loadAll: { type: Boolean, default: false }
   },
   setup(props, { emit }) {
     const images = ref([]);
@@ -310,11 +307,14 @@ export default {
     const isLongPressActive = ref(false);
     const maxTouchMoveThreshold = ref(10); // Pixels
 
+    // Image size control
+    const imageSize = ref(5); // 1=largest, 12=smallest (matches grid-cols-1 to grid-cols-12)
+
     // Fullscreen modal state
-    const showFullscreen = ref(false);
-    const fullscreenImage = ref(null);
-    const fullscreenImageUrl = ref('');
-    const currentFullscreenIndex = ref(0);
+    const showFullscreen = ref(false); // Controls visibility of the FullscreenImageView component
+    const fullscreenImage = ref(null); // The image object for the FullscreenImageView
+    const fullscreenImageUrl = ref(''); // The image URL for the FullscreenImageView
+    const currentFullscreenIndex = ref(0); // To keep track of the current image for next/prev logic
 
     // Batch for progressive fill
     const batch = ref([]);
@@ -1234,33 +1234,32 @@ export default {
       currentFullscreenIndex.value = images.value.findIndex(img => img.id === image.id);
       showFullscreen.value = true;
       
-      // Disable scrolling on body
-      document.body.style.overflow = 'hidden';
+      // document.body.style.overflow = 'hidden'; // This is now handled by FullscreenImageView
     };
 
-    // Close fullscreen modal
+    // Close fullscreen modal - triggered by event from FullscreenImageView
     const closeFullscreen = () => {
       showFullscreen.value = false;
-      fullscreenImage.value = null;
-      fullscreenImageUrl.value = '';
-      currentFullscreenIndex.value = 0;
-      
-      // Re-enable scrolling on body
-      document.body.style.overflow = '';
+      // Optionally, you might want to clear fullscreenImage and fullscreenImageUrl here or not,
+      // depending on whether you want the last image to briefly appear if reopened.
+      // For now, let's not clear them, allowing the component to manage its state.
+      // document.body.style.overflow = ''; // This is now handled by FullscreenImageView
     };
 
     const nextImage = async () => {
-      if (!showFullscreen.value) return;
+      if (images.value.length === 0) return;
       currentFullscreenIndex.value = (currentFullscreenIndex.value + 1) % images.value.length;
-      fullscreenImage.value = images.value[currentFullscreenIndex.value];
-      fullscreenImageUrl.value = await getFullSizeImageUrl(fullscreenImage.value);
+      const nextImg = images.value[currentFullscreenIndex.value];
+      fullscreenImage.value = nextImg;
+      fullscreenImageUrl.value = await getFullSizeImageUrl(nextImg);
     };
 
     const prevImage = async () => {
-      if (!showFullscreen.value) return;
+      if (images.value.length === 0) return;
       currentFullscreenIndex.value = (currentFullscreenIndex.value - 1 + images.value.length) % images.value.length;
-      fullscreenImage.value = images.value[currentFullscreenIndex.value];
-      fullscreenImageUrl.value = await getFullSizeImageUrl(fullscreenImage.value);
+      const prevImg = images.value[currentFullscreenIndex.value];
+      fullscreenImage.value = prevImg;
+      fullscreenImageUrl.value = await getFullSizeImageUrl(prevImg);
     };
 
     // Handle image load errors with retry logic
@@ -1327,6 +1326,97 @@ export default {
       // Fallback URL should also be updated or kept generic if a direct MediaSearch equivalent isn't suitable for a general fallback.
       // For now, let's keep the old fallback, but ideally, this would also point to a relevant MediaSearch or a general help page.
       return 'https://commons.wikimedia.org/wiki/Commons:Depicts';
+    });
+
+    // Computed properties for next/prev image URLs and thumbnails
+    const nextImageUrl = computed(() => {
+      if (images.value.length === 0 || currentFullscreenIndex.value === -1) return null;
+      const nextIndex = (currentFullscreenIndex.value + 1) % images.value.length;
+      const nextImg = images.value[nextIndex];
+      if (!nextImg) return null;
+      
+      // Use the same logic as getFullSizeImageUrl but synchronously
+      if (props.manualMode && nextImg.title) {
+        // For manual mode, we'll use the thumbnail URL and let preloading handle the full size
+        const currentUrl = nextImg.properties.img_url;
+        if (currentUrl.includes('/thumb/') && currentUrl.includes('px-')) {
+          return currentUrl.replace(/\/thumb\/(.+?)\/\d+px-.+$/, '/$1');
+        }
+        return currentUrl;
+      }
+      
+      // For regular images, remove width parameter to get full size
+      const currentUrl = nextImg.properties.img_url;
+      if (currentUrl.includes('/thumb/') && currentUrl.includes('px-')) {
+        return currentUrl.replace(/\/thumb\/(.+?)\/\d+px-.+$/, '/$1');
+      }
+      return currentUrl;
+    });
+
+    const prevImageUrl = computed(() => {
+      if (images.value.length === 0 || currentFullscreenIndex.value === -1) return null;
+      const prevIndex = (currentFullscreenIndex.value - 1 + images.value.length) % images.value.length;
+      const prevImg = images.value[prevIndex];
+      if (!prevImg) return null;
+      
+      // Use the same logic as getFullSizeImageUrl but synchronously
+      if (props.manualMode && prevImg.title) {
+        // For manual mode, we'll use the thumbnail URL and let preloading handle the full size
+        const currentUrl = prevImg.properties.img_url;
+        if (currentUrl.includes('/thumb/') && currentUrl.includes('px-')) {
+          return currentUrl.replace(/\/thumb\/(.+?)\/\d+px-.+$/, '/$1');
+        }
+        return currentUrl;
+      }
+      
+      // For regular images, remove width parameter to get full size
+      const currentUrl = prevImg.properties.img_url;
+      if (currentUrl.includes('/thumb/') && currentUrl.includes('px-')) {
+        return currentUrl.replace(/\/thumb\/(.+?)\/\d+px-.+$/, '/$1');
+      }
+      return currentUrl;
+    });
+
+    const fullscreenThumbnailUrl = computed(() => {
+      return fullscreenImage.value?.properties?.img_url || null;
+    });
+
+    // Dynamic grid classes based on image size
+    const gridClasses = computed(() => {
+      const sizeMap = {
+        1: 'grid-cols-1',
+        2: 'grid-cols-1 sm:grid-cols-2',
+        3: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3', 
+        4: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+        5: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
+        6: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6',
+        7: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7',
+        8: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8',
+        9: 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-9',
+        10: 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10',
+        11: 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-11',
+        12: 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12'
+      };
+      return `grid ${sizeMap[imageSize.value]} gap-2`;
+    });
+
+    // Dynamic image height classes based on grid size
+    const imageHeightClass = computed(() => {
+      const heightMap = {
+        1: 'h-[70vh] max-h-[600px] min-h-[300px]',    // Very large - 1 column
+        2: 'h-[45vh] max-h-[400px] min-h-[250px]',    // Large - 2 columns
+        3: 'h-[35vh] max-h-[320px] min-h-[220px]',    // Medium-large - 3 columns
+        4: 'h-[30vh] max-h-[280px] min-h-[200px]',    // Medium - 4 columns
+        5: 'h-[25vh] max-h-[250px] min-h-[180px]',    // Medium-small - 5 columns
+        6: 'h-[22vh] max-h-[220px] min-h-[160px]',    // Small - 6 columns
+        7: 'h-[20vh] max-h-[200px] min-h-[150px]',    // Smaller - 7 columns
+        8: 'h-[18vh] max-h-[180px] min-h-[140px]',    // Very small - 8 columns
+        9: 'h-[16vh] max-h-[160px] min-h-[130px]',    // Tiny - 9 columns
+        10: 'h-[15vh] max-h-[150px] min-h-[120px]',   // Very tiny - 10 columns
+        11: 'h-[14vh] max-h-[140px] min-h-[110px]',   // Micro - 11 columns
+        12: 'h-[13vh] max-h-[130px] min-h-[100px]'    // Ultra-micro - 12 columns
+      };
+      return heightMap[imageSize.value] || heightMap[3]; // default to 3 columns
     });
 
     // On mount, always add keyboard shortcuts
@@ -1780,7 +1870,7 @@ export default {
       } else {
         // Estimate how many images are needed to fill the viewport, plus 2 extra rows for preloading
         const imageHeight = 250; // px, including padding/margin
-        const columns = 5; // max columns in grid
+        const columns = imageSize.value; // max columns in grid based on current setting
         const rows = Math.ceil(window.innerHeight / imageHeight);
         const initialCount = Math.max(1, (rows + 2) * columns); // Ensure at least 1 image
         fetchNextImages(initialCount).then(() => {
@@ -1790,28 +1880,20 @@ export default {
         });
         window.addEventListener('scroll', handleScroll);
       }
-      // Keyboard shortcuts for answer mode (always add)
-  keydownHandler = (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    // Close fullscreen on Escape
-    if (e.key === 'Escape' && showFullscreen.value) {
-      closeFullscreen();
-      return;
-    }
-    if (showFullscreen.value) {
-      // Fullscreen navigation
-      if (e.key === 'ArrowRight') {
-        nextImage();
-      } else if (e.key === 'ArrowLeft') {
-        prevImage();
-      }
-    } else {
-      // Answer mode shortcuts (only when not in fullscreen)
+      // Keyboard shortcuts
+      keydownHandler = (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        // Fullscreen navigation is handled by FullscreenImageView.vue when it's visible.
+    // GridMode should only handle its own shortcuts when fullscreen is not active.
+    if (!showFullscreen.value) {
       if (e.key.toLowerCase() === 'q') answerMode.value = 'yes-preferred';
-      if (e.key === '1') answerMode.value = 'yes';
-      if (e.key === '2') answerMode.value = 'no';
-      if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
+      else if (e.key === '1') answerMode.value = 'yes';
+      else if (e.key === '2') answerMode.value = 'no';
+      else if (e.key.toLowerCase() === 'e') answerMode.value = 'skip';
     }
+    // Note: The Escape keydown for closing fullscreen is now managed by FullscreenImageView.vue
+    // and it emits a 'close' event. GridMode's keydownHandler no longer needs to check for Escape.
   };
   window.addEventListener('keydown', keydownHandler);
 });
@@ -1826,6 +1908,34 @@ export default {
     // Also call ensureViewportFilled after each fetch
     const sendAnswerToUse = props.manualMode ? sendAnswerManual : sendAnswer;
     console.log('[GridMode] manualMode:', props.manualMode, 'Using', props.manualMode ? '/api/manual-question/answer' : '/api/answers');
+
+    const handleFullscreenAnswer = async ({ image, mode }) => {
+      if (!image || !image.id) {
+        console.error('handleFullscreenAnswer: Invalid image data received.');
+        return;
+      }
+      console.log(`Answer received from fullscreen: Image ID ${image.id}, Mode: ${mode}`);
+
+      // Set saving state
+      imageSavingStates.set(image.id, true);
+
+      try {
+        // Call the existing sendAnswerToUse function, providing the image and mode directly.
+        await sendAnswerToUse(image, mode);
+        // If sendAnswerToUse is successful, it will update `answered` and `answeredMode`
+        // and also clear selected states.
+      } catch (error) {
+        // Error handling is ideally done within sendAnswerToUse (e.g., showing toasts)
+        // If not, add additional error handling here.
+        console.error(`Error in handleFullscreenAnswer for image ${image.id}:`, error);
+      } finally {
+        // Clear saving state regardless of success or failure
+        imageSavingStates.delete(image.id);
+      }
+
+      // Optional: Close fullscreen after answering. For now, keep it open.
+      // closeFullscreen();
+    };
 
     const onSaveClickHandler = () => {
       console.log('[GridMode] onSaveClickHandler called');
@@ -1869,7 +1979,6 @@ export default {
 
           // Clear any running auto-save timer for this id as we are saving manually.
           // cleanupImageState will clear timers, countdowns, and also any pre-existing imageSavingStates.
-          // This is fine because we will re-set imageSavingStates for manual saves just after this loop.
           cleanupImageState(id);
         }
       });
@@ -1990,6 +2099,9 @@ export default {
       countdownTimers, // Added for template access
       depictsUpQueryUrl, // Added computed property
       depictsLinkHref, // Added computed property
+      nextImageUrl, // Added computed property for preloading
+      prevImageUrl, // Added computed property for preloading
+      fullscreenThumbnailUrl, // Added computed property for progressive loading
       imageSavingStates,
       cleanupImageState, // Added new function
       // Drag selection refs
@@ -2000,7 +2112,6 @@ export default {
       // Drag selection methods
       handleImageMouseDown,
       handleClick, // New click handler
-      imageGridContainer,
       // Touch drag refs and methods
       longPressTimer,
       touchStartCoordinates,
@@ -2009,43 +2120,34 @@ export default {
       handleTouchStart,
       // handleTouchMove and handleTouchEnd are global listeners
       dragRectangleStyle, // For dynamic rectangle styling
+      handleFullscreenAnswer, // Added new method for handling answers from fullscreen
+      nextImageUrl, // Added computed property for next image URL
+      prevImageUrl, // Added computed property for previous image URL
+      fullscreenThumbnailUrl, // Added computed property for fullscreen thumbnail URL
+      imageSize, // Added image size control
+      gridClasses, // Added dynamic grid classes
+      imageHeightClass, // Added dynamic image height classes
     };
   },
 };
+
+function handleFullscreenAnswer({ image, mode }) {
+  // This is a placeholder. Actual implementation will depend on how GridMode's sendAnswer is structured.
+  // It might involve calling sendAnswer(image, mode) or sendAnswerManual(image, mode)
+  // and then potentially closing the fullscreen or updating its UI.
+  console.log(`Answer received from fullscreen: Image ID ${image.id}, Mode: ${mode}`);
+  // Example: self.sendAnswer(image, mode); // 'self' would be 'this' if it were a component method.
+  // Since this is in setup, we'd call the function directly if it's in scope.
+  // For now, we'll assume sendAnswerToUse is accessible and can be called.
+  // Note: This is a simplified call. sendAnswer might need specific properties from the image object
+  // or might rely on selected/answered sets which need to be handled carefully here.
+
+  // This function is outside the `setup` return object, so it won't be directly callable
+  // from the template in the same way as methods returned from `setup`.
+  // It needs to be defined within `setup` or passed to `setup` to be used as a callback.
+  // Let's define it inside setup.
+}
 </script>
 
 <style scoped>
-/* Mode-specific highlights for individual images */
-.is-drag-highlighted-yes {
-  outline: 3px dashed rgba(74, 170, 74, 0.9); /* Green */
-  outline-offset: -2px;
-  box-shadow: 0 0 0 3px rgba(74, 170, 74, 0.4), inset 0 0 0 3px rgba(74, 170, 74, 0.4);
-}
-
-.is-drag-highlighted-no {
-  outline: 3px dashed rgba(220, 53, 69, 0.9); /* Red */
-  outline-offset: -2px;
-  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.4), inset 0 0 0 3px rgba(220, 53, 69, 0.4);
-}
-
-.is-drag-highlighted-skip {
-  outline: 3px dashed rgba(0, 123, 255, 0.9); /* Blue */
-  outline-offset: -2px;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.4), inset 0 0 0 3px rgba(0, 123, 255, 0.4);
-}
-
-.is-drag-highlighted-yes-preferred {
-  outline: 3px dashed rgba(30, 120, 30, 0.9); /* Darker Green */
-  outline-offset: -2px;
-  box-shadow: 0 0 0 3px rgba(30, 120, 30, 0.4), inset 0 0 0 3px rgba(30, 120, 30, 0.4);
-}
-
-.drag-selection-rectangle {
-  position: fixed;
-  pointer-events: none;
-  z-index: 100;
-  border-width: 1px;
-  border-style: solid;
-  /* Dynamic styles (backgroundColor, borderColor, left, top, width, height) are applied via :style binding */
-}
 </style>
