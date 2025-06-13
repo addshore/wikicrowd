@@ -17,11 +17,12 @@
 
       <!-- Main image -->
       <div class="relative"> <!-- Added relative positioning for overlay -->
+        <!-- Allow clicking image to close only if not answered/saving -->
         <img
           :src="imageUrl"
           :alt="`Fullscreen Image ${image.id}`"
           class="max-h-[80vh] max-w-full object-contain cursor-pointer"
-          @click="close" <!-- Allow clicking image to close only if not answered/saving -->
+          @click="close"
           draggable="false"
         />
         <!-- Answer/Saving Overlay -->
@@ -33,7 +34,7 @@
             'bg-green-500 bg-opacity-60': answeredWithMode === 'yes',
             'bg-red-500 bg-opacity-60': answeredWithMode === 'no',
             'bg-blue-500 bg-opacity-60': answeredWithMode === 'skip',
-            'bg-gray-700 bg-opacity-70': isSaving && !isAnswered,
+            'bg-gray-700 bg-opacity-70': isSaving && !isAnswered, 
           }"
         >
           <template v-if="isSaving">
