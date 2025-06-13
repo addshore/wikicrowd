@@ -123,106 +123,82 @@ function onCategoryInput() {
       return 'Category:' + title;
     });
     showCategoryDropdown.value = true;
-  }, 250);
+  }, 300); // Updated debounce delay to 300ms
 }
 
-// 1. `handleCategoryRedirectByParsing(isManualInputOrBlur)` function:
-async function handleCategoryRedirectByParsing(isManualInputOrBlur = false) {
-  if (!manualCategory.value.trim()) {
-    // Clear any previous redirect message if category becomes empty
+async function resolveCategoryRedirect(categoryNameInitial) {
+  if (!categoryNameInitial || !categoryNameInitial.trim()) {
     if (autoError.value.includes("redirected from")) autoError.value = '';
-    return false;
+    return categoryNameInitial;
   }
 
-  const originalCategoryForAPI = manualCategory.value.startsWith('Category:') ? manualCategory.value : 'Category:' + manualCategory.value;
-  const originalDisplayCategory = manualCategory.value; // What the user typed or selected, for messages
+  let categoryName = categoryNameInitial.startsWith('Category:') ? categoryNameInitial : 'Category:' + categoryNameInitial;
 
   try {
-    const apiUrl = `https://commons.wikimedia.org/w/api.php?action=parse&page=${encodeURIComponent(originalCategoryForAPI)}&prop=wikitext&format=json&origin=*`;
+    const apiUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(categoryName)}&redirects=1&format=json&origin=*`;
     const response = await fetch(apiUrl);
     if (!response.ok) {
-      // Do not set autoError for common issues like 404 here, let specific callers decide.
-      // Clear previous redirect message if API fails for a new check.
+      console.error("API error in resolveCategoryRedirect (fetch not ok):", response.statusText);
       if (autoError.value.includes("redirected from")) autoError.value = '';
-      return false;
+      return categoryName; // Return original on error
     }
     const data = await response.json();
 
-    if (data.error) {
-      if (autoError.value.includes("redirected from")) autoError.value = '';
-      return false; // e.g. page does not exist
-    }
+    if (data.query && data.query.pages) {
+      const pages = data.query.pages;
+      const pageId = Object.keys(pages)[0];
+      const page = pages[pageId];
 
-    const wikitext = data.parse?.wikitext?.['*'];
-    if (!wikitext) {
-      if (autoError.value.includes("redirected from")) autoError.value = '';
-      return false;
-    }
-
-    const redirectRegex = /\{\{\s*(?:Category redirect|seecat|see cat|categoryredirect|cat redirect|catredirect)\s*\|\s*(?:Category:)?([^}]+)\s*\}\}/i;
-    const match = wikitext.match(redirectRegex);
-
-    if (match && match[1]) {
-      let targetCategory = match[1].trim();
-      if (!targetCategory.startsWith('Category:')) {
-        targetCategory = 'Category:' + targetCategory;
-      }
-
-      if (targetCategory.toLowerCase() !== originalCategoryForAPI.toLowerCase()) {
-        manualCategory.value = targetCategory;
-        autoError.value = `Category redirected from "${originalDisplayCategory}" to "${targetCategory}".`;
+      // Check if the final page title is different from the (potentially prefixed) categoryName
+      // This indicates a redirect has been resolved by MediaWiki.
+      if (page.title && page.title !== categoryName) {
+        manualCategory.value = page.title; // Update the global reactive ref
+        autoError.value = `Category redirected from "${categoryNameInitial}" to "${page.title}".`;
         updateUrl();
-        return true;
-      } else {
-        if (autoError.value.includes("redirected from")) autoError.value = ''; // Clear if it was a message for this category but now resolved to same
-        return false; // Effectively no change
+        return page.title; // Return the new target
       }
-    } else {
-      if (autoError.value.includes("redirected from")) autoError.value = ''; // Clear if previous redirect message existed
-      return false;
     }
+    // No redirect, or target is same as input (after prefixing)
+    if (autoError.value.includes("redirected from") && autoError.value.includes(`from "${categoryNameInitial}"`)) {
+         autoError.value = ''; // Clear if it was a message for this specific category
+    }
+    return categoryName; // Return original (potentially prefixed) name if no redirect occurred or target is same
   } catch (error) {
-    console.error("Error in handleCategoryRedirectByParsing (fetch error or other exception):", error, 'Category:', originalCategoryForAPI);
-    autoError.value = 'API error during redirect check.'; // Generic error for unexpected issues
-    return false;
+    console.error("Error in resolveCategoryRedirect:", error);
+    if (autoError.value.includes("redirected from")) autoError.value = '';
+    return categoryName; // Return original on error
   }
 }
 
-// 2. `onCategoryBlur()` function:
-async function onCategoryBlur() {
-  // Using a timeout to allow click on dropdown to register first
-  setTimeout(async () => {
-    const activeElementIsDropdownItem = document.activeElement && document.activeElement.closest('.absolute.z-10');
-
-    if (showCategoryDropdown.value && activeElementIsDropdownItem) {
-      // If dropdown is visible and click was on item, selectCategory will handle redirect.
-      return;
-    }
-
-    // If dropdown is not shown OR click was not on a dropdown item, then proceed with blur logic.
-    if (!showCategoryDropdown.value || !activeElementIsDropdownItem) {
-        await handleCategoryRedirectByParsing(true); // true for isManualInputOrBlur
-    }
-
-    // Ensure dropdown is hidden if it wasn't closed by selection (e.g., user clicks away)
-     if (showCategoryDropdown.value && !activeElementIsDropdownItem) {
-       hideCategoryDropdown(); // General hide, not specific to selection.
-    }
-  }, 200); // 200ms timeout to allow click to register.
-}
-
 async function selectCategory(val) {
-  manualCategory.value = val;
-  showCategoryDropdown.value = false; // Hide dropdown immediately
-  categoryResults.value = []; // Clear results
+  manualCategory.value = val; // Set value from selection
+  showCategoryDropdown.value = false;
+  categoryResults.value = [];
 
-  await handleCategoryRedirectByParsing(false); // false for isManualInputOrBlur (selected from list)
+  await resolveCategoryRedirect(manualCategory.value);
+  // manualCategory.value is updated by resolveCategoryRedirect if needed
   updateUrl(); // Ensure URL is updated with final category name
 }
 
+async function onCategoryBlur() {
+  setTimeout(async () => {
+    const activeElementIsDropdownItem = document.activeElement && document.activeElement.closest('.absolute.z-10');
+    if (showCategoryDropdown.value && activeElementIsDropdownItem) {
+      return;
+    }
+    if (!showCategoryDropdown.value || !activeElementIsDropdownItem) {
+        await resolveCategoryRedirect(manualCategory.value);
+        // manualCategory.value updated by resolveCategoryRedirect if needed
+        updateUrl(); // Update URL after potential redirect
+    }
+    if (showCategoryDropdown.value && !activeElementIsDropdownItem) {
+       hideCategoryDropdown();
+    }
+  }, 200);
+}
+
 function hideCategoryDropdown() {
-  // This is a simpler hide, usually called when focus is lost or selection made.
-  showCategoryDropdown.value = false;
+  setTimeout(() => { showCategoryDropdown.value = false; }, 150); // Keep original timeout for hide
 }
 const categoryUrl = computed(() => manualCategory.value ? `https://commons.wikimedia.org/wiki/${encodeURIComponent(manualCategory.value)}` : '#');
 
@@ -359,70 +335,70 @@ async function autoFillCategoryFromQid() {
     }
     manualCategory.value = 'Category:' + value;
     updateUrl();
-    await handleCategoryRedirectByParsing(false); // false as it's not direct user input on category field
-    // Original checkIfCategoryQid(qid) was for the QID, not necessarily related to category redirect.
-    // The main purpose here is to ensure the category is correct.
-    // Any error from handleCategoryRedirectByParsing would set autoError.
+    // Point 3 (callers): autoFillCategoryFromQid
+    manualCategory.value = await resolveCategoryRedirect(manualCategory.value); // Update with resolved category
+    updateUrl(); // Update URL again if category changed
   } catch (e) {
     console.error("Error in autoFillCategoryFromQid (P373 fetch):", e);
     autoError.value = 'Failed to fetch Commons category from Wikidata.';
   }
 }
 
-// Renamed from autoFillQidFromCategory to match template call
 async function onClickAutoFillQidFromCategory() {
-  autoError.value = ''; // Clear previous errors like "No QID found" or "No Cat found"
+  const redirectMessageBeforeQidFetch = autoError.value.includes("redirected from") ? autoError.value : null;
+  if (!redirectMessageBeforeQidFetch) {
+    autoError.value = ''; // Clear other previous errors if no redirect message active
+  }
 
-  const wasRedirected = await handleCategoryRedirectByParsing(true); // true for isManualInputOrBlur
-  const currentCategoryValue = manualCategory.value; // Use the potentially redirected category
+  // Point 3 (callers): onClickAutoFillQidFromCategory - Step 1: Resolve redirect
+  // manualCategory.value is passed to resolveCategoryRedirect, which updates it directly.
+  await resolveCategoryRedirect(manualCategory.value);
+  const currentResolvedCategory = manualCategory.value; // This is the (potentially redirected) category
 
-  if (!currentCategoryValue.trim()) {
-    // If category is empty after redirect check (e.g., was invalid and cleared), set error.
-    // Do not overwrite a redirect message if one was just set and category somehow became empty.
+  let cat = currentResolvedCategory.trim();
+  if (!cat) {
+    // If category is empty (e.g. user cleared it, or redirect resulted in empty if error in resolve fn)
+    // A redirect message might be in autoError from resolveCategoryRedirect, preserve it.
     if (!autoError.value.includes("redirected from")) {
         autoError.value = 'Please enter a category first.';
     }
     return;
   }
+  if (!/^Category:/i.test(cat)) { // Should generally be prefixed by now.
+    cat = 'Category:' + cat;
+  }
 
-  const categoryForQidLookup = currentCategoryValue.startsWith('Category:') ? currentCategoryValue : 'Category:' + currentCategoryValue;
-
+  // Point 3 (callers): onClickAutoFillQidFromCategory - Step 2: Fetch QID
   try {
-    const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&sites=commonswiki&titles=${encodeURIComponent(categoryForQidLookup)}&format=json&origin=*`;
+    const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&sites=commonswiki&titles=${encodeURIComponent(cat)}&format=json&origin=*`;
     const resp = await fetch(url);
     const data = await resp.json();
     const entities = data.entities || {};
     const qids = Object.keys(entities).filter(k => k.startsWith('Q'));
-
     if (qids.length === 0) {
-      // Only set error if no redirect message is more prominent
-      if (!autoError.value.includes("redirected from")) {
-        autoError.value = 'No Wikidata item found for this category.';
-      }
+      autoError.value = 'No Wikidata item found for this category.';
       return;
     }
     manualQid.value = qids[0];
     updateUrl();
+    await checkIfCategoryQid(qids[0]); // This uses categoryQidWarning
 
-    const isProblematicQid = await checkIfCategoryQid(qids[0]);
-
-    // Manage autoError: if a redirect happened and QID is fine, keep redirect message.
-    // Otherwise, clear error if QID is fine. If QID problematic, that shows in categoryQidWarning.
-    if (wasRedirected && autoError.value.includes("redirected from") && !isProblematicQid) {
-      // Keep the redirect message
-    } else if (!isProblematicQid) {
-      // QID is fine, no redirect message was prominent or needed to be kept. Clear error.
+    // Preserve redirect message if one was active from resolveCategoryRedirect,
+    // and no new QID error, and QID itself is not problematic.
+    const currentRedirectMessage = autoError.value.includes("redirected from") ? autoError.value : null;
+    if (currentRedirectMessage && !categoryQidWarning.value) {
+      autoError.value = currentRedirectMessage;
+    } else if (!currentRedirectMessage && !categoryQidWarning.value) {
+      // No redirect message, no QID issue, ensure autoError is clear.
       autoError.value = '';
     }
-    // If isProblematicQid, categoryQidWarning will be displayed. autoError might show redirect or be empty.
+    // If categoryQidWarning.value is set, it will be displayed.
+    // If a QID fetch error occurred, autoError is already set to that.
 
   } catch (e) {
-    console.error('[DEBUG] onClickAutoFillQidFromCategory: Error fetching QID:', e);
-    // Preserve redirect message if it exists and error is for QID fetch
-    if (!autoError.value.includes("redirected from")) {
-        autoError.value = 'Failed to fetch Wikidata Qid from category.';
-    }
-  }
+    console.error("Error fetching QID from category:", e);
+    // A QID fetch error should override a previous redirect message as it's more specific to this action.
+    autoError.value = 'Failed to fetch Wikidata Qid from category.';
   }
 }
 
@@ -435,34 +411,36 @@ onMounted(async () => {
   const itemParam = getQueryParam('item');
   const autoParam = getQueryParam('auto');
 
-  // Clear any errors at start of load
-  autoError.value = '';
+  autoError.value = ''; // Clear errors on load
   categoryQidWarning.value = '';
 
+  // Point 3 (callers): onMounted
   if (categoryParam) {
     manualCategory.value = categoryParam;
-    await handleCategoryRedirectByParsing(true); // true as it's like a manual input
+    manualCategory.value = await resolveCategoryRedirect(manualCategory.value);
+    updateUrl(); // Update URL after potential redirect
   }
 
   if (itemParam) {
     manualQid.value = itemParam;
+    updateUrl(); // Update URL in case category also changed it
   }
 
-  // Auto-fill logic if 'auto=1'
   if (autoParam === '1') {
     if (manualCategory.value && !manualQid.value) {
+      // Category is present (possibly redirected), QID is missing.
       await onClickAutoFillQidFromCategory();
     } else if (!manualCategory.value && manualQid.value) {
+      // QID is present, Category is missing.
       await autoFillCategoryFromQid();
     }
   }
 
-  // Final QID validation if a QID is set
   if (manualQid.value) {
     await checkIfCategoryQid(manualQid.value);
   }
 
-  loadAll.value = false; // Default to dynamic grid mode
+  loadAll.value = false;
 
   showGrid.value = canShowGrid();
 });
