@@ -20,6 +20,8 @@ use Wikibase\DataModel\Snak\PropertyValueSnak;
 use Wikibase\DataModel\Entity\EntityIdValue;
 use Illuminate\Support\Facades\Cache;
 use Addwiki\Mediawiki\DataModel\EditInfo;
+use Wikibase\DataModel\Statement\Statement;
+use Wikibase\DataModel\Statement\StatementId;
 
 class AddDepicts implements ShouldQueue
 {
@@ -27,6 +29,7 @@ class AddDepicts implements ShouldQueue
 
     private $answerId;
     private $instancesOfAndSubclassesOf;
+    private ?string $rank;
 
     /**
      * Create a new job instance.
@@ -34,10 +37,12 @@ class AddDepicts implements ShouldQueue
      * @return void
      */
     public function __construct(
-        int $answerId
+        int $answerId,
+        ?string $rank = null
     )
     {
         $this->answerId = $answerId;
+        $this->rank = $rank;
     }
 
     /**
@@ -123,11 +128,33 @@ class AddDepicts implements ShouldQueue
                 $qid = $question->properties['depicts_id'];
                 $editInfo = new EditInfo("From custom inputs [[:$cat]] and [[wikidata:$qid]]");
             }
-            $wbServices->newStatementCreator()->create(
+            $createdClaimGuid = $wbServices->newStatementCreator()->create(
                 new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) ),
                 $mid,
                 $editInfo
             );
+
+            if ($this->rank === 'preferred' && $createdClaimGuid !== null) {
+                try {
+                    $statementGetter = $wbServices->newStatementGetter();
+                    $statement = $statementGetter->getStatementByGuid(new StatementId($createdClaimGuid));
+
+                    if ($statement !== null) {
+                        $statement->setRank(Statement::RANK_PREFERRED);
+
+                        $statementSetter = $wbServices->newStatementSetter();
+                        // Assuming $editInfo used for creation is suitable for setting rank.
+                        // If StatementSetter->set doesn't take EditInfo, it might need to be omitted
+                        // or the library might handle summaries differently for this operation.
+                        // For now, let's assume it takes $editInfo similar to other setters/creators.
+                        $statementSetter->set($statement, $editInfo);
+                    } else {
+                        \Log::warning("AddDepicts: Could not find statement with GUID: " . $createdClaimGuid . " for entity " . $mid->getSerialization() . " to set preferred rank.");
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("AddDepicts: Failed to set preferred rank using StatementSetter for statement GUID: " . $createdClaimGuid . ". Error: " . $e->getMessage());
+                }
+            }
 
             $mwServices = new MediawikiFactory( $mwApi );
 

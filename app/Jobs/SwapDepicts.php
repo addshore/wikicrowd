@@ -20,6 +20,8 @@ use Wikibase\DataModel\Snak\PropertyValueSnak;
 use Wikibase\DataModel\Entity\EntityIdValue;
 use Illuminate\Support\Facades\Cache;
 use Addwiki\Mediawiki\DataModel\EditInfo;
+use Wikibase\DataModel\Statement\Statement;
+use Wikibase\DataModel\Statement\StatementId;
 
 class SwapDepicts implements ShouldQueue
 {
@@ -27,6 +29,7 @@ class SwapDepicts implements ShouldQueue
 
     private $answerId;
     private $instancesOfAndSubclassesOf;
+    private ?string $rank;
 
     /**
      * Create a new job instance.
@@ -34,10 +37,12 @@ class SwapDepicts implements ShouldQueue
      * @return void
      */
     public function __construct(
-        int $answerId
+        int $answerId,
+        ?string $rank = null
     )
     {
         $this->answerId = $answerId;
+        $this->rank = $rank;
     }
 
     /**
@@ -153,7 +158,7 @@ class SwapDepicts implements ShouldQueue
         $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
         $revId1 = $page->getRevisions()->getLatest()->getId();
 
-        $wbServices->newStatementCreator()->create(
+        $newlyCreatedClaimGuid = $wbServices->newStatementCreator()->create(
             new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) ),
             $mid,
             $editInfo
@@ -161,6 +166,25 @@ class SwapDepicts implements ShouldQueue
 
         $page = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier );
         $revId2 = $page->getRevisions()->getLatest()->getId();
+
+        if ($this->rank === 'preferred' && $newlyCreatedClaimGuid !== null) {
+            try {
+                $statementGetter = $wbServices->newStatementGetter();
+                $statement = $statementGetter->getStatementByGuid(new StatementId($newlyCreatedClaimGuid));
+
+                if ($statement !== null) {
+                    $statement->setRank(Statement::RANK_PREFERRED);
+
+                        $statementSetter = $wbServices->newStatementSetter();
+                        // Assuming $editInfo used for creation is suitable for setting rank.
+                        $statementSetter->set($statement, $editInfo);
+                } else {
+                    \Log::warning("SwapDepicts: Could not find newly created statement with GUID: " . $newlyCreatedClaimGuid . " for entity " . $mid->getSerialization() . " to set preferred rank.");
+                }
+            } catch (\Exception $e) {
+                    \Log::error("SwapDepicts: Failed to set preferred rank using StatementSetter for new statement GUID: " . $newlyCreatedClaimGuid . ". Error: " . $e->getMessage());
+            }
+        }
 
         Edit::create([
             'question_id' => $question->id,
