@@ -33,7 +33,7 @@
       </h2>
       <div class="flex justify-center mt-2 mb-2">
         <button
-          :class="['px-2 py-1 text-sm rounded-l font-bold', answerMode === 'yes-preferred' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
+          :class="['px-2 py-1 text-sm rounded-l font-bold', answerMode === 'yes-preferred' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-700']"
           @click="answerMode = 'yes-preferred'"
         >Prominent (Q)</button>
         <button
@@ -101,14 +101,16 @@
             ? (
                 answeredMode[image.id] === 'no' ? 'border-4 border-red-500 cursor-default opacity-80' :
                 answeredMode[image.id] === 'skip' ? 'border-4 border-blue-500 cursor-default opacity-80' :
-                (answeredMode[image.id] === 'yes' || answeredMode[image.id] === 'yes-preferred') ? 'border-4 border-green-500 cursor-default opacity-80' :
+                answeredMode[image.id] === 'yes' ? 'border-4 border-green-500 cursor-default opacity-80' :
+                answeredMode[image.id] === 'yes-preferred' ? 'border-4 border-green-700 cursor-default opacity-80' :
                 'border-4 border-transparent cursor-default opacity-80' // Should not happen if answeredMode is always set
               )
             : selected.has(image.id)
               ? (
                   selectedMode[image.id] === 'no' ? 'border-4 border-red-500 cursor-pointer' :
                   selectedMode[image.id] === 'skip' ? 'border-4 border-blue-500 cursor-pointer' :
-                  (selectedMode[image.id] === 'yes' || selectedMode[image.id] === 'yes-preferred') ? 'border-4 border-green-500 cursor-pointer' :
+                  selectedMode[image.id] === 'yes' ? 'border-4 border-green-500 cursor-pointer' :
+                  selectedMode[image.id] === 'yes-preferred' ? 'border-4 border-green-700 cursor-pointer' :
                   'border-4 border-transparent cursor-pointer' // Fallback if mode not set, though it should be
                 )
               : 'border-4 border-transparent cursor-pointer'
@@ -171,7 +173,7 @@
           <a :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + image.properties?.mediainfo_id" target="_blank">{{ image.properties?.mediainfo_id || image.id }}</a>
         </div>
         <div v-if="answered.has(image.id)" class="absolute inset-0 flex items-center justify-center bg-opacity-60 pointer-events-none"
-          :class="(answeredMode[image.id] === 'yes' || answeredMode[image.id] === 'yes-preferred') ? 'bg-green-500' : answeredMode[image.id] === 'no' ? 'bg-red-500' : answeredMode[image.id] === 'skip' ? 'bg-blue-500' : ''">
+            :class="answeredMode[image.id] === 'yes-preferred' ? 'bg-green-700' : answeredMode[image.id] === 'yes' ? 'bg-green-500' : answeredMode[image.id] === 'no' ? 'bg-red-500' : answeredMode[image.id] === 'skip' ? 'bg-blue-500' : ''">
           <template v-if="answeredMode[image.id] === 'no'">
             <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -182,9 +184,14 @@
               <text x="12" y="20" text-anchor="middle" font-size="18" font-family="Arial" dy="-2">?</text>
             </svg>
           </template>
-          <template v-else-if="answeredMode[image.id] === 'yes' || answeredMode[image.id] === 'yes-preferred'">
+          <template v-else-if="answeredMode[image.id] === 'yes'">
             <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </template>
+          <template v-else-if="answeredMode[image.id] === 'yes-preferred'">
+            <svg class="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <polygon points="12,2 15,9 22,9.5 17,14.5 18.5,22 12,18 5.5,22 7,14.5 2,9.5 9,9" />
             </svg>
           </template>
         </div>
