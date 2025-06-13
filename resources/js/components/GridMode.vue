@@ -1476,6 +1476,8 @@ export default {
         ...baseStyle,
         backgroundColor: modeStyle.lightColor,
         borderColor: modeStyle.color,
+        borderWidth: '2px',
+        borderStyle: 'dashed',
       };
     });
 
@@ -2150,4 +2152,10 @@ function handleFullscreenAnswer({ image, mode }) {
 </script>
 
 <style scoped>
+.drag-selection-rectangle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  box-sizing: border-box;
+}
 </style>
