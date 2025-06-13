@@ -8,7 +8,7 @@
           <div class="flex items-center gap-2">
             <input v-model="manualCategory" @input="onCategoryInput" @focus="showCategoryDropdown = true" @blur="onCategoryBlur" class='border rounded px-2 py-1 w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700' placeholder='e.g. Paintings by Vincent van Gogh' required autocomplete="off" />
             <a v-if="manualCategory" :href="categoryUrl" target="_blank" rel="noopener" class="ml-1 text-blue-600 dark:text-blue-400" title="Open category"><svg xmlns="http://www.w3.org/2000/svg" class="inline w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3h7v7m0 0L10 21l-7-7L21 10z"/></svg></a>
-            <button type="button" @click="autoFillQidFromCategory" class="ml-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600" title="Auto-fill Qid from category">Auto Wikidata ID</button>
+            <button type="button" @click="onClickAutoFillQidFromCategory" class="ml-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600" title="Auto-fill Qid from category">Auto Wikidata ID</button>
           </div>
           <ul v-if="showCategoryDropdown && categoryResults.length" class="absolute z-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 w-full mt-1 rounded shadow max-h-60 overflow-auto">
             <li v-for="(result, idx) in categoryResults" :key="result" @mousedown.prevent="selectCategory(result)" class="px-3 py-2 hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer text-gray-900 dark:text-gray-200">{{ result }}</li>
@@ -124,103 +124,106 @@ function onCategoryInput() {
     });
     showCategoryDropdown.value = true;
   }, 250);
-  // handleCategoryRedirect() call removed from here
 }
 
-async function handleCategoryRedirect(isBlurEvent = false) {
-  const originalUserInput = manualCategory.value; // Store the raw user input for messages
-  let categoryNameForAPI = manualCategory.value;
+async function handleCategoryRedirectByParsing(isBlurEvent = false) {
+  const originalUserInput = manualCategory.value;
+  let categoryToParse = manualCategory.value;
 
-  if (!categoryNameForAPI || categoryNameForAPI.trim() === '') {
+  if (!categoryToParse || categoryToParse.trim() === '') {
     if (autoError.value.includes("redirected from")) autoError.value = '';
-    return;
+    return false; // Indicate no redirect attempt or failure before API call
   }
 
-  // Ensure "Category:" prefix for API call, especially for blur events
-  if (isBlurEvent && !/^Category:/i.test(categoryNameForAPI)) {
-    categoryNameForAPI = 'Category:' + categoryNameForAPI;
-  } else if (!/^Category:/i.test(categoryNameForAPI)) {
-    // If not a blur event, and still no prefix, it implies an issue or direct call with bad data.
-    // Or user somehow submitted non-prefixed data. For safety, add prefix or return.
-    // For now, let's assume it should have the prefix if not a blur-triggered event.
-    // If it's from selectCategory, `val` should already be prefixed.
-    // If it's empty or just spaces, we should return.
-     if (autoError.value.includes("redirected from")) autoError.value = ''; // Clear previous redirect message
-     return; // Or, decide to prefix: categoryNameForAPI = 'Category:' + categoryNameForAPI;
+  // Ensure "Category:" prefix for API call, especially for blur events or if missing
+  if (!/^Category:/i.test(categoryToParse)) {
+    categoryToParse = 'Category:' + categoryToParse;
   }
-
 
   try {
-    const apiUrl = `https://commons.wikimedia.org/w/api.php?action=query&prop=redirects&titles=${encodeURIComponent(categoryNameForAPI)}&format=json&origin=*`;
+    const apiUrl = `https://commons.wikimedia.org/w/api.php?action=parse&page=${encodeURIComponent(categoryToParse)}&prop=wikitext&format=json&origin=*`;
     const response = await fetch(apiUrl);
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
+      throw new Error(`API request failed to fetch wikitext: ${response.statusText}`);
     }
     const data = await response.json();
 
-    const pages = data.query?.pages;
-    if (pages) {
-      const pageId = Object.keys(pages)[0];
-      const page = pages[pageId];
+    if (data.error) {
+      console.warn(`API error when fetching category page content for "${categoryToParse}": ${data.error.info}`);
+      if (autoError.value.includes("redirected from")) autoError.value = '';
+      return false; // Page might not exist or other API issue
+    }
 
-      if (page.redirects && page.redirects.length > 0) {
-        const targetCategory = page.redirects[0].title;
-        if (targetCategory !== categoryNameForAPI && targetCategory !== originalUserInput) {
-          manualCategory.value = targetCategory; // Update input with the redirect target
-          // Use originalUserInput for the "from" part of the message if it was a blur event without "Category:"
-          const fromCategory = (isBlurEvent && !/^Category:/i.test(originalUserInput)) ? originalUserInput : categoryNameForAPI;
-          autoError.value = `Category redirected from "${fromCategory}" to "${targetCategory}".`;
-          updateUrl();
-        } else if (targetCategory === categoryNameForAPI || targetCategory === originalUserInput) {
-          // It's a redirect but to the same name (e.g. case normalization handled by server)
-          if (autoError.value.includes("redirected from")) autoError.value = '';
-        }
-      } else { // No redirect found
-        if (autoError.value.includes("redirected from")) autoError.value = '';
+    const wikitext = data.parse?.wikitext?.['*'];
+    if (!wikitext) {
+      if (autoError.value.includes("redirected from")) autoError.value = '';
+      return false; // No wikitext found
+    }
+
+    const redirectRegex = /\{\{\s*(?:Category redirect|seecat|see cat|categoryredirect|cat redirect|catredirect)\s*\|\s*(?:Category:)?([^}]+)\s*\}\}/i;
+    const match = wikitext.match(redirectRegex);
+
+    if (match && match[1]) {
+      let targetCategory = match[1].trim();
+      // Ensure target has "Category:" prefix
+      if (!/^Category:/i.test(targetCategory)) {
+        targetCategory = 'Category:' + targetCategory;
       }
-    } else { // No pages found
+
+      // Normalize original input for comparison to avoid self-redirect message if only case or prefix differs
+      let normalizedOriginalForComparison = originalUserInput;
+      if (!/^Category:/i.test(normalizedOriginalForComparison)) {
+          normalizedOriginalForComparison = 'Category:' + normalizedOriginalForComparison;
+      }
+
+      if (targetCategory.toLowerCase() !== normalizedOriginalForComparison.toLowerCase()) {
+        manualCategory.value = targetCategory;
+        const fromMsg = (isBlurEvent && !/^Category:/i.test(originalUserInput)) ? originalUserInput : categoryToParse;
+        autoError.value = `Category redirected from "${fromMsg}" to "${targetCategory}".`;
+        updateUrl();
+        return true; // Redirect applied
+      } else {
+        // Target is same as input (e.g. different case but resolved to same, or already correct)
         if (autoError.value.includes("redirected from")) autoError.value = '';
+        return false; // No actual change
+      }
+    } else {
+      // No redirect template found
+      if (autoError.value.includes("redirected from")) autoError.value = '';
+      return false; // No redirect found
     }
   } catch (error) {
-    console.error("Error checking category redirect:", error);
+    console.error("Error checking category redirect by parsing:", error);
     if (autoError.value.includes("redirected from")) autoError.value = '';
-    // autoError.value = "Failed to check category redirect."; // Optional: show generic error
+    return false; // Error occurred
   }
 }
 
 function selectCategory(val) {
   manualCategory.value = val;
-  showCategoryDropdown.value = false; // Hide dropdown immediately on selection
+  showCategoryDropdown.value = false;
   updateUrl();
-  handleCategoryRedirect(false); // Check for redirect after selection
+  // Call redirect handler
+  handleCategoryRedirectByParsing(false);
+  // We won't automatically call autoFillQidFromCategory here. User can click the button if needed.
 }
 
 function onCategoryBlur() {
   // Timeout to allow click on dropdown to register before checking redirect & hiding
-  setTimeout(() => {
-    // Check if the dropdown is still visible OR if the active element is within the dropdown
-    // This helps prevent running redirect if a dropdown item was just clicked
+  setTimeout(async () => {
     const activeElementIsDropdownItem = document.activeElement && document.activeElement.closest('.absolute.z-10');
-
     if (!showCategoryDropdown.value && !activeElementIsDropdownItem) {
-      handleCategoryRedirect(true);
+      await handleCategoryRedirectByParsing(true);
     }
-    // In any case, after a slight delay, ensure the dropdown is hidden if not already by selection.
-    // This mainly helps if user clicks outside input AND dropdown.
+    // Ensure dropdown is hidden if it wasn't closed by selection or other means
     if (showCategoryDropdown.value && !activeElementIsDropdownItem) {
-       hideCategoryDropdown(); // Hide it if it wasn't closed by selection
+       hideCategoryDropdown();
     }
-
-  }, 200); // Slightly increased delay
+  }, 200);
 }
 
 function hideCategoryDropdown() {
-  // This function is now simpler, primarily for hiding the dropdown.
-  // The @blur event on input calls onCategoryBlur, which then calls this if needed.
-  // setTimeout(() => { showCategoryDropdown.value = false; }, 150);
-  // No longer needs its own timeout if called from onCategoryBlur's timeout.
-  // However, if called directly, a timeout might be useful.
-  // For now, assume it's called when hiding is definitely needed.
+  // Simplified: just hides the dropdown.
   showCategoryDropdown.value = false;
 }
 const categoryUrl = computed(() => manualCategory.value ? `https://commons.wikimedia.org/wiki/${encodeURIComponent(manualCategory.value)}` : '#');
@@ -364,33 +367,67 @@ async function autoFillCategoryFromQid() {
   }
 }
 
-async function autoFillQidFromCategory() {
-  autoError.value = '';
+async function onClickAutoFillQidFromCategory() {
+  // Step 1: Handle potential redirect for the current category input.
+  await handleCategoryRedirectByParsing(true);
+  // `manualCategory.value` is now updated if there was a redirect.
+  // `autoError.value` might contain a redirect message.
+
+  // Step 2: Proceed with QID fetching logic.
+  // If a redirect message is present, it will be overwritten by subsequent errors from this function.
+  // If no category value exists (e.g. user cleared it, or redirect logic somehow failed to set one),
+  // set an error and return.
   let cat = manualCategory.value.trim();
   if (!cat) {
+    // Overwrite any existing autoError message (including redirect ones) as this is a new user action context.
     autoError.value = 'Please enter a category first.';
     return;
   }
+
+  // Ensure "Category:" prefix for QID lookup API call
   if (!/^Category:/i.test(cat)) {
     cat = 'Category:' + cat;
   }
+
+  // Clear previous non-redirect error, or let redirect message be replaced by new error.
+  // If it's a redirect message, it will be replaced by "No Wikidata item" or "Failed to fetch" if those occur.
+  // If QID fetch is successful, the redirect message should ideally remain.
+  const redirectMessageIfAny = autoError.value.includes("redirected from") ? autoError.value : null;
+  autoError.value = redirectMessageIfAny || ''; // Clear if not a redirect message, else keep it for now.
+
+
   try {
     const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&sites=commonswiki&titles=${encodeURIComponent(cat)}&format=json&origin=*`;
     const resp = await fetch(url);
     const data = await resp.json();
     const entities = data.entities || {};
     const qids = Object.keys(entities).filter(k => k.startsWith('Q'));
+
     if (qids.length === 0) {
-      autoError.value = 'No Wikidata item found for this category.';
+      autoError.value = 'No Wikidata item found for this category.'; // This overwrites redirect msg
       return;
     }
     manualQid.value = qids[0];
     updateUrl();
+    // checkIfCategoryQid uses categoryQidWarning and window.alert, doesn't interfere with autoError here.
     await checkIfCategoryQid(qids[0]);
+
+    // If QID was found successfully and checkIfCategoryQid didn't raise alerts,
+    // and we had a redirect message, restore it. Otherwise, autoError should be empty.
+    if (redirectMessageIfAny && !categoryQidWarning.value) { // Assuming categoryQidWarning means "problem found by checkIfCategoryQid"
+        autoError.value = redirectMessageIfAny;
+    } else if (!redirectMessageIfAny) {
+        autoError.value = ''; // Ensure clean state if successful and no prior redirect message
+    }
+    // If categoryQidWarning is set, it will be displayed independently. autoError might show redirect or be empty.
+
   } catch (e) {
-    autoError.value = 'Failed to fetch Wikidata Qid from category.';
+    console.error("Error fetching Wikidata QID from category:", e);
+    autoError.value = 'Failed to fetch Wikidata Qid from category.'; // This overwrites redirect msg
   }
 }
+
+// The autoFillQidFromCategory function is now removed as its logic is integrated into onClickAutoFillQidFromCategory
 
 function canShowGrid() {
   return !isCategoryQid.value && manualQid.value && manualCategory.value;
@@ -412,8 +449,11 @@ onMounted(async () => {
   if (auto === '1') {
     if (category && !item) {
       manualCategory.value = category;
-      await autoFillQidFromCategory();
-      if (!autoError.value && canShowGrid()) {
+      // Here, autoFillQidFromCategory is the original core logic,
+      // but we should respect the new flow: redirect check then QID fill.
+      // So, we call the new click handler logic, which includes the redirect check.
+      await onClickAutoFillQidFromCategory(); // This will handle redirect then QID
+      if (!autoError.value && canShowGrid()) { // autoError might be set by redirect or QID fill
         showGrid.value = true;
       }
     } else if (!category && item) {
