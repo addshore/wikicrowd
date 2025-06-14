@@ -200,6 +200,11 @@ export default {
     const imageLoadingStates = reactive({});
     const MAX_FETCH_RETRIES = 5; // Used by existing fetchWithRetry
 
+    // Track failed images for batch validation
+    const failedImages = ref(new Set());
+    const failedImageValidationTimer = ref(null);
+    const FAILED_IMAGE_BATCH_DELAY = 5000; // 5 seconds delay before sending batch
+
     const imageSavingStates = reactive(new Map());
 
     // Only allow certain image file extensions
@@ -209,6 +214,37 @@ export default {
 
     const exponentialBackoff = (retryCount) => {
       return Math.min(1000 * Math.pow(2, retryCount), 30000); // Max 30 seconds
+    };
+
+    // Process failed images in batches for validation
+    const processFailedImagesBatch = () => {
+      if (failedImages.value.size === 0) return;
+      
+      const imageIds = Array.from(failedImages.value);
+      console.log(`[GridMode] Processing batch of ${imageIds.length} failed images for validation:`, imageIds);
+      
+      // Clear the batch
+      failedImages.value.clear();
+      
+      // Send to server for validation
+      validateAndCleanupQuestions(imageIds, 'deleted_image').catch(error => {
+        console.error('[GridMode] Error validating batch of deleted images:', error);
+      });
+    };
+
+    // Add image to failed batch with debounced processing
+    const addToFailedImagesBatch = (imageId) => {
+      failedImages.value.add(imageId);
+      
+      // Clear existing timer
+      if (failedImageValidationTimer.value) {
+        clearTimeout(failedImageValidationTimer.value);
+      }
+      
+      // Set new timer to process batch after delay
+      failedImageValidationTimer.value = setTimeout(() => {
+        processFailedImagesBatch();
+      }, FAILED_IMAGE_BATCH_DELAY);
     };
 
     // New helper function for retrying answer submissions
@@ -1211,12 +1247,16 @@ export default {
           }
         }, delay);
       } else {
-        // Max general retries reached
+        // Max general retries reached - image is considered permanently failed
         imageLoadingStates[image.id] = {
           state: 'error',
           filename: filename,
           reason: `Failed to load after ${MAX_IMAGE_RETRIES} retries.`
         };
+
+        // Add to batch for server validation
+        console.log(`[GridMode] Image ${image.id} permanently failed to load. Adding to validation batch.`);
+        addToFailedImagesBatch(image.id);
       }
     };
 
@@ -1796,6 +1836,12 @@ export default {
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
+      
+      // Clean up failed image validation timer
+      if (failedImageValidationTimer.value) {
+        clearTimeout(failedImageValidationTimer.value);
+        failedImageValidationTimer.value = null;
+      }
     });
     // Also call ensureViewportFilled after each fetch
     const sendAnswerToUse = props.manualMode ? sendAnswerManual : sendAnswer;
