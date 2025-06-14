@@ -598,6 +598,68 @@ export default {
       }
     };
 
+    // Helper function to check existing answers for a batch of images
+    async function checkExistingAnswersForBatch(imagesToCheck) {
+      if (imagesToCheck.length === 0) return [];
+      
+      console.log(`[CustomGrid] Checking existing answers for ${imagesToCheck.length} images...`);
+      
+      try {
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        };
+        if (apiToken) {
+          headers['Authorization'] = `Bearer ${apiToken}`;
+        }
+        if (csrfToken) {
+          headers['X-CSRF-TOKEN'] = csrfToken;
+        }
+
+        const mediainfoIds = imagesToCheck.map(img => img.properties.mediainfo_id);
+        console.log(`[CustomGrid] Sending check-existing-answers request for MIDs:`, mediainfoIds);
+        
+        const response = await fetch('/api/manual-question/check-existing-answers', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            category: props.manualCategory,
+            qid: props.manualQid,
+            mediainfo_ids: mediainfoIds
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const existingAnswers = data.existing_answers || {};
+          console.log(`[CustomGrid] Received existing answers response:`, existingAnswers);
+          
+          // Filter out images that have existing answers
+          const filteredImages = imagesToCheck.filter(img => {
+            const mediainfoId = img.properties.mediainfo_id;
+            const hasAnswer = existingAnswers.hasOwnProperty(mediainfoId);
+            if (hasAnswer) {
+              console.log(`[CustomGrid] Filtering out image ${img.id} (${mediainfoId}) - already answered with: ${existingAnswers[mediainfoId]}`);
+            }
+            return !hasAnswer;
+          });
+          
+          const filteredCount = imagesToCheck.length - filteredImages.length;
+          if (filteredCount > 0) {
+            console.log(`[CustomGrid] Filtered out ${filteredCount}/${imagesToCheck.length} images that already have answers`);
+          }
+          
+          return filteredImages;
+        } else {
+          console.warn(`[CustomGrid] Failed to check existing answers. Status: ${response.status}. Proceeding with all images.`);
+          return imagesToCheck; // Return all images if check fails
+        }
+      } catch (error) {
+        console.error('[CustomGrid] Error checking existing answers:', error, '. Proceeding with all images.');
+        return imagesToCheck; // Return all images if check fails
+      }
+    }
+
     // If manualMode, fetch images from Commons API instead of API
     async function fetchManualImages() {
       console.log('[CustomGrid] Fetching manual images for category:', props.manualCategory, 'and QID:', props.manualQid);
@@ -615,18 +677,14 @@ export default {
             foundAny = true;
           }
         }, addedImageIds);
-        // After recursion, filter out images that already depict the QID or a more specific one
-        const qidSet = await fetchSubclassesAndInstances(props.manualQid);
-        const mids = images.value.map(img => img.properties.mediainfo_id);
-        const depictsMap = await fetchDepictsForMediaInfoIds(mids);
-        console.log(`[CustomGrid] Depicts map for ${mids.length} images:`, depictsMap);
-        images.value = images.value.filter(img => {
-          const mids = img.properties.mediainfo_id;
-          const depicted = depictsMap[mids] || [];
-          console.log(`[CustomGrid] Filtering image ${img.id} (${mids}) with depicts:`, depicted);
-          return !depicted.some(qid => qidSet.has(qid));
-        });
+        
+        console.log(`[CustomGrid] Recursive fetching complete. Found ${images.value.length} images total.`);
+        
+        // Note: We no longer need to do depicts filtering or existing answers checking here
+        // since both are now done during the recursive fetching process for efficiency
+
         allLoaded.value = true;
+        console.log(`[CustomGrid] Manual image fetching complete. Final count: ${images.value.length} images`);
       } catch (e) {
         console.error('Error fetching manual images:', e);
         error = e.message || 'Failed to load images';
@@ -724,6 +782,7 @@ export default {
           });
 
           if (filteredFiles.length > 0) {
+            console.log(`[CustomGrid] Processing ${filteredFiles.length} files from category ${fullCatName}`);
             const qidSet = await fetchSubclassesAndInstances(props.manualQid); // Potentially optimize by fetching once per category if QID doesn't change
             const mids = filteredFiles.map(p => {
               let mid = p.pageprops?.wikibase_item || null;
@@ -735,6 +794,8 @@ export default {
 
             const depictsMap = await fetchDepictsForMediaInfoIds(mids);
 
+            // Collect images that pass the depicts filter
+            const candidateImages = [];
             for (const p of filteredFiles) {
               let mediainfo_id = p.pageprops?.wikibase_item || null;
               if (!mediainfo_id && p.title?.startsWith('File:')) {
@@ -744,12 +805,10 @@ export default {
 
               if (p?.imageinfo?.url) {
                 const depicted = depictsMap[mediainfo_id] || [];
-                if (!depicted.some(qid => qidSet.has(qid))) {
-                  if (currentAddedImageIds.has(imageId)) {
-                    console.log(`[CustomGrid] Duplicate image ID ${imageId} found in category ${categoryName}. Skipping.`);
-                    continue;
-                  }
-                  images.value.push({
+                const alreadyDepicts = depicted.some(qid => qidSet.has(qid));
+                
+                if (!alreadyDepicts && !currentAddedImageIds.has(imageId)) {
+                  candidateImages.push({
                     id: imageId,
                     properties: {
                       mediainfo_id: imageId,
@@ -761,15 +820,32 @@ export default {
                     },
                     title: p.title
                   });
-                  currentAddedImageIds.add(imageId);
-                  if (loading.value && images.value.length > 0) {
-                    loading.value = false;
-                  }
-                  if (onImagePushed) onImagePushed();
+                } else if (alreadyDepicts) {
+                  console.log(`[CustomGrid] Skipping image ${imageId} - already depicts target:`, depicted);
+                } else if (currentAddedImageIds.has(imageId)) {
+                  console.log(`[CustomGrid] Duplicate image ID ${imageId} found in category ${categoryName}. Skipping.`);
                 }
               } else {
                 console.warn(`[CustomGrid] Image ${imageId} (${p.title}) has no valid imageinfo URL, got :`, p.imageinfo);
               }
+            }
+
+            // Now check for existing answers for this batch of candidate images
+            if (candidateImages.length > 0) {
+              console.log(`[CustomGrid] Checking existing answers for ${candidateImages.length} candidate images from ${fullCatName}`);
+              const imagesWithoutAnswers = await checkExistingAnswersForBatch(candidateImages);
+              
+              // Add the filtered images to the main array
+              for (const image of imagesWithoutAnswers) {
+                images.value.push(image);
+                currentAddedImageIds.add(image.id);
+                if (loading.value && images.value.length > 0) {
+                  loading.value = false;
+                }
+                if (onImagePushed) onImagePushed();
+              }
+              
+              console.log(`[CustomGrid] Added ${imagesWithoutAnswers.length}/${candidateImages.length} images from ${fullCatName} (${candidateImages.length - imagesWithoutAnswers.length} already answered)`);
             }
           }
         }

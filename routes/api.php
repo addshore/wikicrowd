@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     ->name('api.clear-unanswered');
     Route::post('/manual-question/answer', [\App\Http\Controllers\Api\ManualQuestionController::class, 'createAndAnswer']);
     Route::post('/manual-question/bulk-answer', [\App\Http\Controllers\Api\ManualQuestionController::class, 'bulkCreateAndAnswer']);
+    Route::post('/manual-question/check-existing-answers', [\App\Http\Controllers\Api\CheckExistingAnswersController::class, 'checkManualAnswers']);
     Route::post('/questions/validate-and-cleanup', [\App\Http\Controllers\Api\QuestionValidationController::class, 'validateAndCleanup'])
         ->name('api.questions.validate-and-cleanup');
 });
