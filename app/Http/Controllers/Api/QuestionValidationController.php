@@ -158,7 +158,7 @@ class QuestionValidationController extends Controller
         try {
             // Check if the media item exists on Commons
             $url = "https://commons.wikimedia.org/w/api.php";
-            $response = Http::get($url, [
+            $response = Http::withOptions(['allow_redirects' => true])->get($url, [
                 'action' => 'wbgetentities',
                 'ids' => $mediaInfoId,
                 'format' => 'json',
@@ -183,7 +183,7 @@ class QuestionValidationController extends Controller
     {
         try {
             $url = "https://commons.wikimedia.org/w/api.php";
-            $response = Http::get($url, [
+            $response = Http::withOptions(['allow_redirects' => true])->get($url, [
                 'action' => 'wbgetclaims',
                 'entity' => $mediaInfoId,
                 'property' => 'P180', // depicts property

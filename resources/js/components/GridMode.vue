@@ -301,7 +301,9 @@ export default {
     // Existing Fetch with retry and exponential backoff (mostly for image fetching from wikimedia)
     const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
       try {
-        const response = await fetch(url, options);
+        // Ensure redirect handling is enabled
+        const fetchOptions = { redirect: 'follow', ...options };
+        const response = await fetch(url, fetchOptions);
         
         if (response.status === 429) {
           if (retryCount < MAX_FETCH_RETRIES) {
@@ -1165,7 +1167,7 @@ export default {
         if (props.manualMode && image.title) {
           const filename = image.title.replace('File:', '');
           const url = `https://commons.wikimedia.org/w/api.php?action=query&titles=File:${encodeURIComponent(filename)}&prop=imageinfo&iiprop=url&format=json&origin=*`;
-          const response = await fetch(url);
+          const response = await fetch(url, { redirect: 'follow' });
           const data = await response.json();
           const pages = data.query?.pages;
           if (pages) {

@@ -69,7 +69,8 @@ export const SPARQL_QUERIES = {
 export async function executeSparqlQuery(query, format = 'json') {
   const url = `${SPARQL_ENDPOINTS.WIKIDATA}?format=${format}&query=${encodeURIComponent(query)}`;
   const response = await fetch(url, {
-    headers: { 'Accept': 'application/sparql-results+json' }
+    headers: { 'Accept': 'application/sparql-results+json' },
+    redirect: 'follow'
   });
   
   if (!response.ok) {
