@@ -206,7 +206,6 @@ export default {
       'jpg', 'jpeg', 'png', 'gif', 'svg', 'tiff'
     ];
 
-    // Exponential backoff utility
     const exponentialBackoff = (retryCount) => {
       return Math.min(1000 * Math.pow(2, retryCount), 30000); // Max 30 seconds
     };
@@ -255,19 +254,10 @@ export default {
             continue; // to the next attempt
           } else {
             console.error(`API call failed with network error: ${error.message} after ${retryDelays.length} attempts (URL: ${url})`);
-            // To align with how other errors are returned (as a response object),
-            // we might need to construct a mock error response or re-throw and catch higher up.
-            // For now, re-throwing to be caught by the calling function's try-catch.
             throw error;
           }
         }
       }
-      // Fallback if loop completes without returning (should ideally not happen with the logic above)
-      // This implies all retries (defined by retryDelays.length) have been exhausted.
-      // The actual error response or thrown error would have been returned/thrown inside the loop.
-      // To satisfy a return path, though, we might throw a generic error or return a synthetic error response.
-      // However, the logic above should ensure a response or error is always returned/thrown from within the loop.
-      // For safety, if somehow reached:
       throw new Error(`fetchAnswerWithRetry exhausted all attempts for ${url}`);
     };
 
@@ -940,7 +930,6 @@ export default {
 
     const handleClick = (id, event) => {
       if (event.shiftKey || isDragging.value) { // If shift was held, it might be end of drag, or if isDragging is still true.
-        // event.stopPropagation(); // Optional: if needed to prevent further click processing, though mousedown.prevent should handle most.
         return;
       }
       // Proceed with normal toggleSelect if not a shift-click related action
@@ -1017,8 +1006,6 @@ export default {
           // Remove existing entry for this id from queue to use the latest one
           imageClickQueue.value = imageClickQueue.value.filter(item => item.id !== id);
           imageClickQueue.value.push({ id, mode: selectedMode[id] }); // Use selectedMode[id] which is answerMode.value
-
-          // Start/reset the main 1-second batchTimer
         }
       }
     };
@@ -1103,17 +1090,10 @@ export default {
       fullscreenImageUrl.value = await getFullSizeImageUrl(image);
       currentFullscreenIndex.value = images.value.findIndex(img => img.id === image.id);
       showFullscreen.value = true;
-      
-      // document.body.style.overflow = 'hidden'; // This is now handled by FullscreenImageView
     };
 
-    // Close fullscreen modal - triggered by event from FullscreenImageView
     const closeFullscreen = () => {
       showFullscreen.value = false;
-      // Optionally, you might want to clear fullscreenImage and fullscreenImageUrl here or not,
-      // depending on whether you want the last image to briefly appear if reopened.
-      // For now, let's not clear them, allowing the component to manage its state.
-      // document.body.style.overflow = ''; // This is now handled by FullscreenImageView
     };
 
     const nextImage = async () => {
@@ -1784,9 +1764,6 @@ export default {
         // Clear saving state regardless of success or failure
         imageSavingStates.delete(image.id);
       }
-
-      // Optional: Close fullscreen after answering. For now, keep it open.
-      // closeFullscreen();
     };
 
     const onSaveClickHandler = () => {
@@ -1948,55 +1925,34 @@ export default {
       closeFullscreen,
       nextImage,
       prevImage,
-      countdownTimers, // Added for template access
-      depictsUpQueryUrl, // Added computed property
-      depictsLinkHref, // Added computed property
-      nextImageUrl, // Added computed property for preloading
-      prevImageUrl, // Added computed property for preloading
-      fullscreenThumbnailUrl, // Added computed property for progressive loading
+      countdownTimers,
+      depictsUpQueryUrl,
+      depictsLinkHref,
+      nextImageUrl,
+      prevImageUrl,
+      fullscreenThumbnailUrl,
       imageSavingStates,
-      cleanupImageState, // Added new function
-      // Drag selection refs
+      cleanupImageState,
       isDragging,
       dragStartCoordinates,
       multiSelectedImageIds,
       dragSelectionRect,
-      // Drag selection methods
       handleImageMouseDown,
-      handleClick, // New click handler
-      // Touch drag refs and methods
+      handleClick,
       longPressTimer,
       touchStartCoordinates,
       isLongPressActive,
       maxTouchMoveThreshold,
       handleTouchStart,
-      // handleTouchMove and handleTouchEnd are global listeners
-      handleFullscreenAnswer, // Added new method for handling answers from fullscreen
-      nextImageUrl, // Added computed property for next image URL
-      prevImageUrl, // Added computed property for previous image URL
-      fullscreenThumbnailUrl, // Added computed property for fullscreen thumbnail URL
-      imageSize, // Added image size control
-      gridClasses, // Added dynamic grid classes
-      imageHeightClass, // Added dynamic image height classes
-      answerModeStyles, // Added answer mode styles for drag selection
+      handleFullscreenAnswer,
+      nextImageUrl,
+      prevImageUrl,
+      fullscreenThumbnailUrl,
+      imageSize,
+      gridClasses,
+      imageHeightClass,
+      answerModeStyles,
     };
   },
 };
-
-function handleFullscreenAnswer({ image, mode }) {
-  // This is a placeholder. Actual implementation will depend on how GridMode's sendAnswer is structured.
-  // It might involve calling sendAnswer(image, mode) or sendAnswerManual(image, mode)
-  // and then potentially closing the fullscreen or updating its UI.
-  console.log(`Answer received from fullscreen: Image ID ${image.id}, Mode: ${mode}`);
-  // Example: self.sendAnswer(image, mode); // 'self' would be 'this' if it were a component method.
-  // Since this is in setup, we'd call the function directly if it's in scope.
-  // For now, we'll assume sendAnswerToUse is accessible and can be called.
-  // Note: This is a simplified call. sendAnswer might need specific properties from the image object
-  // or might rely on selected/answered sets which need to be handled carefully here.
-
-  // This function is outside the `setup` return object, so it won't be directly callable
-  // from the template in the same way as methods returned from `setup`.
-  // It needs to be defined within `setup` or passed to `setup` to be used as a callback.
-  // Let's define it inside setup.
-}
 </script>
