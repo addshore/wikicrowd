@@ -15,7 +15,7 @@ use Wikibase\MediaInfo\DataModel\MediaInfoId;
 use Wikibase\DataModel\Entity\PropertyId;
 use Wikibase\DataModel\Entity\ItemId;
 use Addwiki\Wikibase\Query\PrefixSets;
-use Illuminate\Support\Facades\Cache;
+use App\Services\SparqlQueryService;
 
 class ManualQuestionController extends Controller
 {
@@ -176,18 +176,8 @@ class ManualQuestionController extends Controller
         $depictsProperty = new PropertyId('P180');
         $depictsValue = new ItemId($depictsQid);
         // Get all superclasses of the new QID
-        $superclasses = Cache::remember('instancesOfAndSubclassesOf:' . $depictsQid, 60*2, function () use ($depictsQid) {
-            $query = (new \Addwiki\Wikibase\Query\WikibaseQueryFactory(
-                "https://query.wikidata.org/sparql",
-                PrefixSets::WIKIDATA
-            ))->newWikibaseQueryService();
-            $result = $query->query("SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279*|wdt:P279/wdt:P279* wd:{$depictsQid} }");
-            $ids = [];
-            foreach ($result['results']['bindings'] as $binding) {
-                $ids[] = $this->getLastPartOfUrlPath($binding['i']['value']);
-            }
-            return $ids;
-        });
+        $sparqlService = new SparqlQueryService();
+        $superclasses = $sparqlService->getSubclassesAndInstances($depictsQid);
         // Lookup entity
         $entity = $wbServices->newEntityLookup()->getEntity($mid);
         if ($entity === null) {
@@ -204,10 +194,5 @@ class ManualQuestionController extends Controller
             }
         }
         return null;
-    }
-
-    private function getLastPartOfUrlPath(string $urlPath): string {
-        $parts = explode('/', $urlPath);
-        return end($parts);
     }
 }

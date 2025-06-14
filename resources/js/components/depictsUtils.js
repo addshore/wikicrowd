@@ -1,23 +1,8 @@
+import { fetchSubclassesAndInstances as sparqlFetchSubclassesAndInstances } from '../sparqlQueries.js';
+
 // Utility to fetch all subclasses/instances of a QID from Wikidata
 export async function fetchSubclassesAndInstances(qid) {
-  const endpoint = 'https://query.wikidata.org/sparql';
-  const query = `SELECT DISTINCT ?item WHERE {
-    ?item (wdt:P31/wdt:P279*|wdt:P279/wdt:P279*) wd:${qid} .
-  }`;
-  const url = endpoint + '?format=json&query=' + encodeURIComponent(query);
-  const resp = await fetch(url, { headers: { 'Accept': 'application/sparql-results+json' } });
-  const data = await resp.json();
-  // Always include the original QID in the set, even if not in results
-  const ids = new Set([qid]);
-  if (data.results && data.results.bindings) {
-    for (const b of data.results.bindings) {
-      const uri = b.item.value;
-      const id = uri.split('/').pop();
-      ids.add(id);
-    }
-  }
-  console.log('[depictsUtils] QID', qid, 'subclasses/instances set:', Array.from(ids));
-  return ids;
+  return await sparqlFetchSubclassesAndInstances(qid);
 }
 
 // Utility to fetch depicts statements for a batch of mediainfo IDs from Commons

@@ -122,7 +122,7 @@
                     class="text-blue-700 hover:underline"
                   >(up)</a>
                   <a
-                    :href="`https://query.wikidata.org/embed.html#SELECT%20%3Fitem%20%3FitemLabel%0AWHERE%0A%7B%0A%20%20%3Fitem%20wdt%3AP31%2Fwdt%3AP279*|wdt%3AP279%2Fwdt%3AP279*%20wd%3A${q.depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1')}.%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cmul%2Cen%22.%20%7D%0A%7D`"
+                    :href="getDepictsDownQueryUrl(q.depictsId)"
                     target="_blank"
                     rel="noopener"
                     class="ml-1 text-blue-700 hover:underline"
@@ -189,7 +189,7 @@
 import { ref, computed, onMounted } from 'vue';
 import DepictsGroupBox from './DepictsGroupBox.vue';
 import WikidataLabel from './WikidataLabel.vue';
-import WikidataDescription from './WikidataDescription.vue';
+import { generateDepictsUpQueryUrl, generateDepictsDownQueryUrl } from '../sparqlQueries.js';
 
 const yamlData = ref(null);
 const groupsApiData = ref(null);
@@ -502,11 +502,16 @@ const clearUnanswered = async (q) => {
   // Do not re-enable the button
 };
 
+const getDepictsDownQueryUrl = (depictsId) => {
+  if (!depictsId) return '';
+  const cleanId = depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1');
+  return generateDepictsDownQueryUrl(cleanId);
+};
+
 const getDepictsUpQueryUrl = (depictsId) => {
   if (!depictsId) return '';
   const cleanId = depictsId.replace(/\{\{Q\|([^}]+)\}\}/, '$1');
-  const sparql = `SELECT DISTINCT ?item ?itemLabel WHERE { {wd:${cleanId} (wdt:P31/wdt:P279)+ ?item.} UNION {wd:${cleanId} (wdt:P31/wdt:P279|wdt:P279)+ ?item .} SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". } }`;
-  return 'https://query.wikidata.org/embed.html#' + encodeURIComponent(sparql);
+  return generateDepictsUpQueryUrl(cleanId);
 };
 
 </script>

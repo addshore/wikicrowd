@@ -116,6 +116,7 @@ import DragSelectionOverlay from './DragSelectionOverlay.vue';
 import ImageCard from './ImageCard.vue';
 import EmptyState from './EmptyState.vue';
 import { fetchSubclassesAndInstances, fetchDepictsForMediaInfoIds } from './depictsUtils';
+import { generateDepictsUpQueryUrl } from '../sparqlQueries.js';
 import { toastStore } from '../toastStore.js';
 
 export default {
@@ -1160,9 +1161,7 @@ export default {
     // --- Add computed property for the (up) SPARQL query link ---
     const depictsUpQueryUrl = computed(() => {
       const depictsId = images.value[0]?.properties?.depicts_id;
-      if (!depictsId) return '';
-      const sparql = `SELECT DISTINCT ?item ?itemLabel WHERE { {wd:${depictsId} (wdt:P31/wdt:P279)+ ?item.} UNION {wd:${depictsId} (wdt:P31/wdt:P279|wdt:P279)+ ?item .} SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". } }`;
-      return 'https://query.wikidata.org/embed.html#' + encodeURIComponent(sparql);
+      return generateDepictsUpQueryUrl(depictsId);
     });
 
     const depictsLinkHref = computed(() => {

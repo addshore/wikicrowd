@@ -18,7 +18,7 @@ use Wikibase\DataModel\Entity\ItemId;
 use Addwiki\Wikibase\Query\PrefixSets;
 use Wikibase\DataModel\Snak\PropertyValueSnak;
 use Wikibase\DataModel\Entity\EntityIdValue;
-use Illuminate\Support\Facades\Cache;
+use App\Services\SparqlQueryService;
 use Addwiki\Mediawiki\DataModel\EditInfo;
 use Wikibase\DataModel\Statement\Statement;
 use Wikibase\DataModel\Statement\StatementId;
@@ -169,26 +169,7 @@ class AddDepicts implements ShouldQueue
     }
 
     private function instancesOfAndSubclassesOf( string $itemId ) : array {
-        // TODO code reuse
-        return Cache::remember('instancesOfAndSubclassesOf:' . $itemId, 60*2, function () use ($itemId) {
-            $query = (new \Addwiki\Wikibase\Query\WikibaseQueryFactory(
-                "https://query.wikidata.org/sparql",
-                PrefixSets::WIKIDATA
-            ))->newWikibaseQueryService();
-            $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279*|wdt:P279/wdt:P279* wd:{$itemId} }" );
-
-            $ids = [];
-            foreach ( $result['results']['bindings'] as $binding ) {
-                $ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
-            }
-            return $ids;
-        });
+        $sparqlService = new SparqlQueryService();
+        return $sparqlService->instancesOfAndSubclassesOf($itemId);
     }
-
-    private function getLastPartOfUrlPath( string $urlPath ): string {
-        // TODO code reuse
-		// Assume that the last part is always the ID?
-		$parts = explode( '/', $urlPath );
-		return end( $parts );
-	}
 }

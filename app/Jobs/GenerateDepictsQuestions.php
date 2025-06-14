@@ -20,6 +20,7 @@
     use Illuminate\Bus\Batchable;
     use Illuminate\Support\Facades\Bus;
     use Illuminate\Support\Facades\Cache;
+    use App\Services\SparqlQueryService;
 
     class GenerateDepictsQuestions implements ShouldQueue
     {
@@ -290,37 +291,19 @@
         }
 
         private function instancesOfAndSubclassesOf( string $itemId ) : array {
-            $query = (new \Addwiki\Wikibase\Query\WikibaseQueryFactory(
-                "https://query.wikidata.org/sparql",
-                PrefixSets::WIKIDATA
-            ))->newWikibaseQueryService();
-            $result = $query->query( "SELECT DISTINCT ?i WHERE{?i wdt:P31/wdt:P279*|wdt:P279/wdt:P279* wd:${itemId} }" );
-
-            $ids = [];
-            foreach ( $result['results']['bindings'] as $binding ) {
-                $ids[] = $this->getLastPartOfUrlPath( $binding['i']['value'] );
-            }
-            return $ids;
+            $sparqlService = new SparqlQueryService();
+            return $sparqlService->getSubclassesAndInstances($itemId);
         }
 
         private function parentInstancesOfAndSubclassesOf( string $itemId ) : array {
-            $query = (new \Addwiki\Wikibase\Query\WikibaseQueryFactory(
-                "https://query.wikidata.org/sparql",
-                PrefixSets::WIKIDATA
-            ))->newWikibaseQueryService();
-            $result = $query->query( "SELECT DISTINCT ?item ?itemLabel WHERE { {wd:${itemId} (wdt:P31/wdt:P279)+ ?item.} UNION {wd:${itemId} (wdt:P31/wdt:P279|wdt:P279)+ ?item .} SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". } }" );
-
+            $sparqlService = new SparqlQueryService();
+            $result = $sparqlService->executeQuery('PARENT_CLASSES_WITH_LABELS', [$itemId, $itemId]);
+            
             $ids = [];
-            foreach ( $result['results']['bindings'] as $binding ) {
-                $ids[] = $this->getLastPartOfUrlPath( $binding['item']['value'] );
+            foreach ($result['results']['bindings'] as $binding) {
+                $ids[] = $sparqlService->extractQidFromUri($binding['item']['value']);
             }
             return $ids;
-        }
-
-        private function getLastPartOfUrlPath( string $urlPath ): string {
-            // Assume that the last part is always the ID?
-            $parts = explode( '/', $urlPath );
-            return end( $parts );
         }
 
         private function processFilePage( PageIdentifier $filePageIdentifier ) : bool {
