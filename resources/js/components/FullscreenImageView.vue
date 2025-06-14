@@ -84,13 +84,16 @@
 
       <!-- Image info -->
       <div class="mt-4 text-white text-center">
-        <a
-          :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + image.properties?.mediainfo_id"
-          target="_blank"
-          class="text-blue-300 hover:text-blue-100 underline"
-        >
-          {{ image.properties?.mediainfo_id || image.id }}
-        </a>
+        <div class="mb-2">
+          <a
+            :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + image.properties?.mediainfo_id"
+            target="_blank"
+            class="text-blue-300 hover:text-blue-100 underline"
+          >
+            {{ image.properties?.mediainfo_id || image.id }}
+          </a>
+        </div>
+        <ExistingDepictsLabels :media-info-id="image.properties?.mediainfo_id || image.id" />
       </div>
 
       <!-- Answer Buttons -->
@@ -153,8 +156,13 @@
 </template>
 
 <script>
+import ExistingDepictsLabels from './ExistingDepictsLabels.vue';
+
 export default {
   name: 'FullscreenImageView',
+  components: {
+    ExistingDepictsLabels
+  },
   props: {
     image: {
       type: Object,

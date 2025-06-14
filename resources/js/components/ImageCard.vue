@@ -66,10 +66,13 @@
       </svg>
     </button>
     
-    <div class="image-title px-2 py-1 text-xs text-center truncate bg-white bg-opacity-80 w-full"
+    <div class="image-title px-2 py-1 text-xs text-center bg-white bg-opacity-80 w-full"
       @click.stop
     >
-      <a :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + image.properties?.mediainfo_id" target="_blank">{{ image.properties?.mediainfo_id || image.id }}</a>
+      <div class="truncate mb-1">
+        <a :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + image.properties?.mediainfo_id" target="_blank">{{ image.properties?.mediainfo_id || image.id }}</a>
+      </div>
+      <ExistingDepictsLabels :media-info-id="image.properties?.mediainfo_id || image.id" />
     </div>
     
     <!-- Answer overlay -->
@@ -102,8 +105,13 @@
 </template>
 
 <script>
+import ExistingDepictsLabels from './ExistingDepictsLabels.vue';
+
 export default {
   name: 'ImageCard',
+  components: {
+    ExistingDepictsLabels
+  },
   props: {
     image: {
       type: Object,
