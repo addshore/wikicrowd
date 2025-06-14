@@ -25,7 +25,9 @@ async function fetchWikidataLabel(qid) {
     try {
         loading.value = true;
         error.value = false;
-        const resp = await fetch(`https://www.wikidata.org/w/rest.php/wikibase/v1/entities/items/${qid}/labels_with_language_fallback/en`);
+        const resp = await fetch(`https://www.wikidata.org/w/rest.php/wikibase/v1/entities/items/${qid}/labels_with_language_fallback/en`, {
+            redirect: 'follow'
+        });
         if (resp.ok) {
             const data = await resp.json();
             if (typeof data === 'string') {
