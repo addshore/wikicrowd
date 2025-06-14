@@ -1,222 +1,68 @@
 <template>
   <div class="p-4 w-full max-w-none mx-auto">
     <div class="sticky top-0 z-20 bg-white bg-opacity-95 pb-2 mb-2 shadow">
-      <h2 class="text-xl font-bold mb-2 flex flex-col items-center">
-        <p class="text-lg leading-7 text-gray-500 mb-1">
-          Does this image clearly <a :href="depictsLinkHref" target="_blank" class="text-blue-600 hover:underline">depict</a>
-        </p>
-        <div v-if="images[0]?.properties?.depicts_id" class="text-lg font-semibold flex items-center mb-1">
-          <a
-            :href="'https://www.wikidata.org/wiki/' + images[0].properties.depicts_id"
-            target="_blank"
-            class="mr-2 text-blue-600 hover:underline"
-          >
-            {{ images[0].properties.depicts_id }}
-          </a>
-          <span class="ml-1">(<WikidataLabel :qid="images[0].properties.depicts_id" :fallback="images[0].properties.depicts_name" />)</span>
-          <span class="ml-2 text-sm">
-            <a
-              :href="depictsUpQueryUrl"
-              target="_blank"
-              class="text-blue-600 hover:underline"
-            >(up)</a>
-            <a
-              :href="`https://query.wikidata.org/embed.html#SELECT%20%3Fitem%20%3FitemLabel%0AWHERE%0A%7B%0A%20%20%3Fitem%20wdt%3AP31%2Fwdt%3AP279*|wdt%3AP279%2Fwdt%3AP279*%20wd%3A${images[0].properties.depicts_id}.%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cmul%2Cen%22.%20%7D%0A%7D`"
-              target="_blank"
-              class="ml-1 text-blue-600 hover:underline"
-            >(down)</a>
-          </span>
-        </div>
-        <div v-if="images[0]?.properties?.depicts_id" class="text-gray-600 text-sm mt-1">
-          <WikidataDescription :qid="images[0].properties.depicts_id" />
-        </div>
-      </h2>
+      <DepictsHeader
+        :depicts-id="images[0]?.properties?.depicts_id"
+        :depicts-name="images[0]?.properties?.depicts_name"
+        :depicts-up-query-url="depictsUpQueryUrl"
+        :depicts-link-href="depictsLinkHref"
+      />
+      <AnswerModeButtons
+        v-model:answer-mode="answerMode"
+      />
+      
       <div class="flex justify-center mt-2 mb-2">
-        <button
-          :class="['px-2 py-1 text-sm rounded-l font-bold', answerMode === 'yes-preferred' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-700']"
-          @click="answerMode = 'yes-preferred'"
-        >Prominent (Q)</button>
-        <button
-          :class="['px-2 py-1 text-sm font-bold', answerMode === 'yes' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700']"
-          @click="answerMode = 'yes'"
-        >YES (1)</button>
-        <button
-          :class="['px-2 py-1 text-sm font-bold', answerMode === 'skip' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']"
-          @click="answerMode = 'skip'"
-        >SKIP (e)</button>
-        <button
-          :class="['px-2 py-1 text-sm rounded-r font-bold', answerMode === 'no' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700']"
-          @click="answerMode = 'no'"
-        >NO (2)</button>
-        <button
-          class="ml-2 px-3 py-1 bg-blue-600 text-white rounded font-bold border border-blue-700 hover:bg-blue-700"
-          :disabled="pendingAnswers.length === 0 && Array.from(selected).filter(id => !answered.has(id)).length === 0"
-          @click="onSaveClickHandler"
-        >Save</button>
-        <button
-          class="ml-2 px-2 py-1 text-sm bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 rounded"
-          @click="clearAnswered"
-        >
-          Clear Done
-        </button>
-        <label class="flex items-center ml-4 cursor-pointer select-none">
-          <input type="checkbox" v-model="autoSave" class="mr-1" />
-          Auto Save
-          <span class="ml-2 flex items-center">
-            after
-            <input
-              type="number"
-              min="1"
-              v-model.number="autoSaveDelay"
-              class="mx-1 w-12 px-1 py-0.5 border border-gray-300 rounded text-center text-sm"
-              style="width:3.5em;"
-            />
-            seconds
-          </span>
-        </label>
+        <GridControlBar
+          :pending-answers-count="pendingAnswers.length"
+          :selected-count="Array.from(selected).filter(id => !answered.has(id)).length"
+          @save="onSaveClickHandler"
+          @clear-answered="clearAnswered"
+        />
+        
+        <AutoSaveSettings
+          v-model:auto-save="autoSave"
+          v-model:auto-save-delay="autoSaveDelay"
+        />
       </div>
 
-      <!-- Image Size Slider -->
-      <div class="flex justify-center items-center mt-2 mb-2">
-        <label class="flex items-center text-sm text-gray-700">
-          <span class="mr-3">Image Size:</span>
-          <span class="mr-2">Large</span>
-          <input 
-            type="range" 
-            min="1" 
-            max="12" 
-            v-model.number="imageSize"
-            class="mx-2 w-32"
-          />
-          <span class="ml-2">Small</span>
-          <span class="ml-3 text-xs text-gray-500">({{ imageSize }} col{{ imageSize === 1 ? '' : 's' }})</span>
-        </label>
-      </div>
+      <ImageSizeControl v-model:image-size="imageSize" />
 
       <div class="flex justify-center w-full">
         <small class="text-center">Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.</small>
       </div>
     </div>
     
-    <!-- Loading message -->
-    <div v-if="loading" class="flex justify-center items-center py-8">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-      <span class="text-gray-600">Loading images...</span>
-    </div>
+    <LoadingSpinner
+      :loading="loading"
+      message="Loading images..."
+    />
     
-    <!-- No images message -->
-    <div v-else-if="!loading && images.length === 0" class="text-center py-8">
-      <div class="text-gray-500 text-lg">No images available to review.</div>
-    </div>
+    <EmptyState
+      v-if="!loading && images.length === 0"
+      message="No images available to review."
+    />
     
-    <div v-else :class="gridClasses">
-      <div v-for="image in images" :key="image.id"
-        :data-image-id="image.id"
-        @click="handleClick(image.id, $event)"
-        @mousedown.prevent="handleImageMouseDown(image, $event)"
-        @touchstart.prevent="handleTouchStart(image, $event)"
-        :class="[
-          'relative flex flex-col rounded overflow-hidden transition-all',
-          answered.has(image.id)
-            ? (
-                answeredMode[image.id] === 'no' ? 'border-4 border-red-500 cursor-default opacity-80' :
-                answeredMode[image.id] === 'skip' ? 'border-4 border-blue-500 cursor-default opacity-80' :
-                answeredMode[image.id] === 'yes' ? 'border-4 border-green-500 cursor-default opacity-80' :
-                answeredMode[image.id] === 'yes-preferred' ? 'border-4 border-green-700 cursor-default opacity-80' :
-                'border-4 border-transparent cursor-default opacity-80' // Should not happen if answeredMode is always set
-              )
-            : selected.has(image.id)
-              ? (
-                  selectedMode[image.id] === 'no' ? 'border-4 border-red-500 cursor-pointer' :
-                  selectedMode[image.id] === 'skip' ? 'border-4 border-blue-500 cursor-pointer' :
-                  selectedMode[image.id] === 'yes' ? 'border-4 border-green-500 cursor-pointer' :
-                  selectedMode[image.id] === 'yes-preferred' ? 'border-4 border-green-700 cursor-pointer' :
-                  'border-4 border-transparent cursor-pointer' // Fallback if mode not set, though it should be
-                )
-              : 'border-4 border-transparent cursor-pointer'
-        ]"
-      >
-        <div :class="['relative w-full bg-gray-100', imageHeightClass]">
-          <!-- Loading spinner -->
-          <div v-if="!imageLoadingStates[image.id] || imageLoadingStates[image.id] === 'loading'" 
-               class="absolute inset-0 flex items-center justify-center bg-gray-100">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-          
-          <!-- Error state -->
-          <div v-if="imageLoadingStates[image.id]?.state === 'error'"
-               class="absolute inset-0 flex items-center justify-center bg-gray-100">
-            <div class="text-center text-gray-500 px-2"> <!-- Added padding for better text display -->
-              <svg class="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <!-- Slightly smaller icon -->
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              <p class="text-xs font-semibold truncate" :title="imageLoadingStates[image.id].filename">{{ imageLoadingStates[image.id].filename }}</p>
-              <p class="text-xs">{{ imageLoadingStates[image.id].reason }}</p>
-            </div>
-          </div>
-          
-          <img
-            :src="image.properties.img_url"
-            :alt="`Image ${image.id}`"
-            draggable="false"
-            class="object-contain align-top w-full h-full"
-            style="object-position:top"
-            @load="handleImgLoad(image)"
-            @error="handleImgError(image, $event)"
-            @loadstart="markImageLoading(image)"
-          />
-          <!-- Countdown Timer Overlay -->
-          <div v-if="(countdownTimers.has(image.id) && countdownTimers.get(image.id) > 0) || imageSavingStates.get(image.id)"
-               class="absolute top-2 right-2 bg-black bg-opacity-75 text-white text-xs font-bold px-2 py-1 rounded z-10">
-            <template v-if="imageSavingStates.get(image.id)">
-              Saving...
-            </template>
-            <template v-else>
-              Saving in {{ countdownTimers.get(image.id) }}s
-            </template>
-          </div>
-        </div>
-        
-        <!-- Magnifying glass icon -->
-        <button 
-          @click="(e) => openFullscreen(image, e)"
-          class="absolute bottom-8 right-2 bg-black bg-opacity-60 hover:bg-opacity-80 text-white p-1.5 rounded-full transition-all z-10"
-          title="View fullscreen"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
-          </svg>
-        </button>
-        <div class="image-title px-2 py-1 text-xs text-center truncate bg-white bg-opacity-80 w-full"
-          @click.stop
-        >
-          <a :href="'https://commons.wikimedia.org/wiki/Special:EntityData/' + image.properties?.mediainfo_id" target="_blank">{{ image.properties?.mediainfo_id || image.id }}</a>
-        </div>
-        <div v-if="answered.has(image.id)" class="absolute inset-0 flex items-center justify-center bg-opacity-60 pointer-events-none"
-            :class="answeredMode[image.id] === 'yes-preferred' ? 'bg-green-700' : answeredMode[image.id] === 'yes' ? 'bg-green-500' : answeredMode[image.id] === 'no' ? 'bg-red-500' : answeredMode[image.id] === 'skip' ? 'bg-blue-500' : ''">
-          <template v-if="answeredMode[image.id] === 'no'">
-            <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </template>
-          <template v-else-if="answeredMode[image.id] === 'skip'">
-            <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24">
-              <text x="12" y="20" text-anchor="middle" font-size="18" font-family="Arial" dy="-2">?</text>
-            </svg>
-          </template>
-          <template v-else-if="answeredMode[image.id] === 'yes'">
-            <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </template>
-          <template v-else-if="answeredMode[image.id] === 'yes-preferred'">
-            <svg class="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <polygon points="12,2 15,9 22,9.5 17,14.5 18.5,22 12,18 5.5,22 7,14.5 2,9.5 9,9" />
-            </svg>
-          </template>
-        </div>
-        <div v-else-if="selected.has(image.id)" class="absolute inset-0 pointer-events-none"></div>
-      </div>
+    <div v-else-if="!loading && images.length > 0" :class="gridClasses">
+      <ImageCard
+        v-for="image in images" 
+        :key="image.id"
+        :image="image"
+        :is-answered="answered.has(image.id)"
+        :answered-mode="answeredMode[image.id]"
+        :is-selected="selected.has(image.id)"
+        :selected-mode="selectedMode[image.id]"
+        :image-loading-state="imageLoadingStates[image.id]"
+        :countdown-time="countdownTimers.get(image.id)"
+        :is-saving="imageSavingStates.get(image.id)"
+        :image-height-class="imageHeightClass"
+        @click="handleClick"
+        @mousedown="handleImageMouseDown"
+        @touchstart="handleTouchStart"
+        @img-load="handleImgLoad"
+        @img-error="handleImgError"
+        @img-load-start="markImageLoading"
+        @open-fullscreen="openFullscreen"
+      />
     </div>
     <div class="flex justify-center mt-6" v-if="!allLoaded && !loading && !isFetchingMore && !manualMode">
       <button class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded shadow" @click="fetchNextImages(10)">
@@ -241,16 +87,19 @@
       @answer="handleFullscreenAnswer"
     />
 
-    <!-- Always show Loading... under the grid if loading or (manualMode and recursion ongoing) -->
-    <div v-if="loading || (manualMode && !allLoaded)" class="text-center py-4">
-      <span class="text-gray-600">Loading more images, please wait...</span>
-    </div>
-    <!-- Drag Selection Rectangle -->
-    <div
-      v-if="isDragging && dragSelectionRect.width > 0 && dragSelectionRect.height > 0"
-      class="drag-selection-rectangle"
-      :style="dragRectangleStyle"
-    ></div>
+    <LoadingSpinner
+      :loading="loading || (manualMode && !allLoaded)"
+      message="Loading more images, please wait..."
+    />
+    <DragSelectionOverlay
+      :is-dragging="isDragging"
+      :x="dragSelectionRect.x"
+      :y="dragSelectionRect.y"
+      :width="dragSelectionRect.width"
+      :height="dragSelectionRect.height"
+      :answer-mode-styles="answerModeStyles"
+      :current-answer-mode="answerMode"
+    />
   </div>
 </template>
 
@@ -258,13 +107,35 @@
 import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue';
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
-import FullscreenImageView from './FullscreenImageView.vue'; // Import the new component
+import FullscreenImageView from './FullscreenImageView.vue';
+import AnswerModeButtons from './AnswerModeButtons.vue';
+import ImageSizeControl from './ImageSizeControl.vue';
+import AutoSaveSettings from './AutoSaveSettings.vue';
+import GridControlBar from './GridControlBar.vue';
+import DepictsHeader from './DepictsHeader.vue';
+import LoadingSpinner from './LoadingSpinner.vue';
+import DragSelectionOverlay from './DragSelectionOverlay.vue';
+import ImageCard from './ImageCard.vue';
+import EmptyState from './EmptyState.vue';
 import { fetchSubclassesAndInstances, fetchDepictsForMediaInfoIds } from './depictsUtils';
 import { toastStore } from '../toastStore.js';
 
 export default {
   name: 'GridMode',
-  components: { WikidataLabel, WikidataDescription, FullscreenImageView },
+  components: { 
+    WikidataLabel, 
+    WikidataDescription, 
+    FullscreenImageView,
+    AnswerModeButtons,
+    ImageSizeControl,
+    AutoSaveSettings,
+    GridControlBar,
+    DepictsHeader,
+    LoadingSpinner,
+    DragSelectionOverlay,
+    ImageCard,
+    EmptyState
+  },
   props: {
     manualCategory: { type: String, default: '' },
     manualQid: { type: String, default: '' },
@@ -326,7 +197,6 @@ export default {
 
     // Track image loading states and backoff
     const imageLoadingStates = reactive({});
-    const fetchRetryCount = ref(0);
     const MAX_FETCH_RETRIES = 5; // Used by existing fetchWithRetry
 
     const imageSavingStates = reactive(new Map());
@@ -1461,26 +1331,6 @@ export default {
       }
     };
 
-    const dragRectangleStyle = computed(() => {
-      const baseStyle = {
-        left: dragSelectionRect.value.x + 'px',
-        top: dragSelectionRect.value.y + 'px',
-        width: dragSelectionRect.value.width + 'px',
-        height: dragSelectionRect.value.height + 'px',
-      };
-      // Default to 'skip' style (blue) if answerMode.value is not a key in answerModeStyles
-      const currentStyleKey = answerMode.value && answerModeStyles[answerMode.value] ? answerMode.value : 'skip';
-      const modeStyle = answerModeStyles[currentStyleKey];
-
-      return {
-        ...baseStyle,
-        backgroundColor: modeStyle.lightColor,
-        borderColor: modeStyle.color,
-        borderWidth: '2px',
-        borderStyle: 'dashed',
-      };
-    });
-
     /**
      * Handles the mousedown event on an image, initiating drag selection if Shift key is pressed.
      * @param {object} image - The image object.
@@ -2121,7 +1971,6 @@ export default {
       maxTouchMoveThreshold,
       handleTouchStart,
       // handleTouchMove and handleTouchEnd are global listeners
-      dragRectangleStyle, // For dynamic rectangle styling
       handleFullscreenAnswer, // Added new method for handling answers from fullscreen
       nextImageUrl, // Added computed property for next image URL
       prevImageUrl, // Added computed property for previous image URL
@@ -2129,6 +1978,7 @@ export default {
       imageSize, // Added image size control
       gridClasses, // Added dynamic grid classes
       imageHeightClass, // Added dynamic image height classes
+      answerModeStyles, // Added answer mode styles for drag selection
     };
   },
 };
@@ -2150,12 +2000,3 @@ function handleFullscreenAnswer({ image, mode }) {
   // Let's define it inside setup.
 }
 </script>
-
-<style scoped>
-.drag-selection-rectangle {
-  position: fixed;
-  pointer-events: none;
-  z-index: 1000;
-  box-sizing: border-box;
-}
-</style>
