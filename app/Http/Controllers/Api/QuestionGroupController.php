@@ -43,8 +43,9 @@ class QuestionGroupController extends Controller
         }])->get();
 
         // Filter out anything that doesnt have "depicts" at the start of the name
+        // Also filter out refinement groups
         $groups = $groups->filter(function($group){
-            return strpos($group->name, 'depicts') === 0;
+            return strpos($group->name, 'depicts') === 0 && strpos($group->name, 'refinement') === false;
         });
 
         $newManualGroups = [];
@@ -65,18 +66,6 @@ class QuestionGroupController extends Controller
                         $cats = [$cats];
                     }
                     $game->categories = $cats;
-                }
-                // Separate out the depict-refine names
-                if (strpos($game->name, 'depicts-refine') === 0) {
-                    if (!isset($newManualGroups['refinement'])) {
-                        $newManualGroups['refinement'] = (object) [
-                            'display_name' => "Refinement",
-                            'subGroups' => [],
-                        ];
-                    }
-                    $newManualGroups['refinement']->subGroups[] = $game;
-                    $jIgnore[] = $j;
-                    continue;
                 }
                 foreach ($this->depictsGroups as $depictsGroup => $depictsIds) {
                     if ($this->stringEndsWithOneOf($game->name, $depictsIds)) {
@@ -117,13 +106,6 @@ class QuestionGroupController extends Controller
         // Remove the other group if it is empty
         if (count($newManualGroups['other']->subGroups) == 0) {
             unset($newManualGroups['other']);
-        }
-
-        // Move the `refinement` group to the end
-        if( array_key_exists('refinement', $newManualGroups)){
-            $refinement = $newManualGroups['refinement'];
-            unset($newManualGroups['refinement']);
-            $newManualGroups['refinement'] = $refinement;
         }
 
         return response()->json($newManualGroups);

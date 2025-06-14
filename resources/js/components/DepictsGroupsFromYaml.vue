@@ -133,17 +133,11 @@
             </td>
             <td class="p-2 border text-center text-gray-900 dark:text-gray-100">
               <span v-if="typeof q.unanswered === 'number'">{{ q.unanswered }}</span>
-              <template v-if="q.refinementUnanswered">
-                <span class="ml-2 text-yellow-800">+ {{ q.refinementUnanswered }} refinements</span>
-              </template>
               <span v-else-if="typeof q.unanswered !== 'number'">-</span>
             </td>
             <td class="p-2 border text-gray-900 dark:text-gray-100">
               <div class="flex gap-2">
                 <a :href="`/questions/${q.route_name}`" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 font-bold" title="Go to start questions">Start</a>
-                <template v-if="q.refinement && Array.isArray(q.refinement) && q.refinement.length">
-                  <a v-for="ref in q.refinement" :key="ref.route_name" :href="`/questions/${ref.route_name}`" class="px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 font-bold" title="Go to refine questions">Refine</a>
-                </template>
               </div>
             </td>
             <td class="p-2 border text-gray-900 dark:text-gray-100">
@@ -304,23 +298,8 @@ onMounted(async () => {
     });
     const difficulty = q.difficulty || 'UNRATED';
 
-    // Find refinements for this question
-    const refinements = apiSubs.filter(sub => {
-      if (!sub.name) return false;
-      if (sub.name.startsWith('depicts-refine/')) {
-        if (qid && sub.name === `depicts-refine/${qid}`) return true;
-        if (!qid && q.name && (sub.display_name === q.name || sub.name === `depicts-refine/${q.name}`)) return true;
-      }
-      return false;
-    }).map(sub => ({
-      route_name: sub.name,
-      unanswered: typeof sub.unanswered === 'number' ? sub.unanswered : null
-    }));
-
-    // Calculate unanswered for main question (exclude refinements)
+    // Calculate unanswered for main question
     let mainUnanswered = typeof (apiSub && apiSub.unanswered) === 'number' ? apiSub.unanswered : null;
-    // Calculate total unanswered for refinements
-    let refinementUnanswered = refinements.reduce((sum, r) => sum + (typeof r.unanswered === 'number' ? r.unanswered : 0), 0);
 
     return {
       ...q,
@@ -333,9 +312,7 @@ onMounted(async () => {
       route_name: `depicts/${qid}`,
       id: (q.depictsId || '') + '-' + (q.name || ''),
       group: q.group || 'Other',
-      unanswered: mainUnanswered,
-      refinement: refinements.length > 0 ? refinements : null,
-      refinementUnanswered: (refinementUnanswered && refinementUnanswered > 0) ? refinementUnanswered : null
+      unanswered: mainUnanswered
     };
   });
 
@@ -476,25 +453,6 @@ const clearUnanswered = async (q) => {
         })
       })
     ];
-    // Also clear all refinement groups if present
-    if (q.refinement && Array.isArray(q.refinement)) {
-      for (const ref of q.refinement) {
-        requests.push(
-          fetch('/api/clear-unanswered', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': `Bearer ${window.apiToken}`,
-              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            },
-            body: JSON.stringify({
-              groupName: ref.route_name
-            })
-          })
-        );
-      }
-    }
     await Promise.all(requests);
   } catch (e) {
     console.error('Error clearing unanswered questions:', e);

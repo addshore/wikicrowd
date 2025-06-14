@@ -53,6 +53,10 @@
         private $depictName;
         private $limit;
         private $recursionDepth;
+        private $got;
+        private $depictsSubGroup;
+        private $instancesOfAndSubclassesOf;
+        private $batchId;
 
         /**
          * Create a new job instance for a single depicts question job.
@@ -146,11 +150,7 @@
                     ->withCount(['question as unanswered' => function($query){
                     $query->doesntHave('answer');
                     }])->first()->unanswered;
-                $depictRefineGroupCount = QuestionGroup::where('id','=',$this->depictsRefineSubGroup)
-                    ->withCount(['question as unanswered' => function($query){
-                    $query->doesntHave('answer');
-                    }])->first()->unanswered;
-                $this->got = $depictGroupCount + $depictRefineGroupCount;
+                $this->got = $depictGroupCount;
                 \Log::info("Already got $this->got questions");
                 if($this->got >= $this->limit) {
                     \Log::info("Already got enough questions ({$this->got}), not processing category: $categoryName");
@@ -158,7 +158,6 @@
                 }
 
                 $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $this->depictItemId );
-                $this->parentInstancesOfAndSubclassesOf = $this->parentInstancesOfAndSubclassesOf( $this->depictItemId );
 
                 $mwServices = (new \Addwiki\Wikimedia\Api\WikimediaFactory())->newMediawikiFactoryForDomain( self::COMMONS );
                 $traverser = $mwServices->newCategoryTraverser();
@@ -267,23 +266,6 @@
                 ]
             );
             $this->depictsSubGroup = $depictsSubGroup->id;
-
-            $depictsRefineGroup = QuestionGroup::firstOrCreate(
-                ['name' => 'depicts-refine'],
-                [
-                    'display_name' => 'Depicts Refinement',
-                    'layout' => 'grid',
-                ]
-            );
-            $depictsRefineSubGroup = QuestionGroup::firstOrCreate(
-                ['name' => 'depicts-refine/' . $this->depictItemId],
-                [
-                    'display_name' => $this->depictName,
-                    'layout' => 'image-focus',
-                    'parent' => $depictsRefineGroup->id,
-                ]
-            );
-            $this->depictsRefineSubGroup = $depictsRefineSubGroup->id;
         }
 
         private function uniqueQuestionID( string $groupName, PageIdentifier $filePageIdentifier ) : string {
@@ -293,17 +275,6 @@
         private function instancesOfAndSubclassesOf( string $itemId ) : array {
             $sparqlService = new SparqlQueryService();
             return $sparqlService->getSubclassesAndInstances($itemId);
-        }
-
-        private function parentInstancesOfAndSubclassesOf( string $itemId ) : array {
-            $sparqlService = new SparqlQueryService();
-            $result = $sparqlService->executeQuery('PARENT_CLASSES_WITH_LABELS', $itemId);
-            
-            $ids = [];
-            foreach ($result['results']['bindings'] as $binding) {
-                $ids[] = $sparqlService->extractQidFromUri($binding['item']['value']);
-            }
-            return $ids;
         }
 
         private function processFilePage( PageIdentifier $filePageIdentifier ) : bool {
@@ -325,9 +296,7 @@
             $foundDepicts = [
                 'exact' => 0,
                 'moreSpecific' => 0,
-                'lessSpecific' => 0,
             ];
-            $lessSpecificValue = null;
             foreach( $entity->getStatements()->getByPropertyId( $depictsProperty )->toArray() as $statement ) {
                 // Skip non value statements
                 if( $statement->getMainSnak()->getType() !== 'value' ) {
@@ -344,33 +313,25 @@
                     $foundDepicts['moreSpecific']++;
                     continue;
                 }
-                if( in_array( $entityId->getSerialization(), $this->parentInstancesOfAndSubclassesOf ) ) {
-                    $lessSpecificValue = $entityId;
-                    $foundDepicts['lessSpecific']++;
-                    continue;
-                }
             }
 
             $uniqueDepictsId = $this->uniqueQuestionID( 'depicts', $filePageIdentifier );
-            $uniqueRefineId = $this->uniqueQuestionID( 'depicts-refine', $filePageIdentifier );
             // Check if already skipped
-            if (SkippedQuestion::whereIn('unique_id', [ $uniqueDepictsId, $uniqueRefineId ])->exists()) {
-                \Log::info("Question generation already skipped for $uniqueDepictsId or $uniqueRefineId");
+            if (SkippedQuestion::whereIn('unique_id', [ $uniqueDepictsId ])->exists()) {
+                \Log::info("Question generation already skipped for $uniqueDepictsId");
                 return false;
             }
 
             if($foundDepicts['exact'] > 0) {
                 \Log::info("Exact depicts found for " . $filePageIdentifier->getTitle()->getText());
-                // Record both as skipped
+                // Record as skipped
                 SkippedQuestion::firstOrCreate(['unique_id' => $uniqueDepictsId]);
-                SkippedQuestion::firstOrCreate(['unique_id' => $uniqueRefineId]);
                 return false;
             }
             if($foundDepicts['moreSpecific'] > 0) {
                 \Log::info("More specific depicts found for " . $filePageIdentifier->getTitle()->getText());
-                // Record both as skipped
+                // Record as skipped
                 SkippedQuestion::firstOrCreate(['unique_id' => $uniqueDepictsId]);
-                SkippedQuestion::firstOrCreate(['unique_id' => $uniqueRefineId]);
                 return false;
             }
 
@@ -380,48 +341,9 @@
                 return false;
             }
 
-            if($foundDepicts['lessSpecific'] > 0) {
-                if($foundDepicts['lessSpecific'] !== 1) {
-                    \Log::info("BAIL: I'm scared, as multiple less specific statements were found...");
-                    return false;
-                }
-
-                $wikidataWbServices = $wmFactory->newWikibaseFactoryForDomain( self::WIKIDATA );
-                $lessSpecificItem = $wikidataWbServices->newItemLookup()->getItemForId( $lessSpecificValue );
-                if(!$lessSpecificItem) {
-                    \Log::error("ERROR: Failed to get less specific item");
-                    return false;
-                }
-                // TODO don't harcode to en?
-                if(!$lessSpecificItem->getLabels()->hasTermForLanguage( 'en' )) {
-                    \Log::error("ERROR: Less specific item has no label in English");
-                    return false;
-                }
-                $lessSpecificItemLabel = $lessSpecificItem->getLabels()->getByLanguage( 'en' );
-
-                Question::create([
-                    'question_group_id' => $this->depictsRefineSubGroup,
-                    // TODO don't hardcode group name?
-                    'unique_id' => $this->uniqueQuestionID( 'depicts-refine', $filePageIdentifier ),
-                    'properties' => [
-                        'mediainfo_id' => $mid->getSerialization(),
-                        'old_depicts_id' => $lessSpecificValue->getSerialization(),
-                        'old_depicts_name' => $lessSpecificItemLabel->getText(),
-                        'depicts_id' => $this->depictItemId,
-                        'depicts_name' => $this->depictName,
-                        'img_url' => $thumbUrl,
-                    ]
-                ]);
-                $this->got++;
-                \Log::info("=D Depict Refine question added for " . $mid->getSerialization() . "!");
-
-                return true;
-            }
-
             // Create the add depicts questions
             Question::create([
                 'question_group_id' => $this->depictsSubGroup,
-                // TODO don't hardcode group name?
                 'unique_id' => $this->uniqueQuestionID( 'depicts', $filePageIdentifier ),
                 'properties' => [
                     'mediainfo_id' => $mid->getSerialization(),

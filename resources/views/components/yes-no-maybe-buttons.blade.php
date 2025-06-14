@@ -305,29 +305,11 @@ class WikiCrowdQuestionHandler {
         const depictsIdEl = document.getElementById('current-depicts-id');
         const depictsLinkEl = document.getElementById('current-depicts-link');
 
-        // This logic needs to adapt based on whether old_depicts_id exists, similar to Blade
-        const oldDepictsContainer = oldDepictsLink?.closest('.flex.justify-center.pt-8'); // Find parent container to hide/show
+        // Update the question text and details
         const mainQuestionTextContainer = depictsNameEl?.closest('.flex.justify-center.pt-8');
-
-
-        if (questionData.properties?.old_depicts_id) {
-            if(oldDepictsContainer) oldDepictsContainer.style.display = 'block'; // or flex etc.
-            if(oldDepictsIdEl) oldDepictsIdEl.textContent = questionData.properties.old_depicts_id;
-            if(oldDepictsNameEl) oldDepictsNameEl.textContent = questionData.properties.old_depicts_name;
-            if(oldDepictsLink) oldDepictsLink.href = `https://www.wikidata.org/wiki/${questionData.properties.old_depicts_id}`;
-
-            if(mainQuestionTextContainer) {
-                 // Reword the question text slightly if old_depicts_id is present
-                mainQuestionTextContainer.querySelector('.text-lg.leading-7').innerHTML =
-                    `Does this image actually clearly depict "<span id="current-depicts-name">${questionData.properties.depicts_name}</span>" (<a id="current-depicts-link" href="https://www.wikidata.org/wiki/${questionData.properties.depicts_id}" target="_blank"><span id="current-depicts-id">${questionData.properties.depicts_id}</span></a>)?`;
-            }
-
-        } else {
-            if(oldDepictsContainer) oldDepictsContainer.style.display = 'none';
-             if(mainQuestionTextContainer) {
-                mainQuestionTextContainer.querySelector('.text-lg.leading-7').innerHTML =
-                    `Does this image clearly depict "<span id="current-depicts-name">${questionData.properties.depicts_name}</span>" (<a id="current-depicts-link" href="https://www.wikidata.org/wiki/${questionData.properties.depicts_id}" target="_blank"><span id="current-depicts-id">${questionData.properties.depicts_id}</span></a>)?`;
-            }
+        if(mainQuestionTextContainer) {
+            mainQuestionTextContainer.querySelector('.text-lg.leading-7').innerHTML =
+                `Does this image clearly depict "<span id="current-depicts-name">${questionData.properties.depicts_name}</span>" (<a id="current-depicts-link" href="https://www.wikidata.org/wiki/${questionData.properties.depicts_id}" target="_blank"><span id="current-depicts-id">${questionData.properties.depicts_id}</span></a>)?`;
         }
         // Always update the main depicts part
         if(depictsNameEl) depictsNameEl.textContent = questionData.properties.depicts_name;

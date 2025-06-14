@@ -63,17 +63,9 @@ class ManualQuestionController extends Controller
         // Dispatch the edit job if the answer is 'yes' or 'yes-preferred' (for depicts)
         if ($request->input('answer') === 'yes' || $request->input('answer') === 'yes-preferred') {
             // Check for superclass depicts
-            $oldQid = $this->getSuperclassDepictsQid($request->input('mediainfo_id'), $request->input('qid'));
             $rank = ($request->input('answer') === 'yes-preferred') ? 'preferred' : null;
             $removeSuperclasses = $request->boolean('remove_superclasses', false);
-            if ($oldQid) {
-                // Add old_depicts_id to question properties for SwapDepicts
-                $question->properties = array_merge($question->properties, ['old_depicts_id' => $oldQid]);
-                $question->save();
-                dispatch(new \App\Jobs\SwapDepicts($answer->id, $rank));
-            } else {
-                dispatch(new \App\Jobs\AddDepicts($answer->id, $rank, $removeSuperclasses));
-            }
+            dispatch(new \App\Jobs\AddDepicts($answer->id, $rank, $removeSuperclasses));
         }
 
         return response()->json(['message' => 'Question answered', 'question_id' => $question->id, 'answer_id' => $answer->id]);
@@ -139,16 +131,9 @@ class ManualQuestionController extends Controller
             }
 
             if ($input['answer'] === 'yes' || $input['answer'] === 'yes-preferred') {
-                $oldQid = $this->getSuperclassDepictsQid($input['mediainfo_id'], $input['qid']);
                 $rank = ($input['answer'] === 'yes-preferred') ? 'preferred' : null;
                 $removeSuperclasses = $request->boolean('remove_superclasses', false);
-                if ($oldQid) {
-                    $question->properties = array_merge($question->properties, ['old_depicts_id' => $oldQid]);
-                    $question->save();
-                    dispatch(new \App\Jobs\SwapDepicts($answer->id, $rank));
-                } else {
-                    dispatch(new \App\Jobs\AddDepicts($answer->id, $rank, $removeSuperclasses));
-                }
+                dispatch(new \App\Jobs\AddDepicts($answer->id, $rank, $removeSuperclasses));
             }
             $results[] = [
                 'question_id' => $question->id,
@@ -159,44 +144,5 @@ class ManualQuestionController extends Controller
             'message' => 'Bulk manual questions answered',
             'results' => $results
         ]);
-    }
-
-    /**
-     * Helper to determine if a depicts swap is needed, and return the old QID if so.
-     * Returns null if no swap is needed, or the old QID if a superclass is present.
-     */
-    private function getSuperclassDepictsQid($mediainfoId, $depictsQid)
-    {
-        // Setup MediaWiki API client
-        $mwAuth = new \Addwiki\Mediawiki\Api\Client\Auth\OAuthOwnerConsumer(
-            config('services.mediawiki.identifier'),
-            config('services.mediawiki.secret'),
-            Auth::user()->token,
-            Auth::user()->token_secret
-        );
-        $wm = new WikimediaFactory();
-        $wbServices = $wm->newWikibaseFactoryForDomain("commons.wikimedia.org", $mwAuth);
-        $mid = new MediaInfoId($mediainfoId);
-        $depictsProperty = new PropertyId('P180');
-        $depictsValue = new ItemId($depictsQid);
-        // Get all superclasses of the new QID
-        $sparqlService = new SparqlQueryService();
-        $superclasses = $sparqlService->getSubclassesAndInstances($depictsQid);
-        // Lookup entity
-        $entity = $wbServices->newEntityLookup()->getEntity($mid);
-        if ($entity === null) {
-            return null;
-        }
-        foreach ($entity->getStatements()->getByPropertyId($depictsProperty)->toArray() as $statement) {
-            if ($statement->getMainSnak()->getType() !== 'value') {
-                continue;
-            }
-            $entityId = $statement->getMainSnak()->getDataValue()->getEntityId();
-            $entityQid = $entityId->getSerialization();
-            if (in_array($entityQid, $superclasses)) {
-                return $entityQid;
-            }
-        }
-        return null;
     }
 }

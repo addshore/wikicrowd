@@ -25,18 +25,6 @@
       </template>
     </div>
     <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">Unanswered: {{ sub.unanswered }}</div>
-    <template v-if="sub.refinement && sub.refinementUnanswered">
-      <div class="text-xs text-yellow-800 dark:text-yellow-300 mb-2">
-        <a
-          class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 rounded text-xs hover:underline"
-          :href="'/questions/' + sub.refinement[0].route_name"
-          :title="sub.refinementUnanswered + ' unanswered refinements'"
-          @click.stop
-        >
-          ({{ sub.refinementUnanswered }} unanswered refinements)
-        </a>
-      </div>
-    </template>
     <div v-if="sub.example_question && sub.example_question.properties && sub.example_question.properties.img_url" class="mb-2 flex justify-center">
       <img :src="sub.example_question.properties.img_url" alt="Sample" class="rounded max-h-32 object-contain border" />
     </div>

@@ -159,8 +159,6 @@ export default {
     const answerMode = ref('yes');
     
     // Initialize removeSuperclasses - set to true by default for all routes
-    // For depicts-refine routes, this makes particular sense since we want to clean up superclass redundancy
-    const isDepictsRefineRoute = groupName && groupName.startsWith('depicts-refine');
     const removeSuperclasses = ref(true);
     const autoSave = ref(true);
     const autoSaveDelay = ref(10); // seconds

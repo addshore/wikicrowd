@@ -9,7 +9,6 @@ use App\Models\Answer;
 use App\Http\Controllers\QuestionController;
 use App\Models\Question;
 use App\Jobs\AddAlias;
-use App\Jobs\SwapDepicts;
 
 /*
 |--------------------------------------------------------------------------
