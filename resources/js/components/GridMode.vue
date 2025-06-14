@@ -358,7 +358,49 @@ export default {
               console.warn('Image from API is missing mediainfo_id in properties:', JSON.parse(JSON.stringify(question)));
             }
           }
-          batch.value.push(...data.questions);
+
+          // Filter out images that already depict the target QID or a more specific one
+          let filteredQuestions = data.questions;
+          if (data.questions.length > 0) {
+            // Get the target depicts_id from the first question
+            const targetDepictsId = data.questions[0]?.properties?.depicts_id;
+            if (targetDepictsId) {
+              console.log(`[GridMode] Filtering questions for target depicts_id: ${targetDepictsId}`);
+
+              // Get QID set (target + subclasses/instances)
+              const qidSet = await fetchSubclassesAndInstances(targetDepictsId);
+
+              // Get media info IDs from questions
+              const mids = data.questions
+                .map(q => q.properties?.mediainfo_id)
+                .filter(Boolean);
+
+              if (mids.length > 0) {
+                // Fetch depicts for all media info IDs
+                const depictsMap = await fetchDepictsForMediaInfoIds(mids);
+                console.log(`[GridMode] Depicts map for ${mids.length} questions:`, depictsMap);
+
+                // Filter out questions whose images already depict the target
+                filteredQuestions = data.questions.filter(question => {
+                  const mid = question.properties?.mediainfo_id;
+                  if (!mid) return true; // Keep if no mediainfo_id
+
+                  const depicted = depictsMap[mid] || [];
+                  const alreadyDepicts = depicted.some(qid => qidSet.has(qid));
+
+                  if (alreadyDepicts) {
+                    console.log(`[GridMode] Filtering out question ${question.id} (${mid}) - already depicts target or subclass/instance:`, depicted);
+                  }
+
+                  return !alreadyDepicts;
+                });
+
+                console.log(`[GridMode] Filtered ${data.questions.length - filteredQuestions.length} questions that already depict target. ${filteredQuestions.length} remaining.`);
+              }
+            }
+          }
+
+          batch.value.push(...filteredQuestions);
           // If we got no questions or fewer than expected, we've reached the end
           if (data.questions.length === 0) {
             console.log('fetchBatchAndFill: no more questions available, setting allLoaded=true');
