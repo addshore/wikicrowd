@@ -25,6 +25,9 @@ export const SPARQL_QUERIES = {
     wd:${itemId} (wdt:P31/wdt:P279|wdt:P279)+ ?item.
   }
   UNION {
+    wd:${itemId} wdt:P31 ?item.
+  }
+  UNION {
     wd:${itemId} wdt:P31 ?i1 .
     ?i1 wdt:P13359 ?item .
   }
@@ -51,6 +54,9 @@ export const SPARQL_QUERIES = {
     `SELECT DISTINCT ?item ?itemLabel WHERE {
   {
     ?item (wdt:P31/wdt:P279* | wdt:P279/wdt:P279*) wd:${itemId}.
+  }
+  UNION {
+    ?item wdt:P31 wd:${itemId}.
   }
   UNION {
     ?item (wdt:P31/wdt:P279* | wdt:P279/wdt:P279*) ?x .

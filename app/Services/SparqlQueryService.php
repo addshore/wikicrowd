@@ -33,6 +33,9 @@ class SparqlQueryService
     wd:%s (wdt:P31/wdt:P279|wdt:P279)+ ?item.
   }
   UNION {
+    wd:%s wdt:P31 ?item.
+  }
+  UNION {
     wd:%s wdt:P31 ?i1 .
     ?i1 wdt:P13359 ?item .
   }
@@ -58,6 +61,9 @@ class SparqlQueryService
         'DOWNWARD_HIERARCHY' => 'SELECT DISTINCT ?item ?itemLabel WHERE {
   {
     ?item (wdt:P31/wdt:P279* | wdt:P279/wdt:P279*) wd:%s.
+  }
+  UNION {
+    ?item wdt:P31 wd:%s.
   }
   UNION {
     ?item (wdt:P31/wdt:P279* | wdt:P279/wdt:P279*) ?x .
