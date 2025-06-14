@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\QuestionGroupController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\AnswerController;
 use App\Http\Controllers\Api\YamlSpecController;
+use App\Http\Controllers\Api\QuestionValidationController;
 use App\Models\Question;
 use App\Models\Answer;
 use App\Models\Edit;
@@ -39,6 +40,8 @@ Route::middleware('auth:sanctum')->group(function () {
     ->name('api.clear-unanswered');
     Route::post('/manual-question/answer', [\App\Http\Controllers\Api\ManualQuestionController::class, 'createAndAnswer']);
     Route::post('/manual-question/bulk-answer', [\App\Http\Controllers\Api\ManualQuestionController::class, 'bulkCreateAndAnswer']);
+    Route::post('/questions/validate-and-cleanup', [\App\Http\Controllers\Api\QuestionValidationController::class, 'validateAndCleanup'])
+        ->name('api.questions.validate-and-cleanup');
 });
 
 Route::get('/stats', function () {

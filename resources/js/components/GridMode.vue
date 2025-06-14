@@ -395,6 +395,24 @@ export default {
                   return !alreadyDepicts;
                 });
 
+                // Send filtered out questions to API for server-side validation and deletion
+                const filteredOutQuestions = data.questions.filter(question => {
+                  const mid = question.properties?.mediainfo_id;
+                  if (!mid) return false;
+                  const depicted = depictsMap[mid] || [];
+                  return depicted.some(qid => qidSet.has(qid));
+                });
+
+                if (filteredOutQuestions.length > 0) {
+                  const questionIds = filteredOutQuestions.map(q => q.id);
+                  console.log(`[GridMode] Sending ${questionIds.length} questions for server-side validation and deletion:`, questionIds);
+                  
+                  // Call API asynchronously - don't wait for response
+                  validateAndCleanupQuestions(questionIds, 'already_depicts').catch(error => {
+                    console.error('[GridMode] Error in server-side question validation:', error);
+                  });
+                }
+
                 console.log(`[GridMode] Filtered ${data.questions.length - filteredQuestions.length} questions that already depict target. ${filteredQuestions.length} remaining.`);
               }
             }
@@ -1912,6 +1930,52 @@ export default {
         }
       }
     });
+
+    /**
+     * Send questions to server for validation and cleanup
+     * @param {number[]} questionIds - Array of question IDs to validate
+     * @param {string} reason - Reason for validation ('already_depicts' or 'deleted_image')
+     */
+    const validateAndCleanupQuestions = async (questionIds, reason) => {
+      if (!questionIds || questionIds.length === 0) return;
+
+      try {
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        };
+        
+        if (apiToken) {
+          headers['Authorization'] = `Bearer ${apiToken}`;
+        }
+        
+        if (csrfToken) {
+          headers['X-CSRF-TOKEN'] = csrfToken;
+        }
+
+        const response = await fetchWithRetry('/api/questions/validate-and-cleanup', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            question_ids: questionIds,
+            reason: reason
+          })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+          console.log(`[GridMode] Successfully validated ${questionIds.length} questions:`, data);
+          if (data.deleted > 0) {
+            console.log(`[GridMode] Server deleted ${data.deleted} questions that were confirmed to ${reason === 'already_depicts' ? 'already depict the target' : 'have deleted images'}`);
+          }
+        } else {
+          console.error(`[GridMode] Server validation failed:`, data);
+        }
+      } catch (error) {
+        console.error(`[GridMode] Error during server validation:`, error);
+      }
+    };
 
     /**
      * Cleans up all state associated with a given image ID.
