@@ -1,26 +1,33 @@
 <template>
+  <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">Precalculated Grid</h2>
+  <div class="text-gray-600 dark:text-gray-400 text-sm">
+    Questions calculated on the server, based on
+    <a
+      href="https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml"
+      target="_blank"
+      rel="noopener"
+      class="text-blue-700 dark:text-blue-400 underline"
+    >
+      wikicrowd.yaml
+    </a>
+  </div>
   <div>
-    <div class="mb-4">
-      <div class="font-semibold text-base mb-1 text-gray-900 dark:text-gray-100">Important notes</div>
-      <ul class="list-disc pl-6 text-sm text-gray-700 dark:text-gray-300">
-        <li>Using this tool will result in edits being made for your account, you are responsible for these edits.</li>
-        <li>Familiarize yourself with the Qid concept that you are tagging before you begin. <b>Read the labels and descriptions in your own language.</b></li>
-        <li>Familiarize yourself with <a href="https://commons.wikimedia.org/wiki/Commons:Depicts" target="_blank" rel="noopener" class="text-blue-700 dark:text-blue-400 underline">https://commons.wikimedia.org/wiki/Commons:Depicts</a></li>
-      </ul>
-    </div>
     <div v-if="difficultyFilters.length > 0 || hasUnrated" class="flex flex-col gap-2 mb-4">
       <div class="font-semibold text-base mb-1 text-gray-900 dark:text-gray-100">Filter by difficulty</div>
-      <div v-for="(level, key) in levels" :key="key" class="flex items-center">
-        <button class="px-3 py-1 rounded border mr-2" :class="difficultyButtonClass(key)" @click="toggleFilter(key)" :title="level.desc">
-          <span>{{ emojiForDifficulty(key) }}</span> {{ level.name }}
+      <div class="flex flex-wrap gap-2 mb-2">
+      <template v-for="(level, key) in levels" :key="key">
+        <button class="px-3 py-1 rounded border" :class="difficultyButtonClass(key)" @click="toggleFilter(key)" :title="level.desc">
+        <span>{{ emojiForDifficulty(key) }}</span> {{ level.name }}
         </button>
-        <span class="text-gray-600 dark:text-gray-400 text-sm">{{ level.desc }}</span>
+      </template>
+      <template v-if="hasUnrated">
+        <button class="px-3 py-1 rounded border" :class="difficultyButtonClass('UNRATED')" @click="toggleFilter('UNRATED')" title="Show unrated questions">
+        ❓ Unrated
+        </button>
+      </template>
       </div>
-      <div v-if="hasUnrated" class="flex items-center">
-        <button class="px-3 py-1 rounded border mr-2" :class="difficultyButtonClass('UNRATED')" @click="toggleFilter('UNRATED')" title="Show unrated questions">
-          ❓ Unrated
-        </button>
-        <span class="text-gray-600 dark:text-gray-400 text-sm">Unrated groups have not been assigned a difficulty yet.</span>
+      <div v-if="hasUnrated" class="text-gray-600 dark:text-gray-400 text-sm">
+      Unrated groups have not been assigned a difficulty yet.
       </div>
     </div>
     <div v-if="groupsApiData === null || yamlData === null" class="mb-8">
@@ -169,13 +176,6 @@
       <span class="text-gray-500">Loading....</span>
     </div>
     <div v-else class="text-gray-500">No YAML questions found.</div>
-    <!-- Custom grid link under table -->
-    <div class="mt-12 border-t pt-8">
-      <h3 class="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">Custom Grid</h3>
-      <a href="/questions/depicts/custom" class="inline-block bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">
-        Go to Custom Grid
-      </a>
-    </div>
   </div>
 </template>
 
