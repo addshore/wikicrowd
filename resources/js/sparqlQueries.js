@@ -17,12 +17,30 @@ export const SPARQL_QUERIES = {
    * Used for generating "up" query links and understanding broader categories
    */
   PARENT_CLASSES_WITH_LABELS: (itemId) => 
-    `SELECT DISTINCT ?item ?itemLabel WHERE { 
-      { wd:${itemId} (wdt:P31/wdt:P279)+ ?item. } 
-      UNION 
-      { wd:${itemId} (wdt:P31/wdt:P279|wdt:P279)+ ?item . } 
-      SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". } 
-    }`,
+    `SELECT DISTINCT ?item ?itemLabel WHERE {
+  {
+    wd:${itemId} (wdt:P31/wdt:P279)+ ?item.
+  }
+  UNION {
+    wd:${itemId} (wdt:P31/wdt:P279|wdt:P279)+ ?item.
+  }
+  UNION {
+    wd:${itemId} wdt:P31 ?i1 .
+    ?i1 wdt:P13359 ?item .
+  }
+  UNION {
+    wd:${itemId} wdt:P31 ?i1 .
+    ?i1 wdt:P13359 ?i2 .
+    ?i2 (wdt:P31/wdt:P279|wdt:P279)+ ?item .
+  }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q96251598. }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q19478619. }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q104054982. }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q1786828. }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q23958852. }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q103997133. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+}`,
 
   /**
    * Get all subclasses and instances of a given item (downward hierarchy)
@@ -30,11 +48,16 @@ export const SPARQL_QUERIES = {
    * Also used for generating "down" query links in embedded URLs
    */
   DOWNWARD_HIERARCHY: (itemId) =>
-    `SELECT ?item ?itemLabel
-     WHERE {
-       ?item wdt:P31/wdt:P279*|wdt:P279/wdt:P279* wd:${itemId}.
-       SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
-     }`
+    `SELECT DISTINCT ?item ?itemLabel WHERE {
+  {
+    ?item (wdt:P31/wdt:P279* | wdt:P279/wdt:P279*) wd:${itemId}.
+  }
+  UNION {
+    ?item (wdt:P31/wdt:P279* | wdt:P279/wdt:P279*) ?x .
+    ?x wdt:P13359 wd:${itemId}.
+  }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+}`
 };
 
 /**

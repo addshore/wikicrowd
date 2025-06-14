@@ -25,23 +25,46 @@ class SparqlQueryService
          * Get all parent classes of a given item (upward hierarchy) with labels
          * Used for generating "up" query links and understanding broader categories
          */
-        'PARENT_CLASSES_WITH_LABELS' => 'SELECT DISTINCT ?item ?itemLabel WHERE { 
-            { wd:%s (wdt:P31/wdt:P279)+ ?item. } 
-            UNION 
-            { wd:%s (wdt:P31/wdt:P279|wdt:P279)+ ?item . } 
-            SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". } 
-        }',
+        'PARENT_CLASSES_WITH_LABELS' => 'SELECT DISTINCT ?item ?itemLabel WHERE {
+  {
+    wd:%s (wdt:P31/wdt:P279)+ ?item.
+  }
+  UNION {
+    wd:%s (wdt:P31/wdt:P279|wdt:P279)+ ?item.
+  }
+  UNION {
+    wd:%s wdt:P31 ?i1 .
+    ?i1 wdt:P13359 ?item .
+  }
+  UNION {
+    wd:%s wdt:P31 ?i1 .
+    ?i1 wdt:P13359 ?i2 .
+    ?i2 (wdt:P31/wdt:P279|wdt:P279)+ ?item .
+  }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q96251598. }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q19478619. }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q104054982. }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q1786828. }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q23958852. }
+  FILTER NOT EXISTS { ?item wdt:P31 wd:Q103997133. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+}',
 
         /**
          * Get all subclasses and instances of a given item (downward hierarchy)
          * Used for checking if items are more specific than a given depicts value
          * Also used for generating "down" query links in embedded URLs
          */
-        'DOWNWARD_HIERARCHY' => 'SELECT ?item ?itemLabel
-            WHERE {
-                ?item wdt:P31/wdt:P279*|wdt:P279/wdt:P279* wd:%s.
-                SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
-            }'
+        'DOWNWARD_HIERARCHY' => 'SELECT DISTINCT ?item ?itemLabel WHERE {
+  {
+    ?item (wdt:P31/wdt:P279* | wdt:P279/wdt:P279*) wd:%s.
+  }
+  UNION {
+    ?item (wdt:P31/wdt:P279* | wdt:P279/wdt:P279*) ?x .
+    ?x wdt:P13359 wd:%s.
+  }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+}'
     ];
 
     private $queryService;
@@ -69,13 +92,7 @@ class SparqlQueryService
         }
 
         $template = self::QUERIES[$queryKey];
-        
-        // Handle both single parameter and array of parameters
-        if (is_array($parameters)) {
-            $query = sprintf($template, ...$parameters);
-        } else {
-            $query = sprintf($template, $parameters);
-        }
+        $query = $this->buildQuery($template, $parameters);
 
         if ($cacheMinutes > 0) {
             $cacheKey = 'sparql_query:' . md5($query);
@@ -85,6 +102,34 @@ class SparqlQueryService
         }
 
         return $this->queryService->query($query);
+    }
+
+    /**
+     * Build a SPARQL query by substituting parameters
+     * Automatically handles cases where a single parameter needs to be repeated
+     *
+     * @param string $template The query template
+     * @param string|array $parameters Parameters to substitute
+     * @return string The complete query
+     */
+    private function buildQuery(string $template, $parameters): string
+    {
+        // Count the number of %s placeholders in the template
+        $placeholderCount = substr_count($template, '%s');
+        
+        if (is_array($parameters)) {
+            // If we have an array, use it as-is
+            if (count($parameters) !== $placeholderCount) {
+                throw new \InvalidArgumentException(
+                    "Parameter count mismatch: template expects {$placeholderCount} parameters, got " . count($parameters)
+                );
+            }
+            return sprintf($template, ...$parameters);
+        } else {
+            // If we have a single parameter, repeat it for all placeholders
+            $repeatedParams = array_fill(0, $placeholderCount, $parameters);
+            return sprintf($template, ...$repeatedParams);
+        }
     }
 
     /**
@@ -115,7 +160,7 @@ class SparqlQueryService
      */
     public function getParentClassesWithLabels(string $itemId, int $cacheMinutes = 2): array
     {
-        $result = $this->executeQuery('PARENT_CLASSES_WITH_LABELS', [$itemId, $itemId], $cacheMinutes);
+        $result = $this->executeQuery('PARENT_CLASSES_WITH_LABELS', $itemId, $cacheMinutes);
         
         $items = [];
         foreach ($result['results']['bindings'] as $binding) {
@@ -142,12 +187,7 @@ class SparqlQueryService
         }
 
         $template = self::QUERIES[$queryKey];
-        
-        if (is_array($parameters)) {
-            $query = sprintf($template, ...$parameters);
-        } else {
-            $query = sprintf($template, $parameters);
-        }
+        $query = $this->buildQuery($template, $parameters);
 
         return self::WIKIDATA_EMBED_URL . '#' . urlencode($query);
     }
@@ -164,7 +204,7 @@ class SparqlQueryService
             return '';
         }
         
-        return $this->generateEmbedUrl('PARENT_CLASSES_WITH_LABELS', [$depictsId, $depictsId]);
+        return $this->generateEmbedUrl('PARENT_CLASSES_WITH_LABELS', $depictsId);
     }
 
     /**

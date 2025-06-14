@@ -297,7 +297,7 @@
 
         private function parentInstancesOfAndSubclassesOf( string $itemId ) : array {
             $sparqlService = new SparqlQueryService();
-            $result = $sparqlService->executeQuery('PARENT_CLASSES_WITH_LABELS', [$itemId, $itemId]);
+            $result = $sparqlService->executeQuery('PARENT_CLASSES_WITH_LABELS', $itemId);
             
             $ids = [];
             foreach ($result['results']['bindings'] as $binding) {
