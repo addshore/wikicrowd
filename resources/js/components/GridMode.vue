@@ -105,8 +105,6 @@
 
 <script>
 import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue';
-import WikidataLabel from './WikidataLabel.vue';
-import WikidataDescription from './WikidataDescription.vue';
 import FullscreenImageView from './FullscreenImageView.vue';
 import AnswerModeButtons from './AnswerModeButtons.vue';
 import ImageSizeControl from './ImageSizeControl.vue';
@@ -123,8 +121,6 @@ import { toastStore } from '../toastStore.js';
 export default {
   name: 'GridMode',
   components: { 
-    WikidataLabel, 
-    WikidataDescription, 
     FullscreenImageView,
     AnswerModeButtons,
     ImageSizeControl,
@@ -142,7 +138,7 @@ export default {
     manualMode: { type: Boolean, default: false },
     loadAll: { type: Boolean, default: false }
   },
-  setup(props, { emit }) {
+  setup(props) {
     const images = ref([]);
     const seenIds = ref([]);
     const allLoaded = ref(false);
@@ -1272,8 +1268,6 @@ export default {
     // On mount, always add keyboard shortcuts
     let keydownHandler;
 
-    const imageGridContainer = ref(null);
-
     // --- Dynamic Styling for Drag Selection ---
     const answerModeStyles = {
       'yes': { classSuffix: 'yes', color: 'rgba(74, 170, 74, 0.7)', lightColor: 'rgba(74, 170, 74, 0.2)', outlineColor: 'rgba(74, 170, 74, 0.9)' },
@@ -1400,7 +1394,6 @@ export default {
       if (!isDragging.value) return; // Only run if dragging was active
 
       const itemsToProcess = Array.from(multiSelectedImageIds.value);
-      let itemsAddedToQueueCount = 0;
 
       itemsToProcess.forEach(imageId => {
         const image = images.value.find(img => img.id === imageId);
@@ -1461,14 +1454,12 @@ export default {
                 }
               }
             }, 1000);
-            countdownIntervals.set(imageId, intervalId);
-          } else {
-            // 3. If autoSave is OFF, add to imageClickQueue for manual saving
-            if (!imageClickQueue.value.some(item => item.id === imageId)) {
-              imageClickQueue.value.push({ id: imageId, mode: answerMode.value });
-              itemsAddedToQueueCount++;
+            countdownIntervals.set(imageId, intervalId);            } else {
+              // 3. If autoSave is OFF, add to imageClickQueue for manual saving
+              if (!imageClickQueue.value.some(item => item.id === imageId)) {
+                imageClickQueue.value.push({ id: imageId, mode: answerMode.value });
+              }
             }
-          }
         }
         // Unconditionally remove drag highlight after processing the item.
         removeDragHighlight(imageId);
@@ -1598,7 +1589,6 @@ export default {
         event.preventDefault(); // Crucial: Prevent click event from firing after a drag selection
 
         const itemsToProcess = Array.from(multiSelectedImageIds.value);
-        let itemsAddedToQueueCount = 0;
 
         itemsToProcess.forEach(imageId => {
           const image = images.value.find(img => img.id === imageId);
@@ -1662,7 +1652,6 @@ export default {
               // 3. If autoSave is OFF, add to imageClickQueue for manual saving
               if (!imageClickQueue.value.some(item => item.id === imageId)) {
                 imageClickQueue.value.push({ id: imageId, mode: answerMode.value });
-                itemsAddedToQueueCount++;
               }
             }
           }
@@ -1945,9 +1934,6 @@ export default {
       maxTouchMoveThreshold,
       handleTouchStart,
       handleFullscreenAnswer,
-      nextImageUrl,
-      prevImageUrl,
-      fullscreenThumbnailUrl,
       imageSize,
       gridClasses,
       imageHeightClass,
