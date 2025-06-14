@@ -30,6 +30,7 @@ class ManualQuestionController extends Controller
             'mediainfo_id' => 'required|string',
             'img_url' => 'required|url',
             'answer' => 'required|in:yes,no,skip,yes-preferred',
+            'remove_superclasses' => 'boolean',
         ]);
         if ($v->fails()) {
             return response()->json(['message' => 'Invalid input', 'errors' => $v->errors()], 422);
@@ -64,13 +65,14 @@ class ManualQuestionController extends Controller
             // Check for superclass depicts
             $oldQid = $this->getSuperclassDepictsQid($request->input('mediainfo_id'), $request->input('qid'));
             $rank = ($request->input('answer') === 'yes-preferred') ? 'preferred' : null;
+            $removeSuperclasses = $request->boolean('remove_superclasses', false);
             if ($oldQid) {
                 // Add old_depicts_id to question properties for SwapDepicts
                 $question->properties = array_merge($question->properties, ['old_depicts_id' => $oldQid]);
                 $question->save();
                 dispatch(new \App\Jobs\SwapDepicts($answer->id, $rank));
             } else {
-                dispatch(new \App\Jobs\AddDepicts($answer->id, $rank));
+                dispatch(new \App\Jobs\AddDepicts($answer->id, $rank, $removeSuperclasses));
             }
         }
 
@@ -89,6 +91,7 @@ class ManualQuestionController extends Controller
             'answers.*.mediainfo_id' => 'required|string',
             'answers.*.img_url' => 'required|url',
             'answers.*.answer' => 'required|in:yes,no,skip,yes-preferred',
+            'remove_superclasses' => 'boolean',
         ]);
         if ($v->fails()) {
             return response()->json(['message' => 'Invalid input', 'errors' => $v->errors()], 422);
@@ -138,12 +141,13 @@ class ManualQuestionController extends Controller
             if ($input['answer'] === 'yes' || $input['answer'] === 'yes-preferred') {
                 $oldQid = $this->getSuperclassDepictsQid($input['mediainfo_id'], $input['qid']);
                 $rank = ($input['answer'] === 'yes-preferred') ? 'preferred' : null;
+                $removeSuperclasses = $request->boolean('remove_superclasses', false);
                 if ($oldQid) {
                     $question->properties = array_merge($question->properties, ['old_depicts_id' => $oldQid]);
                     $question->save();
                     dispatch(new \App\Jobs\SwapDepicts($answer->id, $rank));
                 } else {
-                    dispatch(new \App\Jobs\AddDepicts($answer->id, $rank));
+                    dispatch(new \App\Jobs\AddDepicts($answer->id, $rank, $removeSuperclasses));
                 }
             }
             $results[] = [

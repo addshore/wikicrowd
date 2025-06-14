@@ -30,6 +30,7 @@ class AddDepicts implements ShouldQueue
     private $answerId;
     private $instancesOfAndSubclassesOf;
     private ?string $rank;
+    private bool $removeSuperclasses;
 
     /**
      * Create a new job instance.
@@ -38,11 +39,13 @@ class AddDepicts implements ShouldQueue
      */
     public function __construct(
         int $answerId,
-        ?string $rank = null
+        ?string $rank = null,
+        bool $removeSuperclasses = false
     )
     {
         $this->answerId = $answerId;
         $this->rank = $rank;
+        $this->removeSuperclasses = $removeSuperclasses;
     }
 
     /**
@@ -94,7 +97,15 @@ class AddDepicts implements ShouldQueue
             return;
         }
         $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $depictsValue->getSerialization() );
+        
+        // Get parent classes (superclasses) if removal option is enabled
+        $parentClasses = [];
+        if($this->removeSuperclasses) {
+            $parentClasses = $this->getParentClasses( $depictsValue->getSerialization() );
+        }
+        
         $foundDepicts = false;
+        $superclassStatements = [];
         foreach( $entity->getStatements()->getByPropertyId( $depictsProperty )->toArray() as $statement ) {
             // Skip non value statements
             if( $statement->getMainSnak()->getType() !== 'value' ) {
@@ -114,6 +125,11 @@ class AddDepicts implements ShouldQueue
                 $foundDepicts = 'inherited';
                 break;
             }
+            
+            // Collect superclass statements for potential removal
+            if( $this->removeSuperclasses && in_array( $entityId->getSerialization(), $parentClasses ) ) {
+                $superclassStatements[] = $statement;
+            }
         }
         // TODO code reuse section end
 
@@ -121,6 +137,15 @@ class AddDepicts implements ShouldQueue
             \Log::info("{$mid} already has {$foundDepicts} depicts");
             return;
         } else {
+            // Remove superclass statements if option is enabled and we found any
+            if($this->removeSuperclasses && !empty($superclassStatements)) {
+                $editInfo = new EditInfo("Removing superclass depicts before adding more specific one");
+                foreach($superclassStatements as $superclassStatement) {
+                    \Log::info("Removing superclass depicts: " . $superclassStatement->getMainSnak()->getDataValue()->getEntityId()->getSerialization());
+                    $wbServices->newStatementRemover()->remove( $superclassStatement, $editInfo );
+                }
+            }
+            
             // Build custom summary if manual
             $editInfo = null;
             if (!empty($question->properties['manual']) && !empty($question->properties['category']) && !empty($question->properties['depicts_id'])) {
@@ -134,7 +159,19 @@ class AddDepicts implements ShouldQueue
             $mwServices = new MediawikiFactory( $mwApi );
 
             $pageIdentifier = new PageIdentifier( null, str_replace( 'M', '', $mid->getSerialization() ) );
+            
+            // Track revision IDs for all edits made
+            $revisionIds = [];
+            
+            // Get revision ID after removals (if any were done)
+            if($this->removeSuperclasses && !empty($superclassStatements)) {
+                $revId = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
+                $revisionIds[] = (int)$revId;
+            }
+            
+            // Get revision ID after adding the new statement
             $revId = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
+            $revisionIds[] = (int)$revId;
 
             if ($this->rank === 'preferred' && $createdClaimGuid !== null) {
                 // Prepend preferred rank note to summary
@@ -150,19 +187,15 @@ class AddDepicts implements ShouldQueue
                 $statementSetter = $wbServices->newStatementSetter();
                 $statementSetter->set($statement, $editInfo);
                 $revId2 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
+                $revisionIds[] = (int)$revId2;
             }
 
-            Edit::create([
-                'question_id' => $question->id,
-                'user_id' => $user->id,
-                'revision_id' => (int)$revId,
-            ]);
-
-            if (isset($revId2)) {
+            // Create Edit records for all revisions
+            foreach($revisionIds as $revId) {
                 Edit::create([
                     'question_id' => $question->id,
                     'user_id' => $user->id,
-                    'revision_id' => (int)$revId2,
+                    'revision_id' => $revId,
                 ]);
             }
         }
@@ -171,5 +204,18 @@ class AddDepicts implements ShouldQueue
     private function instancesOfAndSubclassesOf( string $itemId ) : array {
         $sparqlService = new SparqlQueryService();
         return $sparqlService->instancesOfAndSubclassesOf($itemId);
+    }
+
+    private function getParentClasses( string $itemId ) : array {
+        $sparqlService = new SparqlQueryService();
+        $parentClassesWithLabels = $sparqlService->getParentClassesWithLabels($itemId);
+        
+        // Extract just the QIDs from the result
+        $parentQids = [];
+        foreach($parentClassesWithLabels as $item) {
+            $parentQids[] = $item['qid'];
+        }
+        
+        return $parentQids;
     }
 }

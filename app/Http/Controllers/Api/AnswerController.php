@@ -24,6 +24,7 @@ class AnswerController extends Controller
         $validator = Validator::make($request->all(), [
             'question_id' => 'required|exists:App\Models\Question,id',
             'answer' => 'required|in:yes,no,skip,yes-preferred',
+            'remove_superclasses' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -54,8 +55,9 @@ class AnswerController extends Controller
             if ($question->group && $question->group->parentGroup) {
                 $parentGroupName = $question->group->parentGroup->name;
                 $rank = ($answerValue === 'yes-preferred') ? 'preferred' : null;
+                $removeSuperclasses = $request->boolean('remove_superclasses', false);
                 if ($parentGroupName === 'depicts') {
-                    dispatch(new AddDepicts($storedAnswer->id, $rank));
+                    dispatch(new AddDepicts($storedAnswer->id, $rank, $removeSuperclasses));
                 } elseif ($parentGroupName === 'depicts-refine') {
                     dispatch(new SwapDepicts($storedAnswer->id, $rank));
                 }
@@ -83,6 +85,7 @@ class AnswerController extends Controller
             'answers' => 'required|array|min:1',
             'answers.*.question_id' => 'required|exists:App\\Models\\Question,id',
             'answers.*.answer' => 'required|in:yes,no,skip,yes-preferred',
+            'remove_superclasses' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -104,8 +107,9 @@ class AnswerController extends Controller
                 if ($question->group && $question->group->parentGroup) {
                     $parentGroupName = $question->group->parentGroup->name;
                     $rank = ($answerData['answer'] === 'yes-preferred') ? 'preferred' : null;
+                    $removeSuperclasses = $request->boolean('remove_superclasses', false);
                     if ($parentGroupName === 'depicts') {
-                        dispatch(new AddDepicts($storedAnswer->id, $rank));
+                        dispatch(new AddDepicts($storedAnswer->id, $rank, $removeSuperclasses));
                     } elseif ($parentGroupName === 'depicts-refine') {
                         dispatch(new SwapDepicts($storedAnswer->id, $rank));
                     }

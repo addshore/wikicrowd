@@ -9,6 +9,7 @@
       />
       <AnswerModeButtons
         v-model:answer-mode="answerMode"
+        v-model:remove-superclasses="removeSuperclasses"
       />
       
       <div class="flex justify-center mt-2 mb-2">
@@ -156,6 +157,11 @@ export default {
     const apiToken = window.apiToken || null;
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const answerMode = ref('yes');
+    
+    // Initialize removeSuperclasses - set to true by default for all routes
+    // For depicts-refine routes, this makes particular sense since we want to clean up superclass redundancy
+    const isDepictsRefineRoute = groupName && groupName.startsWith('depicts-refine');
+    const removeSuperclasses = ref(true);
     const autoSave = ref(true);
     const autoSaveDelay = ref(10); // seconds
     const pendingAnswers = ref([]); // {id, mode}
@@ -433,7 +439,8 @@ export default {
         },
         body: JSON.stringify({
           question_id: image.id,
-          answer: finalAnswerMode // Use the determined mode for the API call
+          answer: finalAnswerMode, // Use the determined mode for the API call
+          remove_superclasses: removeSuperclasses.value
         })
       };
 
@@ -733,6 +740,7 @@ export default {
           mediainfo_id: image.properties.mediainfo_id, // always Mxxx
           img_url: image.properties.img_url,
           answer: finalAnswerMode, // Use the determined mode
+          remove_superclasses: removeSuperclasses.value,
           manual: true
         })
       };
@@ -826,7 +834,10 @@ export default {
           const manualOptions = {
             method: 'POST',
             headers,
-            body: JSON.stringify({ answers }),
+            body: JSON.stringify({ 
+              answers,
+              remove_superclasses: removeSuperclasses.value
+            }),
           };
           const responseManual = await fetchAnswerWithRetry(manualUrl, manualOptions);
 
@@ -869,7 +880,10 @@ export default {
           const regularOptions = {
             method: 'POST',
             headers,
-            body: JSON.stringify({ answers: answersToSubmit }),
+            body: JSON.stringify({ 
+              answers: answersToSubmit,
+              remove_superclasses: removeSuperclasses.value
+            }),
           };
           const responseRegular = await fetchAnswerWithRetry(regularUrl, regularOptions);
 
@@ -1889,6 +1903,7 @@ export default {
       answered,
       toggleSelect,
       answerMode,
+      removeSuperclasses,
       answeredMode,
       selectedMode,
       fetchNextImages,
