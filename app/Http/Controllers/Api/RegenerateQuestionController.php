@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 use App\Jobs\GenerateDepictsQuestionsFromYaml;
 
 class RegenerateQuestionController extends Controller
@@ -26,12 +27,12 @@ class RegenerateQuestionController extends Controller
             return response()->json(['message' => 'Invalid depictsId', 'errors' => $validator->errors()], 422);
         }
         $depictsId = $request->input('depictsId');
-        // Optionally allow YAML override and jobLimit for future flexibility
-        // $yamlUrl = $request->input('yamlUrl', null);
-        // $jobLimit = intval($request->input('jobLimit', 0));
-        // Queue the job (async)
-        dispatch((new GenerateDepictsQuestionsFromYaml($depictsId, "", 0, false))->onQueue('high')); // High queue, as this just make more jobs anyway..
+        
+        // Queue the job (async) - deduplication is handled by the job itself
+        $job = new GenerateDepictsQuestionsFromYaml($depictsId, "", 0, false);
+        dispatch($job->onQueue('high')); // High queue, as this just makes more jobs anyway..
         Log::info("Regeneration job dispatched for depictsId: $depictsId");
+        
         return response()->json([
             'message' => "Regeneration job dispatched for depictsId: $depictsId",
         ], 202);

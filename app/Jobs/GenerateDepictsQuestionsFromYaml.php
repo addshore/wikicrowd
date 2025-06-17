@@ -4,14 +4,16 @@ namespace App\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\Yaml\Yaml;
 use App\Jobs\GenerateDepictsQuestions;
 
-class GenerateDepictsQuestionsFromYaml implements ShouldQueue
+class GenerateDepictsQuestionsFromYaml implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -34,9 +36,37 @@ class GenerateDepictsQuestionsFromYaml implements ShouldQueue
         $this->runSync = $runSync;
     }
 
+    /**
+     * The unique ID of the job.
+     * This prevents multiple jobs with the same depictItemId from being queued simultaneously.
+     */
+    public function uniqueId(): string
+    {
+        return 'depicts_yaml:' . $this->depictItemId;
+    }
+
+    /**
+     * The number of seconds after which the job's unique lock will be released.
+     */
+    public function uniqueFor(): int
+    {
+        return 600; // 10 minutes
+    }
+
     public function handle()
     {
         \Log::info("Starting GenerateDepictsQuestionsFromYaml job with depictItemId: {$this->depictItemId} and extra yamlUrl: {$this->yamlUrl}");
+
+        // Prevent multiple batches for the same depictItemId from running simultaneously
+        $lockKey = 'depicts_yaml:' . $this->depictItemId;
+        $lock = Cache::lock($lockKey, 600); // 10 minute lock
+        
+        if (!$lock->get()) {
+            \Log::info("Regeneration already in progress for depictItemId: {$this->depictItemId}, skipping job");
+            return;
+        }
+        
+        try {
 
         $defaultYamlUrl = 'https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml?action=raw';
         $yamlContent = @file_get_contents($defaultYamlUrl);
@@ -188,15 +218,25 @@ class GenerateDepictsQuestionsFromYaml implements ShouldQueue
             $batch = Bus::batch($jobInstances)
                 ->name('depicts_yaml:' . $this->depictItemId)
                 ->onQueue('low')
-                ->then(function() {
+                ->then(function() use ($lock) {
                     \Log::info("All GenerateDepictsQuestions jobs from YAML completed successfully");
+                    $lock->release(); // Release lock when ALL jobs are done
                 })
-                ->catch(function($batch, $e) {
+                ->catch(function($batch, $e) use ($lock) {
                     \Log::error("GenerateDepictsQuestions batch from YAML failed: " . $e->getMessage());
+                    $lock->release(); // Release lock even if batch fails
                 })
                 ->dispatch();
 
             \Log::info("Dispatched batch with " . count($jobInstances) . " GenerateDepictsQuestions jobs, batch ID: " . $batch->id);
+        } else {
+            // If running sync or no jobs, release lock immediately
+            $lock->release();
+        }
+        } catch (\Exception $e) {
+            \Log::error("GenerateDepictsQuestionsFromYaml failed: " . $e->getMessage());
+            $lock->release(); // Release lock on any exception
+            throw $e;
         }
     }
 }

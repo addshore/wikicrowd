@@ -4,6 +4,7 @@
 
     use Illuminate\Bus\Queueable;
     use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
     use Illuminate\Foundation\Bus\Dispatchable;
     use Illuminate\Queue\InteractsWithQueue;
     use Illuminate\Queue\SerializesModels;
@@ -22,7 +23,7 @@
     use Illuminate\Support\Facades\Cache;
     use App\Services\SparqlQueryService;
 
-    class GenerateDepictsQuestions implements ShouldQueue
+    class GenerateDepictsQuestions implements ShouldQueue, ShouldBeUnique
     {
         use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, Batchable;
 
@@ -104,12 +105,19 @@
 
         /**
          * The unique ID of the job.
-         *
-         * @return string
+         * Prevents duplicate jobs for the same category + depictItemId combination.
          */
         public function uniqueId()
         {
-            return $this->depictItemId."x";
+            return 'depicts:' . $this->depictItemId . ':' . md5($this->category);
+        }
+
+        /**
+         * The number of seconds after which the job's unique lock will be released.
+         */
+        public function uniqueFor(): int
+        {
+            return 3600; // 1 hour - longer than individual job timeout
         }
 
         /**
@@ -125,14 +133,7 @@
             }
 
             $batchId = $this->batch() ? $this->batch()->id : 'standalone';
-            $lockKey = 'depicts_questions:' . $this->depictItemId . ':' . $batchId;
-            $lock = Cache::lock($lockKey, 600); // 10 min lock
-            if (!$lock->get()) {
-                \Log::info("Lock held for $lockKey, skipping job");
-                return;
-            }
-            try {
-                \Log::info("Starting depicts job for category: " . $this->category . ", depictsId: " . $this->depictItemId . ", batchId: " . $batchId);
+            \Log::info("Starting depicts job for category: " . $this->category . ", depictsId: " . $this->depictItemId . ", batchId: " . $batchId);
 
                 // Ensure category is prefixed with 'Category:'
                 $categoryName = $this->category;
@@ -242,9 +243,6 @@
                         \Log::info("Created new batch with " . count($subJobs) . " sub-jobs for depicts: " . $this->depictItemId);
                     }
                 }
-            } finally {
-                $lock->release();
-            }
         }
 
         private function getFileExtensionFromName( string $name ){
