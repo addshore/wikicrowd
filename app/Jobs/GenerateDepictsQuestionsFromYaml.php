@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Bus;
 use Symfony\Component\Yaml\Yaml;
 use App\Jobs\GenerateDepictsQuestions;
 
@@ -153,6 +154,8 @@ class GenerateDepictsQuestionsFromYaml implements ShouldQueue
         } else {
             \Log::info("No job limit set, will dispatch all jobs");
         }
+
+        $jobInstances = [];
         foreach ($depictsJobs as $job) {
             if (!isset($job['category']) || !isset($job['depictsId']) || !isset($job['name']) || !isset($job['limit'])) {
                 \Log::info("Job is missing required fields");
@@ -166,18 +169,34 @@ class GenerateDepictsQuestionsFromYaml implements ShouldQueue
                 $job['name'],
                 $job['limit']
             );
+
             if ($this->runSync) {
                 \Log::info("Dispatching job synchronously for category: {$job['category']}, depictsId: {$job['depictsId']}, name: {$job['name']}");
                 dispatch_sync($jobInstance);
             } else {
-                \Log::info("Dispatching job asynchronously for category: {$job['category']}, depictsId: {$job['depictsId']}, name: {$job['name']}");
-                dispatch($jobInstance->onQueue('low')); // All generations live on the low queue
+                $jobInstances[] = $jobInstance;
             }
             $dispatchedCount++;
             if ($this->jobLimit > 0 && $dispatchedCount >= $this->jobLimit) {
                 \Log::info("Reached job limit of {$this->jobLimit}, stopping dispatching");
                 break;
             }
+        }
+
+        // Dispatch all jobs as a batch if running asynchronously
+        if (!$this->runSync && !empty($jobInstances)) {
+            $batch = Bus::batch($jobInstances)
+                ->name('depicts_yaml:' . $this->depictItemId)
+                ->onQueue('low')
+                ->then(function() {
+                    \Log::info("All GenerateDepictsQuestions jobs from YAML completed successfully");
+                })
+                ->catch(function($batch, $e) {
+                    \Log::error("GenerateDepictsQuestions batch from YAML failed: " . $e->getMessage());
+                })
+                ->dispatch();
+
+            \Log::info("Dispatched batch with " . count($jobInstances) . " GenerateDepictsQuestions jobs, batch ID: " . $batch->id);
         }
     }
 }

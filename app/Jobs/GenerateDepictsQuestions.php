@@ -56,7 +56,6 @@
         private $got;
         private $depictsSubGroup;
         private $instancesOfAndSubclassesOf;
-        private $batchId;
 
         /**
          * Create a new job instance for a single depicts question job.
@@ -67,7 +66,6 @@
          * @param string $depictItemId
          * @param string $depictName
          * @param int $limit
-         * @param string|null $batchId
          */
         public function __construct(
             string $category,
@@ -76,7 +74,6 @@
             string $depictItemId = '',
             string $depictName = '',
             int $limit = 0,
-            string $batchId = null,
             int $recursionDepth = 0
         )
         {
@@ -102,7 +99,6 @@
             $this->depictItemId = $depictItemId;
             $this->depictName = $depictName;
             $this->limit = $limit;
-            $this->batchId = $batchId;
             $this->recursionDepth = $recursionDepth;
         }
 
@@ -122,21 +118,21 @@
          * @return void
          */
         public function handle() {
-            $lockKey = 'depicts_questions:' . $this->depictItemId . ($this->batchId ? (':' . $this->batchId) : '');
+            // Check if this job is part of a batch and if the batch has been cancelled
+            if ($this->batch() && $this->batch()->cancelled()) {
+                \Log::info("Batch has been cancelled, skipping job for depictItemId: {$this->depictItemId}");
+                return;
+            }
+
+            $batchId = $this->batch() ? $this->batch()->id : 'standalone';
+            $lockKey = 'depicts_questions:' . $this->depictItemId . ':' . $batchId;
             $lock = Cache::lock($lockKey, 600); // 10 min lock
             if (!$lock->get()) {
                 \Log::info("Lock held for $lockKey, skipping job");
                 return;
             }
             try {
-                $batchId = $this->batchId;
-                if (!$batchId) {
-                    $batchId = \Illuminate\Support\Str::uuid()->toString();
-                    $this->batchId = $batchId;
-                    \Log::info("No batch ID provided, generating new one: $batchId");
-                }
-
-                \Log::info("Starting depicts job for category: " . $this->category . ", depictsId: " . $this->depictItemId . ", batchId: " . ($this->batchId ?? 'none'));
+                \Log::info("Starting depicts job for category: " . $this->category . ", depictsId: " . $this->depictItemId . ", batchId: " . $batchId);
 
                 // Ensure category is prefixed with 'Category:'
                 $categoryName = $this->category;
@@ -170,7 +166,7 @@
 
                 $subJobs = [];
 
-                $traverser->addCallback( \Addwiki\Mediawiki\Api\Service\CategoryTraverser::CALLBACK_CATEGORY, function( $member, $rootCat ) use (&$subJobs, $currentIgnore, $batchId ) {
+                $traverser->addCallback( \Addwiki\Mediawiki\Api\Service\CategoryTraverser::CALLBACK_CATEGORY, function( $member, $rootCat ) use (&$subJobs, $currentIgnore ) {
                     if( $this->got >= $this->limit ) {
                         \Log::info("Limit reached");
                         return false;
@@ -197,7 +193,6 @@
                         $this->depictItemId,
                         $this->depictName,
                         $this->limit,
-                        $batchId,
                         $this->recursionDepth + 1
                     );
                     // Don't descend further in this job
@@ -234,10 +229,18 @@
 
                 // Dispatch all subcategory jobs as a batch if any
                 if (!empty($subJobs)) {
-                    Bus::batch($subJobs)
-                        ->name('depicts:' . $this->depictItemId)
-                        ->onQueue('low') // once we get going, we can use the low queue
-                        ->dispatch();
+                    if ($this->batch()) {
+                        // Add sub-jobs to the current batch
+                        $this->batch()->add($subJobs);
+                        \Log::info("Added " . count($subJobs) . " sub-jobs to existing batch: " . $this->batch()->id);
+                    } else {
+                        // Create a new batch if this job is not part of one
+                        Bus::batch($subJobs)
+                            ->name('depicts:' . $this->depictItemId)
+                            ->onQueue('low') // once we get going, we can use the low queue
+                            ->dispatch();
+                        \Log::info("Created new batch with " . count($subJobs) . " sub-jobs for depicts: " . $this->depictItemId);
+                    }
                 }
             } finally {
                 $lock->release();
