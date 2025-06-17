@@ -215,7 +215,7 @@
                         return;
                     }
                     // Skip pages we already generated a question for of any depicts type
-                    if (\App\Models\Question::whereIn('question_group_id', [ $this->depictsSubGroup, $this->depictsRefineSubGroup] )
+                    if (\App\Models\Question::whereIn('question_group_id', [ $this->depictsSubGroup ] )
                             ->whereIn('unique_id', [ $this->uniqueQuestionID( 'depicts', $pageIdentifier ), $this->uniqueQuestionID( 'depicts-refine', $pageIdentifier ) ])
                             ->exists()
                         ) {
