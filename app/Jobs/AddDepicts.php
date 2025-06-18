@@ -31,6 +31,7 @@ class AddDepicts implements ShouldQueue
     private $instancesOfAndSubclassesOf;
     private ?string $rank;
     private bool $removeSuperclasses;
+    private array $logContext;
 
     /**
      * Create a new job instance.
@@ -46,6 +47,13 @@ class AddDepicts implements ShouldQueue
         $this->answerId = $answerId;
         $this->rank = $rank;
         $this->removeSuperclasses = $removeSuperclasses;
+        
+        // Initialize logging context
+        $this->logContext = [
+            'answer' => $this->answerId,
+            'rank' => $this->rank,
+            'rm_superclasses' => $this->removeSuperclasses,
+        ];
     }
 
     /**
@@ -58,15 +66,8 @@ class AddDepicts implements ShouldQueue
         try {
             $this->handleInner();
         } catch (\Exception $e) {
-            $jobDetails = [
-                'job_class' => self::class,
-                'answer_id' => $this->answerId,
-                'rank' => $this->rank,
-                'remove_superclasses' => $this->removeSuperclasses,
-            ];
-            
             \Log::error("AddDepicts job failed with exception", [
-                'job_details' => $jobDetails,
+                'context' => $this->logContext,
                 'exception' => $e,
                 'message' => $e->getMessage(),
                 'code' => $e->getCode(),
@@ -89,6 +90,10 @@ class AddDepicts implements ShouldQueue
         $question = $answer->question;
         $user = $answer->user;
 
+        // Add question context
+        $this->logContext['question'] = $question->id;
+        $this->logContext['user'] = $user->id;
+
         // Edit already happened in this system
         if( $question->edit->count() > 0 ) {
             //return;
@@ -96,7 +101,7 @@ class AddDepicts implements ShouldQueue
 
         if($user->token === null || $user->token_secret === null) {
             // TODO deal with this?
-            \Log::error("No token for user (must be logged out)");
+            \Log::error("No token for user (must be logged out)", $this->logContext);
             return;
         }
 
@@ -117,13 +122,15 @@ class AddDepicts implements ShouldQueue
         $depictsProperty = new PropertyId( 'P180' );
         $depictsValue = new ItemId( $question->properties['depicts_id'] );
 
+        $this->logContext['mid'] = $mid->getSerialization();
+        $this->logContext['qid'] = $depictsValue->getSerialization();
 
         // TODO code reuse section start
         /** @var \Wikibase\MediaInfo\DataModel\MediaInfo $entity */
         $entity = $wbServices->newEntityLookup()->getEntity( $mid );
         if($entity === null) {
             // TODO could still create statements for this condition...
-            \Log::error("{$mid} MediaInfo entity not found");
+            \Log::error("MediaInfo entity not found", $this->logContext);
             return;
         }
         $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $depictsValue->getSerialization() );
@@ -164,15 +171,20 @@ class AddDepicts implements ShouldQueue
         // TODO code reuse section end
 
         if($foundDepicts !== false) {
-            \Log::info("{$mid} already has {$foundDepicts} depicts");
+            $this->logContext['found_depicts_type'] = $foundDepicts;
+            \Log::info("MediaInfo already has depicts", $this->logContext);
             return;
         } else {
             // Remove superclass statements if option is enabled and we found any
             if($this->removeSuperclasses && !empty($superclassStatements)) {
+                $this->logContext['superclass_statements'] = count($superclassStatements);
                 $editInfo = new EditInfo("Removing superclass depicts before adding more specific one");
                 foreach($superclassStatements as $superclassStatement) {
-                    \Log::info("Removing superclass depicts: " . $superclassStatement->getMainSnak()->getDataValue()->getEntityId()->getSerialization());
+                    $superclassId = $superclassStatement->getMainSnak()->getDataValue()->getEntityId()->getSerialization();
+                    $this->logContext['removing_superclass'] = $superclassId;
+                    \Log::info("Removing superclass depicts", $this->logContext);
                     $wbServices->newStatementRemover()->remove( $superclassStatement, $editInfo );
+                    unset($this->logContext['removing_superclass']);
                     sleep(1); // Sleep 1 second between each edit
                 }
             }
@@ -182,8 +194,11 @@ class AddDepicts implements ShouldQueue
             if (!empty($question->properties['manual']) && !empty($question->properties['category']) && !empty($question->properties['depicts_id'])) {
                 $cat = $question->properties['category'];
                 $qid = $question->properties['depicts_id'];
+                $this->logContext['manual_cat'] = $cat;
                 $editInfo = new EditInfo("From custom inputs [[:$cat]] and [[wikidata:$qid]]");
             }
+            
+            \Log::info("Creating new depicts statement", $this->logContext);
             $snak = new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) );
             $createdClaimGuid = $wbServices->newStatementCreator()->create( $snak, $mid, $editInfo );
 
@@ -207,6 +222,7 @@ class AddDepicts implements ShouldQueue
             $revisionIds[] = (int)$revId;
 
             if ($this->rank === 'preferred' && $createdClaimGuid !== null) {
+                \Log::info("Setting statement to preferred rank", $this->logContext);
                 // Prepend preferred rank note to summary
                 $preferredPrefix = 'Marking prominent (preferred rank). ';
                 if ($editInfo !== null) {
@@ -227,6 +243,10 @@ class AddDepicts implements ShouldQueue
             }
 
             // Create Edit records for all revisions
+            $this->logContext['revids'] = $revisionIds;
+            $this->logContext['revs'] = count($revisionIds);
+            \Log::info("Creating Edit records for revisions", $this->logContext);
+            
             foreach($revisionIds as $revId) {
                 Edit::create([
                     'question_id' => $question->id,
@@ -234,6 +254,8 @@ class AddDepicts implements ShouldQueue
                     'revision_id' => $revId,
                 ]);
             }
+            
+            \Log::info("AddDepicts job completed successfully", $this->logContext);
         }
     }
 
