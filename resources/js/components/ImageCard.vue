@@ -70,7 +70,7 @@
       @click.stop
     >
       <div class="truncate mb-1">
-        <a :href="'https://commons.wikimedia.org/wiki/' + image.title" target="_blank">{{ image.properties?.mediainfo_id || image.id }}</a>
+        <a :href="'https://commons.wikimedia.org/wiki/' + (image.title || image.properties?.page_title)" target="_blank">{{ image.properties?.mediainfo_id || image.id }}</a>
       </div>
       <ExistingDepictsLabels :media-info-id="image.properties?.mediainfo_id || image.id" />
     </div>
