@@ -14,7 +14,7 @@
     ]"
   >
     <div
-      class="absolute top-1 right-1 w-20 h-20 bg-gray-800 bg-opacity-50 rounded-full z-20 flex items-center justify-center cursor-grab"
+      class="absolute top-1 right-1 w-20 h-20 bg-gray-800 bg-opacity-50 rounded-full z-20 flex items-center justify-center cursor-grab md:hidden"
       @touchstart.prevent="$emit('handle-touchstart', image, $event)"
       @touchmove="$emit('handle-touchmove', image, $event)"
       @touchend="$emit('handle-touchend', image, $event)"
