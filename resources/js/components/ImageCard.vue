@@ -3,7 +3,7 @@
     :data-image-id="image.id"
     @click="$emit('click', image.id, $event)"
     @mousedown.prevent="$emit('mousedown', image, $event)"
-    @touchstart.prevent="$emit('touchstart', image, $event)"
+    @touchstart="$emit('touchstart', image, $event)"
     :class="[
       'relative flex flex-col rounded overflow-hidden transition-all',
       isAnswered
