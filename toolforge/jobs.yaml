@@ -1,13 +1,13 @@
 - name: queue-high
   image: php8.2
-  command: php /data/project/wikicrowd/src/artisan queue:work --queue=high,default --tries=3
+  command: php /data/project/wikicrowd/src/artisan queue:work-resilient --queue=high,default --tries=3
   continuous: true
   emails: all
   replicas: 2
   no-filelog: true
 - name: queue
   image: php8.2
-  command: php /data/project/wikicrowd/src/artisan queue:work --queue=high,default,low --tries=3
+  command: php /data/project/wikicrowd/src/artisan queue:work-resilient --queue=high,default,low --tries=3
   continuous: true
   emails: all
   replicas: 2

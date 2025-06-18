@@ -1,7 +1,6 @@
 <?php
 
 return [
-
     /*
     |--------------------------------------------------------------------------
     | Default Queue Connection Name
@@ -29,7 +28,6 @@ return [
     */
 
     'connections' => [
-
         'sync' => [
             'driver' => 'sync',
         ],
@@ -38,7 +36,7 @@ return [
             'driver' => 'database',
             'table' => 'jobs',
             'queue' => 'default',
-            'retry_after' => 90,
+            'retry_after' => (int) env('DATABASE_QUEUE_RETRY_AFTER', 90),
             'after_commit' => false,
         ],
 
@@ -46,8 +44,8 @@ return [
             'driver' => 'beanstalkd',
             'host' => 'localhost',
             'queue' => 'default',
-            'retry_after' => 90,
-            'block_for' => 0,
+            'retry_after' => (int) env('BEANSTALKD_RETRY_AFTER', 90),
+            'block_for' => (int) env('BEANSTALKD_BLOCK_FOR', 0),
             'after_commit' => false,
         ],
 
@@ -66,12 +64,26 @@ return [
             'driver' => 'redis',
             'connection' => 'default',
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => 90,
-            'block_for' => null,
+            'retry_after' => (int) env('QUEUE_RETRY_AFTER', 90),
+            'block_for' => env('QUEUE_BLOCK_FOR') === 'null' ? null : (int) env('QUEUE_BLOCK_FOR', 30),
             'after_commit' => false,
+            'expire' => (int) env('QUEUE_EXPIRE', 3600),
         ],
-
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Queue Worker Resilience Settings
+    |--------------------------------------------------------------------------
+    |
+    | These options configure how the queue worker handles failures and
+    | restarts. This is especially useful for handling Redis connection
+    | issues and other temporary failures.
+    |
+    */
+
+    'max_restarts' => (int) env('QUEUE_MAX_RESTARTS', 10),
+    'restart_delay' => (int) env('QUEUE_RESTART_DELAY', 5), // seconds
 
     /*
     |--------------------------------------------------------------------------
@@ -89,5 +101,4 @@ return [
         'database' => env('DB_CONNECTION', 'mysql'),
         'table' => 'failed_jobs',
     ],
-
 ];

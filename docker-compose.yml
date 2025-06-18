@@ -33,7 +33,7 @@ services:
             args:
                 WWWGROUP: '${WWWGROUP}'
         image: sail-8.2/app
-        command: 'php artisan queue:work --queue=high,default,low --tries=3'
+        command: 'php artisan queue:work-resilient --queue=high,default,low --tries=3'
         environment:
             WWWUSER: '${WWWUSER}'
             LARAVEL_SAIL: 1
