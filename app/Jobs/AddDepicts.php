@@ -143,6 +143,7 @@ class AddDepicts implements ShouldQueue
                 foreach($superclassStatements as $superclassStatement) {
                     \Log::info("Removing superclass depicts: " . $superclassStatement->getMainSnak()->getDataValue()->getEntityId()->getSerialization());
                     $wbServices->newStatementRemover()->remove( $superclassStatement, $editInfo );
+                    sleep(1); // Sleep 1 second between each edit
                 }
             }
             
@@ -155,6 +156,8 @@ class AddDepicts implements ShouldQueue
             }
             $snak = new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) );
             $createdClaimGuid = $wbServices->newStatementCreator()->create( $snak, $mid, $editInfo );
+
+            sleep(1); // Sleep 1 second between each edit
 
             $mwServices = new MediawikiFactory( $mwApi );
 
@@ -186,6 +189,9 @@ class AddDepicts implements ShouldQueue
                 $statement->setRank(Statement::RANK_PREFERRED);
                 $statementSetter = $wbServices->newStatementSetter();
                 $statementSetter->set($statement, $editInfo);
+
+                sleep(1); // Sleep 1 second between each edit
+
                 $revId2 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
                 $revisionIds[] = (int)$revId2;
             }
