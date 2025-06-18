@@ -55,6 +55,36 @@ class AddDepicts implements ShouldQueue
      */
     public function handle()
     {
+        try {
+            $this->handleInner();
+        } catch (\Exception $e) {
+            $jobDetails = [
+                'job_class' => self::class,
+                'answer_id' => $this->answerId,
+                'rank' => $this->rank,
+                'remove_superclasses' => $this->removeSuperclasses,
+            ];
+            
+            \Log::error("AddDepicts job failed with exception", [
+                'job_details' => $jobDetails,
+                'exception' => $e,
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            
+            throw $e; // Re-throw to maintain job failure behavior
+        }
+    }
+
+    /**
+     * Execute the job inner logic.
+     *
+     * @return void
+     */
+    private function handleInner()
+    {
         $answer = Answer::with('question')->with('user')->with('question.edit')->find($this->answerId);
         $question = $answer->question;
         $user = $answer->user;
