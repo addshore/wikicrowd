@@ -5,7 +5,6 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 
 return [
-
     /*
     |--------------------------------------------------------------------------
     | Default Log Channel
@@ -67,6 +66,13 @@ return [
             'days' => 14,
         ],
 
+        'slow_requests' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/slow-requests.log'),
+            'level' => 'warning',
+            'days' => 30,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),
@@ -114,5 +120,4 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
     ],
-
 ];

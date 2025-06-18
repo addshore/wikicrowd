@@ -1,7 +1,6 @@
 <?php
 
 return [
-
     /*
     |--------------------------------------------------------------------------
     | Application Name
@@ -71,6 +70,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Slow Request Threshold
+    |--------------------------------------------------------------------------
+    |
+    | This value determines the threshold (in milliseconds) for logging slow
+    | requests. Any request that takes longer than this threshold will be
+    | logged as a warning. Default is 3000ms (3 seconds).
+    |
+    */
+
+    'slow_request_threshold' => env('SLOW_REQUEST_THRESHOLD', 3000),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |
@@ -135,7 +147,6 @@ return [
     */
 
     'providers' => [
-
         /*
          * Laravel Framework Service Providers...
          */
@@ -175,7 +186,6 @@ return [
         App\Providers\EventServiceProvider::class,
         App\Providers\RedisServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-
     ],
 
     /*
@@ -190,7 +200,6 @@ return [
     */
 
     'aliases' => [
-
         'App' => Illuminate\Support\Facades\App::class,
         'Arr' => Illuminate\Support\Arr::class,
         'Artisan' => Illuminate\Support\Facades\Artisan::class,
@@ -230,7 +239,5 @@ return [
         'URL' => Illuminate\Support\Facades\URL::class,
         'Validator' => Illuminate\Support\Facades\Validator::class,
         'View' => Illuminate\Support\Facades\View::class,
-
     ],
-
 ];
