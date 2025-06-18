@@ -180,6 +180,7 @@ export function useDragSelection({ images, answered, answerModeStyles, onSelecti
     // Start long press timer
     longPressTimer.value = setTimeout(() => {
       isLongPressActive.value = true;
+      // Only set isDragging to true after long press timer completes
       isDragging.value = true;
 
       dragStartCoordinates.value = { 
@@ -228,9 +229,13 @@ export function useDragSelection({ images, answered, answerModeStyles, onSelecti
       if (deltaX > maxTouchMoveThreshold.value || deltaY > maxTouchMoveThreshold.value) {
         clearTimeout(longPressTimer.value);
       }
+      // If long press is not active (either timer running or cleared by movement),
+      // do not proceed with drag logic. This allows scrolling.
       return;
     }
 
+    // If dragging hasn't started (e.g. long press timer didn't fire yet, though isLongPressActive might be true if timer fired but isDragging was deferred)
+    // This check is important.
     if (!isDragging.value) return;
 
     // Update selection rectangle (similar to mouse move)

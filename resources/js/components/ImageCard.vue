@@ -3,7 +3,7 @@
     :data-image-id="image.id"
     @click="$emit('click', image.id, $event)"
     @mousedown.prevent="$emit('mousedown', image, $event)"
-    @touchstart.prevent="$emit('touchstart', image, $event)"
+    @touchstart="$emit('touchstart', image, $event)"
     :class="[
       'relative flex flex-col rounded overflow-hidden transition-all',
       isAnswered
@@ -13,6 +13,15 @@
           : 'border-4 border-transparent cursor-pointer'
     ]"
   >
+    <div
+      class="absolute top-1 right-1 w-20 h-20 bg-gray-800 bg-opacity-50 rounded-full z-20 flex items-center justify-center cursor-grab md:hidden"
+      @touchstart.prevent="$emit('handle-touchstart', image, $event)"
+      @touchmove="$emit('handle-touchmove', image, $event)"
+      @touchend="$emit('handle-touchend', image, $event)"
+      title="Drag to select"
+    >
+    </div>
+
     <div :class="['relative w-full bg-gray-100', imageHeightClass]">
       <!-- Loading spinner -->
       <div v-if="!imageLoadingState || imageLoadingState === 'loading'" 
@@ -150,7 +159,7 @@ export default {
       required: true
     }
   },
-  emits: ['click', 'mousedown', 'touchstart', 'imgLoad', 'imgError', 'imgLoadStart', 'openFullscreen'],
+  emits: ['click', 'mousedown', 'touchstart', 'imgLoad', 'imgError', 'imgLoadStart', 'openFullscreen', 'handle-touchstart', 'handle-touchmove', 'handle-touchend'],
   methods: {
     getAnsweredBorderClass() {
       const modeMap = {
