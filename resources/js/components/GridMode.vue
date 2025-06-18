@@ -58,7 +58,10 @@
         :image-height-class="imageHeightClass"
         @click="handleClick"
         @mousedown="handleImageMouseDown"
-        @touchstart="handleTouchStart"
+        @touchstart="handleCardTap" <!-- Changed from handleTouchStart -->
+        @handle-touchstart="handleDragHandleTouchStart" <!-- New -->
+        @handle-touchmove="handleDragHandleTouchMove" <!-- New -->
+        @handle-touchend="handleDragHandleTouchEnd"   <!-- New -->
         @img-load="handleImgLoad"
         @img-error="handleImgError"
         @img-load-start="markImageLoading"
@@ -1661,12 +1664,8 @@ export default {
       dragSelectionRect.value = { x: 0, y: 0, width: 0, height: 0 };
     };
 
-    /**
-     * Handles the touchstart event on an image, initiating long-press drag selection.
-     * @param {object} image - The image object.
-     * @param {TouchEvent} event - The touchstart event.
-     */
-    const handleTouchStart = (image, event) => {
+    // Renamed from handleTouchStart
+    const processDragTouchStart = (image, event) => {
       // Ignore multi-touch gestures that could interfere
       if (event.touches.length > 1) {
         clearTimeout(longPressTimer.value);
@@ -1715,7 +1714,8 @@ export default {
      * This is a global listener attached to the window.
      * @param {TouchEvent} event - The touchmove event.
      */
-    const handleTouchMove = (event) => {
+    // Renamed from handleTouchMove
+    const processDragTouchMove = (event) => {
       if (event.touches.length === 0) return; // Should not happen if a touch is active
       const touch = event.touches[0];
 
@@ -1770,7 +1770,8 @@ export default {
      * This is a global listener attached to the window.
      * @param {TouchEvent} event - The touchend event.
      */
-    const handleTouchEnd = (event) => {
+    // Renamed from handleTouchEnd
+    const processDragTouchEnd = (event) => {
       clearTimeout(longPressTimer.value); // Always clear the long press timer
 
       // If a drag operation was active (due to successful long press)
@@ -1864,11 +1865,30 @@ export default {
       dragSelectionRect.value = { x: 0, y: 0, width: 0, height: 0 }; // Reset selection rectangle
     };
 
+    const handleDragHandleTouchStart = (image, event) => {
+      processDragTouchStart(image, event);
+    };
+
+    const handleDragHandleTouchMove = (image, event) => { // image param might not be strictly needed if event is global
+      processDragTouchMove(event);
+    };
+
+    const handleDragHandleTouchEnd = (image, event) => { // image param might not be strictly needed if event is global
+      processDragTouchEnd(event);
+    };
+
+    const handleCardTap = (image, event) => {
+      // This is called when the card itself (not the handle) is touched.
+      // For now, do nothing here to prevent drag initiation from card body.
+      // If there are other non-drag touch interactions for the card, they could go here.
+      console.log('Image card tapped, not the handle. Image:', image.id);
+    };
+
     onMounted(() => {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
-      window.addEventListener('touchmove', handleTouchMove, { passive: false });
-      window.addEventListener('touchend', handleTouchEnd);
+      window.addEventListener('touchmove', processDragTouchMove, { passive: false });
+      window.addEventListener('touchend', processDragTouchEnd);
 
 
       if (props.manualMode) {
@@ -1912,8 +1932,8 @@ export default {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchmove', processDragTouchMove);
+      window.removeEventListener('touchend', processDragTouchEnd);
       
       // Clean up failed image validation timer
       if (failedImageValidationTimer.value) {
@@ -2174,7 +2194,14 @@ export default {
       touchStartCoordinates,
       isLongPressActive,
       maxTouchMoveThreshold,
-      handleTouchStart,
+      // handleTouchStart, // Original one, now processDragTouchStart (internal)
+      processDragTouchStart, // Exposing renamed for direct use if needed, though typically via handleDragHandleTouchStart
+      processDragTouchMove,  // Exposing renamed for global listeners
+      processDragTouchEnd,   // Exposing renamed for global listeners
+      handleDragHandleTouchStart, // New handler for template
+      handleDragHandleTouchMove,  // New handler for template
+      handleDragHandleTouchEnd,   // New handler for template
+      handleCardTap,              // New handler for template
       handleFullscreenAnswer,
       imageSize,
       gridClasses,

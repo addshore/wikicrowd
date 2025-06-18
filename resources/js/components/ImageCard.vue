@@ -13,6 +13,19 @@
           : 'border-4 border-transparent cursor-pointer'
     ]"
   >
+    <!-- NEW DRAG HANDLE -->
+    <div
+      class="absolute top-1 right-1 w-8 h-8 bg-gray-800 bg-opacity-50 rounded-full z-20 flex items-center justify-center cursor-grab"
+      @touchstart.prevent="$emit('handle-touchstart', image, $event)"
+      @touchmove="$emit('handle-touchmove', image, $event)"
+      @touchend="$emit('handle-touchend', image, $event)"
+      title="Drag to select"
+    >
+      <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+      </svg>
+    </div>
+
     <div :class="['relative w-full bg-gray-100', imageHeightClass]">
       <!-- Loading spinner -->
       <div v-if="!imageLoadingState || imageLoadingState === 'loading'" 
@@ -150,7 +163,7 @@ export default {
       required: true
     }
   },
-  emits: ['click', 'mousedown', 'touchstart', 'imgLoad', 'imgError', 'imgLoadStart', 'openFullscreen'],
+  emits: ['click', 'mousedown', 'touchstart', 'imgLoad', 'imgError', 'imgLoadStart', 'openFullscreen', 'handle-touchstart', 'handle-touchmove', 'handle-touchend'],
   methods: {
     getAnsweredBorderClass() {
       const modeMap = {
