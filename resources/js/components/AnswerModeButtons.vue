@@ -3,7 +3,7 @@
     <!-- Answer Mode Buttons -->
     <div class="flex">
       <button
-        :class="['px-2 py-1 text-sm rounded-l font-bold', answerMode === 'yes-preferred' ? 'bg-green-700 text-white' : 'bg-gray-200 text-gray-700']"
+        :class="['px-2 py-1 text-sm rounded-l font-bold', answerMode === 'yes-preferred' ? 'bg-green-700 text-white ring-2 ring-yellow-400 ring-offset-1 dark:ring-offset-gray-800' : 'bg-gray-200 text-gray-700']"
         @click="updateAnswerMode('yes-preferred')"
       >Prominent (Q)</button>
       <button

@@ -103,7 +103,7 @@
         </svg>
       </template>
       <template v-else-if="answeredMode === 'yes-preferred'">
-        <svg class="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24">
+        <svg class="w-16 h-16 text-white" fill="yellow" viewBox="0 0 24 24">
           <polygon points="12,2 15,9 22,9.5 17,14.5 18.5,22 12,18 5.5,22 7,14.5 2,9.5 9,9" />
         </svg>
       </template>
@@ -166,7 +166,7 @@ export default {
         'no': 'border-4 border-red-500 cursor-default opacity-80',
         'skip': 'border-4 border-blue-500 cursor-default opacity-80',
         'yes': 'border-4 border-green-500 cursor-default opacity-80',
-        'yes-preferred': 'border-4 border-green-700 cursor-default opacity-80'
+        'yes-preferred': 'border-dashed-green-yellow cursor-default opacity-80'
       };
       return modeMap[this.answeredMode] || 'border-4 border-transparent cursor-default opacity-80';
     },
@@ -175,7 +175,7 @@ export default {
         'no': 'border-4 border-red-500 cursor-pointer',
         'skip': 'border-4 border-blue-500 cursor-pointer',
         'yes': 'border-4 border-green-500 cursor-pointer',
-        'yes-preferred': 'border-4 border-green-700 cursor-pointer'
+        'yes-preferred': 'border-dashed-green-yellow cursor-pointer'
       };
       return modeMap[this.selectedMode] || 'border-4 border-transparent cursor-pointer';
     },
