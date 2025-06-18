@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.border-dashed-green-yellow {
+  border-style: dashed;
+  border-width: 4px; /* Matches Tailwind's border-4 */
+  border-image-slice: 1;
+  border-image-source: repeating-linear-gradient(
+    45deg,
+    #34D399, /* Tailwind green-500 */
+    #34D399 5px, /* Length of green dash */
+    #FBBF24 5px, /* Start of yellow dash (Tailwind yellow-400) */
+    #FBBF24 10px /* End of yellow dash (total length of pattern segment) */
+  );
+}

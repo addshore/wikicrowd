@@ -157,7 +157,7 @@ export default {
         'no': 'border-4 border-red-500 cursor-default opacity-80',
         'skip': 'border-4 border-blue-500 cursor-default opacity-80',
         'yes': 'border-4 border-green-500 cursor-default opacity-80',
-        'yes-preferred': 'border-4 border-dashed border-green-500 cursor-default opacity-80'
+        'yes-preferred': 'border-dashed-green-yellow cursor-default opacity-80'
       };
       return modeMap[this.answeredMode] || 'border-4 border-transparent cursor-default opacity-80';
     },
@@ -166,7 +166,7 @@ export default {
         'no': 'border-4 border-red-500 cursor-pointer',
         'skip': 'border-4 border-blue-500 cursor-pointer',
         'yes': 'border-4 border-green-500 cursor-pointer',
-        'yes-preferred': 'border-4 border-dashed border-green-500 cursor-pointer'
+        'yes-preferred': 'border-dashed-green-yellow cursor-pointer'
       };
       return modeMap[this.selectedMode] || 'border-4 border-transparent cursor-pointer';
     },
