@@ -58,10 +58,10 @@
         :image-height-class="imageHeightClass"
         @click="handleClick"
         @mousedown="handleImageMouseDown"
-        @touchstart="handleCardTap" <!-- Changed from handleTouchStart -->
-        @handle-touchstart="handleDragHandleTouchStart" <!-- New -->
-        @handle-touchmove="handleDragHandleTouchMove" <!-- New -->
-        @handle-touchend="handleDragHandleTouchEnd"   <!-- New -->
+        @touchstart="handleCardTap"
+        @handle-touchstart="handleDragHandleTouchStart"
+        @handle-touchmove="handleDragHandleTouchMove"
+        @handle-touchend="handleDragHandleTouchEnd"
         @img-load="handleImgLoad"
         @img-error="handleImgError"
         @img-load-start="markImageLoading"
