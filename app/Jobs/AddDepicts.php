@@ -129,43 +129,45 @@ class AddDepicts implements ShouldQueue
         /** @var \Wikibase\MediaInfo\DataModel\MediaInfo $entity */
         $entity = $wbServices->newEntityLookup()->getEntity( $mid );
         if($entity === null) {
-            // TODO could still create statements for this condition...
-            \Log::error("MediaInfo entity not found", $this->logContext);
-            return;
-        }
-        $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $depictsValue->getSerialization() );
-        
-        // Get parent classes (superclasses) if removal option is enabled
-        $parentClasses = [];
-        if($this->removeSuperclasses) {
-            $parentClasses = $this->getParentClasses( $depictsValue->getSerialization() );
-        }
-        
-        $foundDepicts = false;
-        $superclassStatements = [];
-        foreach( $entity->getStatements()->getByPropertyId( $depictsProperty )->toArray() as $statement ) {
-            // Skip non value statements
-            if( $statement->getMainSnak()->getType() !== 'value' ) {
-                continue;
-            }
-
-            $entityId = $statement->getMainSnak()->getDataValue()->getEntityId();
-
-            // Skip exact depicts matches
-            if( $entityId->equals( $depictsValue ) ) {
-                $foundDepicts = 'exact';
-                break;
-            }
-
-            // and inherited matches
-            if( in_array( $entityId->getSerialization(), $this->instancesOfAndSubclassesOf ) ) {
-                $foundDepicts = 'inherited';
-                break;
+            // If entity is not found, skip existing statement checks and proceed to add the statement if possible
+            $parentClasses = [];
+            $foundDepicts = false;
+            $superclassStatements = [];
+        } else {
+            $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $depictsValue->getSerialization() );
+            
+            // Get parent classes (superclasses) if removal option is enabled
+            $parentClasses = [];
+            if($this->removeSuperclasses) {
+                $parentClasses = $this->getParentClasses( $depictsValue->getSerialization() );
             }
             
-            // Collect superclass statements for potential removal
-            if( $this->removeSuperclasses && in_array( $entityId->getSerialization(), $parentClasses ) ) {
-                $superclassStatements[] = $statement;
+            $foundDepicts = false;
+            $superclassStatements = [];
+            foreach( $entity->getStatements()->getByPropertyId( $depictsProperty )->toArray() as $statement ) {
+                // Skip non value statements
+                if( $statement->getMainSnak()->getType() !== 'value' ) {
+                    continue;
+                }
+
+                $entityId = $statement->getMainSnak()->getDataValue()->getEntityId();
+
+                // Skip exact depicts matches
+                if( $entityId->equals( $depictsValue ) ) {
+                    $foundDepicts = 'exact';
+                    break;
+                }
+
+                // and inherited matches
+                if( in_array( $entityId->getSerialization(), $this->instancesOfAndSubclassesOf ) ) {
+                    $foundDepicts = 'inherited';
+                    break;
+                }
+                
+                // Collect superclass statements for potential removal
+                if( $this->removeSuperclasses && in_array( $entityId->getSerialization(), $parentClasses ) ) {
+                    $superclassStatements[] = $statement;
+                }
             }
         }
         // TODO code reuse section end
