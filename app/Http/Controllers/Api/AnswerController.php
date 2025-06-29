@@ -90,28 +90,45 @@ class AnswerController extends Controller
         }
 
         $user = Auth::user();
-        $createdAnswers = [];
-        foreach ($request->input('answers') as $answerData) {
-            $question = Question::with('group.parentGroup')->find($answerData['question_id']);
-            if (!$question) continue;
-            $storedAnswer = Answer::create([
-                'question_id' => $question->id,
+        $answersData = $request->input('answers');
+        $now = now();
+        $insertData = [];
+        $questionIds = [];
+        foreach ($answersData as $answerData) {
+            $insertData[] = [
+                'question_id' => $answerData['question_id'],
                 'user_id' => $user->id,
                 'answer' => $answerData['answer'],
-            ]);
-            $createdAnswers[] = $storedAnswer;
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            $questionIds[] = $answerData['question_id'];
+        }
+        // Insert all, ignore duplicates
+        Answer::insertOrIgnore($insertData);
+        // Fetch all answers for this user and these questions
+        $answers = Answer::whereIn('question_id', $questionIds)
+            ->where('user_id', $user->id)
+            ->get();
+        $createdAnswers = [];
+        foreach ($answers as $storedAnswer) {
+            // Find the original answer data for this question
+            $answerData = collect($answersData)->firstWhere('question_id', $storedAnswer->question_id);
+            if (!$answerData) continue;
+            $question = Question::with('group.parentGroup')->find($storedAnswer->question_id);
             if ($answerData['answer'] === 'yes' || $answerData['answer'] === 'yes-preferred') {
-                if ($question->group && $question->group->parentGroup) {
+                if ($question && $question->group && $question->group->parentGroup) {
                     $parentGroupName = $question->group->parentGroup->name;
                     $rank = ($answerData['answer'] === 'yes-preferred') ? 'preferred' : null;
                     $removeSuperclasses = $request->boolean('remove_superclasses', false);
                     if ($parentGroupName === 'depicts') {
                         dispatch(new AddDepicts($storedAnswer->id, $rank, $removeSuperclasses));
                     }
-                } else {
+                } else if ($question) {
                     \Log::warning("Question {$question->id} is missing group or parentGroup information. Answer ID: {$storedAnswer->id}");
                 }
             }
+            $createdAnswers[] = $storedAnswer;
         }
         return response()->json([
             'message' => 'Bulk answers submitted successfully.',
