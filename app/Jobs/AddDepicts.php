@@ -185,7 +185,17 @@ class AddDepicts implements ShouldQueue
                     $superclassId = $superclassStatement->getMainSnak()->getDataValue()->getEntityId()->getSerialization();
                     $this->logContext['removing_superclass'] = $superclassId;
                     \Log::info("Removing superclass depicts", $this->logContext);
-                    $wbServices->newStatementRemover()->remove( $superclassStatement, $editInfo );
+                    try {
+                        $wbServices->newStatementRemover()->remove( $superclassStatement, $editInfo );
+                    } catch (\Throwable $e) {
+                        \Log::error("Failed to remove superclass statement", array_merge($this->logContext, [
+                            'operation' => 'remove_superclass',
+                            'superclass_id' => $superclassId,
+                            'exception' => $e,
+                            'message' => $e->getMessage(),
+                        ]));
+                        throw $e;
+                    }
                     unset($this->logContext['removing_superclass']);
                     sleep(1); // Sleep 1 second between each edit
                 }
@@ -202,7 +212,16 @@ class AddDepicts implements ShouldQueue
             
             \Log::info("Creating new depicts statement", $this->logContext);
             $snak = new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) );
-            $createdClaimGuid = $wbServices->newStatementCreator()->create( $snak, $mid, $editInfo );
+            try {
+                $createdClaimGuid = $wbServices->newStatementCreator()->create( $snak, $mid, $editInfo );
+            } catch (\Throwable $e) {
+                \Log::error("Failed to create new depicts statement", array_merge($this->logContext, [
+                    'operation' => 'create_statement',
+                    'exception' => $e,
+                    'message' => $e->getMessage(),
+                ]));
+                throw $e;
+            }
 
             sleep(1); // Sleep 1 second between each edit
 
@@ -236,8 +255,17 @@ class AddDepicts implements ShouldQueue
                 $statement = new Statement($snak, null, null, $createdClaimGuid);
                 $statement->setRank(Statement::RANK_PREFERRED);
                 $statementSetter = $wbServices->newStatementSetter();
-                $statementSetter->set($statement, $editInfo);
-
+                try {
+                    $statementSetter->set($statement, $editInfo);
+                } catch (\Throwable $e) {
+                    \Log::error("Failed to set statement rank to preferred", array_merge($this->logContext, [
+                        'operation' => 'set_statement_rank',
+                        'statement_guid' => $createdClaimGuid,
+                        'exception' => $e,
+                        'message' => $e->getMessage(),
+                    ]));
+                    throw $e;
+                }
                 sleep(1); // Sleep 1 second between each edit
 
                 $revId2 = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
