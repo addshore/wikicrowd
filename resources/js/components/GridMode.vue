@@ -1,35 +1,64 @@
 <template>
   <div class="p-4 w-full max-w-none mx-auto">
     <div class="sticky top-0 z-20 bg-white bg-opacity-95 pb-2 mb-2 shadow">
-      <DepictsHeader
-        :depicts-id="images[0]?.properties?.depicts_id"
-        :depicts-name="images[0]?.properties?.depicts_name"
-        :depicts-up-query-url="depictsUpQueryUrl"
-        :depicts-link-href="depictsLinkHref"
-      />
-      <AnswerModeButtons
-        v-model:answer-mode="answerMode"
-        v-model:remove-superclasses="removeSuperclasses"
-      />
-      
-      <div class="flex justify-center mt-2 mb-2">
-        <GridControlBar
-          :pending-answers-count="pendingAnswers.length"
-          :selected-count="Array.from(selected).filter(id => !answered.has(id)).length"
-          @save="onSaveClickHandler"
-          @clear-answered="clearAnswered"
-        />
-        
-        <AutoSaveSettings
-          v-model:auto-save="autoSave"
-          v-model:auto-save-delay="autoSaveDelay"
-        />
+      <div class="flex justify-end p-1">
+        <button @click="toggleHeaderCollapse" class="p-1 text-gray-500 hover:text-gray-700">
+          <svg v-if="!isHeaderCollapsed" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
       </div>
 
-      <ImageSizeControl v-model:image-size="imageSize" />
+      <div v-show="isHeaderCollapsed" class="flex items-center justify-between p-2 border-t border-gray-200">
+        <div class="flex items-center">
+          <span v-if="images.length > 0 && images[0]?.properties?.depicts_id" class="text-sm font-semibold">
+            Depicting: {{ images[0].properties.depicts_id }} - {{ images[0]?.properties?.depicts_name }}
+          </span>
+          <span v-else class="text-sm font-semibold">
+            Grid Mode
+          </span>
+        </div>
+        <button @click="toggleHeaderCollapse" class="p-1 text-gray-500 hover:text-gray-700">
+           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
 
-      <div class="flex justify-center w-full">
-        <small class="text-center">Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.</small>
+      <div v-show="!isHeaderCollapsed">
+        <DepictsHeader
+          :depicts-id="images[0]?.properties?.depicts_id"
+          :depicts-name="images[0]?.properties?.depicts_name"
+          :depicts-up-query-url="depictsUpQueryUrl"
+          :depicts-link-href="depictsLinkHref"
+        />
+        <AnswerModeButtons
+          v-model:answer-mode="answerMode"
+          v-model:remove-superclasses="removeSuperclasses"
+        />
+
+        <div class="flex justify-center mt-2 mb-2">
+          <GridControlBar
+            :pending-answers-count="pendingAnswers.length"
+            :selected-count="Array.from(selected).filter(id => !answered.has(id)).length"
+            @save="onSaveClickHandler"
+            @clear-answered="clearAnswered"
+          />
+
+          <AutoSaveSettings
+            v-model:auto-save="autoSave"
+            v-model:auto-save-delay="autoSaveDelay"
+          />
+        </div>
+
+        <ImageSizeControl v-model:image-size="imageSize" />
+
+        <div class="flex justify-center w-full">
+          <small class="text-center">Select Yes, Skip, or No at the top. Clicking on an image will flag it for the selected answer, and save after 10 seconds. You can can click it before saving to undo the answer.</small>
+        </div>
       </div>
     </div>
     
@@ -209,6 +238,12 @@ export default {
     const FAILED_IMAGE_BATCH_DELAY = 5000; // 5 seconds delay before sending batch
 
     const imageSavingStates = reactive(new Map());
+
+    // Header collapse state
+    const isHeaderCollapsed = ref(false); // Default to false
+    const toggleHeaderCollapse = () => {
+      isHeaderCollapsed.value = !isHeaderCollapsed.value;
+    };
 
     // Only allow certain image file extensions
     const IMAGE_FILE_EXTENSIONS = [
@@ -1885,6 +1920,12 @@ export default {
     };
 
     onMounted(() => {
+      // Load header collapsed state from localStorage
+      const storedHeaderCollapseState = localStorage.getItem('gridHeaderCollapsed');
+      if (storedHeaderCollapseState) {
+        isHeaderCollapsed.value = JSON.parse(storedHeaderCollapseState);
+      }
+
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
       window.addEventListener('touchmove', processDragTouchMove, { passive: false });
@@ -2075,6 +2116,11 @@ export default {
       }
     });
 
+    // Watch for changes in isHeaderCollapsed to save to localStorage
+    watch(isHeaderCollapsed, (newValue) => {
+      localStorage.setItem('gridHeaderCollapsed', JSON.stringify(newValue));
+    });
+
     /**
      * Send questions to server for validation and cleanup
      * @param {number[]} questionIds - Array of question IDs to validate
@@ -2207,6 +2253,8 @@ export default {
       gridClasses,
       imageHeightClass,
       answerModeStyles,
+      isHeaderCollapsed,
+      toggleHeaderCollapse,
     };
   },
 };
