@@ -20,6 +20,11 @@ class RegenerateQuestionController extends Controller
      */
     public function regenerate(Request $request)
     {
+        \Log::info('Api/RegenerateQuestionController@regenerate called', [
+            'user_id' => optional(\Auth::user())->id,
+            'params' => $request->all(),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'depictsId' => 'required|string|regex:/^Q[0-9]+$/',
         ]);

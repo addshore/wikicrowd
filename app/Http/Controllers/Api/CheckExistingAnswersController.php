@@ -19,6 +19,11 @@ class CheckExistingAnswersController extends Controller
      */
     public function checkManualAnswers(Request $request)
     {
+        \Log::info('Api/CheckExistingAnswersController@checkManualAnswers called', [
+            'user_id' => optional(\Auth::user())->id,
+            'params' => $request->all(),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'category' => 'required|string',
             'qid' => 'required|string|regex:/^Q[0-9]+$/',

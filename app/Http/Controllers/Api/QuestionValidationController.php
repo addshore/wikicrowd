@@ -12,6 +12,11 @@ class QuestionValidationController extends Controller
 {
     public function validateAndCleanup(Request $request)
     {
+        \Log::info('Api/QuestionValidationController@validateAndCleanup called', [
+            'user_id' => optional(\Auth::user())->id,
+            'params' => $request->all(),
+        ]);
+
         $request->validate([
             'question_ids' => 'required|array',
             'question_ids.*' => 'integer|exists:questions,id',

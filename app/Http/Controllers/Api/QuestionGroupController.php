@@ -35,6 +35,8 @@ class QuestionGroupController extends Controller
     }
 
     public function index() {
+        \Log::info('Api/QuestionGroupController@index called');
+
         $groups = QuestionGroup::whereNull('parent')->with(['subGroups' => function($query){
             $query->withCount(['question as unanswered' => function($query){
                 $query->doesntHave('answer');

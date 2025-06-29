@@ -14,6 +14,7 @@ class YamlSpecController extends BaseController
      */
     public function index(): JsonResponse
     {
+        \Log::info('Api/YamlSpecController@index called');
         $yamlUrl = 'https://commons.wikimedia.org/wiki/User:Addshore/wikicrowd.yaml?action=raw';
         $yamlContent = @file_get_contents($yamlUrl);
         if ($yamlContent === false) {

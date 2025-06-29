@@ -20,6 +20,11 @@ class AnswerController extends Controller
      */
     public function store(Request $request)
     {
+        \Log::info('Api/AnswerController@store called', [
+            'user_id' => optional(\Auth::user())->id,
+            'params' => $request->all(),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'question_id' => 'required|exists:App\Models\Question,id',
             'answer' => 'required|in:yes,no,skip,yes-preferred',
@@ -78,6 +83,11 @@ class AnswerController extends Controller
      */
     public function bulkStore(Request $request)
     {
+        \Log::info('Api/AnswerController@bulkStore called', [
+            'user_id' => optional(\Auth::user())->id,
+            'params' => $request->all(),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'answers' => 'required|array|min:1',
             'answers.*.question_id' => 'required|exists:App\\Models\\Question,id',

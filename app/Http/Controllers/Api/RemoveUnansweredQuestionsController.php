@@ -19,6 +19,11 @@ class RemoveUnansweredQuestionsController extends Controller
      */
     public function clear(Request $request)
     {
+        \Log::info('Api/RemoveUnansweredQuestionsController@clear called', [
+            'user_id' => optional(\Auth::user())->id,
+            'params' => $request->all(),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'groupName' => 'required|string',
         ]);

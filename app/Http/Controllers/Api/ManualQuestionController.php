@@ -24,6 +24,11 @@ class ManualQuestionController extends Controller
      */
     public function createAndAnswer(Request $request)
     {
+        \Log::info('Api/ManualQuestionController@createAndAnswer called', [
+            'user_id' => optional(\Auth::user())->id,
+            'params' => $request->all(),
+        ]);
+
         $v = Validator::make($request->all(), [
             'category' => 'required|string',
             'qid' => 'required|string|regex:/^Q[0-9]+$/',
@@ -76,6 +81,11 @@ class ManualQuestionController extends Controller
      */
     public function bulkCreateAndAnswer(Request $request)
     {
+        \Log::info('Api/ManualQuestionController@bulkCreateAndAnswer called', [
+            'user_id' => optional(\Auth::user())->id,
+            'params' => $request->all(),
+        ]);
+
         $v = Validator::make($request->all(), [
             'answers' => 'required|array|min:1',
             'answers.*.category' => 'required|string',

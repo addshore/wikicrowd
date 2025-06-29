@@ -25,6 +25,11 @@ class QuestionController extends Controller
 
     private function getGroupDesiredIdUnanswered($groupName, $desiredId, array $seenIds = []) // seenIds might be used for its next_question
     {
+        \Log::info('getGroupDesiredIdUnanswered called', [
+            'groupName' => $groupName,
+            'desiredId' => $desiredId,
+            'seenIds' => $seenIds,
+        ]);
         $groupId = QuestionGroup::where('name', '=', $groupName)->firstOrFail()->id;
         return Question::where('question_group_id', '=', $groupId)
             ->doesntHave('answer')
@@ -55,6 +60,12 @@ class QuestionController extends Controller
      */
     public function show(Request $request, string $groupName, int $desiredId = null)
     {
+        \Log::info('Api/QuestionController@show called', [
+            'groupName' => $groupName,
+            'desiredId' => $desiredId,
+            'user_id' => optional(\Auth::user())->id,
+            'params' => $request->all(),
+        ]);
         $user = Auth::user();
         $question = null;
 
@@ -105,6 +116,12 @@ class QuestionController extends Controller
      */
     public function getGroupQuestions(Request $request, $groupName, $desiredId = null)
     {
+        \Log::info('Api/QuestionController@getGroupQuestions called', [
+            'groupName' => $groupName,
+            'desiredId' => $desiredId,
+            'user_id' => optional(\Auth::user())->id,
+            'params' => $request->all(),
+        ]);
         $seenIdsInput = $request->input('seen_ids'); // Get raw input as string (e.g., "1,2,3") or null
         $seenIds = [];
         if (is_string($seenIdsInput) && !empty($seenIdsInput)) {
