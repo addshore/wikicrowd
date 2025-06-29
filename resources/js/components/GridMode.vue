@@ -24,6 +24,11 @@
 
       <!-- Collapsed Header Controls -->
       <div v-show="isHeaderCollapsed" class="flex items-center justify-start space-x-2 p-2 border-t border-gray-200 overflow-x-auto">
+        <AnswerModeButtons
+          v-model:answer-mode="answerMode"
+          v-model:remove-superclasses="removeSuperclasses"
+          class="flex-shrink-0"
+        />
         <GridControlBar
           :pending-answers-count="pendingAnswers.length"
           :selected-count="Array.from(selected).filter(id => !answered.has(id)).length"
