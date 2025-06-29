@@ -52,10 +52,7 @@ class CheckExistingAnswersController extends Controller
             $question = Question::where('unique_id', $uniqueId)->first();
             
             if ($question) {
-                // Check if the current user has already answered this question
-                $answer = Answer::where('question_id', $question->id)
-                    ->where('user_id', $user ? $user->id : null)
-                    ->first();
+                $answer = Answer::where('question_id', $question->id)->first();
                 
                 if ($answer) {
                     $existingAnswers[$mediainfoId] = $answer->answer;
