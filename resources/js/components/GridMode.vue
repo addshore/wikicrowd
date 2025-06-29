@@ -1,7 +1,8 @@
 <template>
   <div class="p-4 w-full max-w-none mx-auto">
     <div class="sticky top-0 z-20 bg-white bg-opacity-95 pb-2 mb-2 shadow">
-      <div class="flex justify-end p-1">
+      <!-- Collapse/Expand Button - Top Left -->
+      <div class="flex items-center p-1">
         <button @click="toggleHeaderCollapse" class="p-1 text-gray-500 hover:text-gray-700">
           <svg v-if="!isHeaderCollapsed" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
@@ -10,25 +11,36 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
-      </div>
-
-      <div v-show="isHeaderCollapsed" class="flex items-center justify-between p-2 border-t border-gray-200">
-        <div class="flex items-center">
-          <span v-if="images.length > 0 && images[0]?.properties?.depicts_id" class="text-sm font-semibold">
-            Depicting: {{ images[0].properties.depicts_id }} - {{ images[0]?.properties?.depicts_name }}
-          </span>
-          <span v-else class="text-sm font-semibold">
-            Grid Mode
-          </span>
+        <div v-show="isHeaderCollapsed" class="flex items-center space-x-2 ml-2 flex-grow">
+            <div v-if="images.length > 0 && images[0]?.properties?.depicts_id" class="text-sm font-semibold">
+              <a :href="'https://www.wikidata.org/wiki/' + images[0].properties.depicts_id" target="_blank" class="text-blue-600 hover:underline">
+                {{ images[0].properties.depicts_id }}
+              </a>
+              <span v-if="images[0]?.properties?.depicts_name"> - {{ images[0].properties.depicts_name }}</span>
+            </div>
+            <span v-else class="text-sm font-semibold">Grid Mode</span>
         </div>
-        <button @click="toggleHeaderCollapse" class="p-1 text-gray-500 hover:text-gray-700">
-           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
       </div>
 
-      <div v-show="!isHeaderCollapsed">
+      <!-- Collapsed Header Controls -->
+      <div v-show="isHeaderCollapsed" class="flex items-center justify-start space-x-2 p-2 border-t border-gray-200 overflow-x-auto">
+        <GridControlBar
+          :pending-answers-count="pendingAnswers.length"
+          :selected-count="Array.from(selected).filter(id => !answered.has(id)).length"
+          @save="onSaveClickHandler"
+          @clear-answered="clearAnswered"
+          class="flex-shrink-0"
+        />
+        <AutoSaveSettings
+          v-model:auto-save="autoSave"
+          v-model:auto-save-delay="autoSaveDelay"
+          class="flex-shrink-0"
+        />
+        <ImageSizeControl v-model:image-size="imageSize" class="flex-shrink-0" />
+      </div>
+
+      <!-- Expanded Header Content -->
+      <div v-show="!isHeaderCollapsed" class="px-2">
         <DepictsHeader
           :depicts-id="images[0]?.properties?.depicts_id"
           :depicts-name="images[0]?.properties?.depicts_name"
