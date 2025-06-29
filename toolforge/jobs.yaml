@@ -1,20 +1,20 @@
 - name: queue-high
   image: php8.2
-  command: php /data/project/wikicrowd/src/artisan queue:work-resilient --queue=high,default --tries=3
+  command: php /data/project/wikicrowd/public_html/artisan queue:work-resilient --queue=high,default --tries=3
   continuous: true
   emails: all
   replicas: 2
   no-filelog: true
 - name: queue
   image: php8.2
-  command: php /data/project/wikicrowd/src/artisan queue:work-resilient --queue=high,default,low --tries=3
+  command: php /data/project/wikicrowd/public_html/artisan queue:work-resilient --queue=high,default,low --tries=3
   continuous: true
   emails: all
   replicas: 2
   no-filelog: true
 - name: schedule
   image: php8.2
-  command: php /data/project/wikicrowd/src/artisan schedule:work
+  command: php /data/project/wikicrowd/public_html/artisan schedule:work
   continuous: true
   emails: all
   no-filelog: true
