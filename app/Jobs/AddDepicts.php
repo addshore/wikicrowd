@@ -32,6 +32,7 @@ class AddDepicts implements ShouldQueue
     private ?string $rank;
     private bool $removeSuperclasses;
     private array $logContext;
+    private ?string $editGroupId;
 
     /**
      * Create a new job instance.
@@ -41,18 +42,21 @@ class AddDepicts implements ShouldQueue
     public function __construct(
         int $answerId,
         ?string $rank = null,
-        bool $removeSuperclasses = false
+        bool $removeSuperclasses = false,
+        ?string $editGroupId = null
     )
     {
         $this->answerId = $answerId;
         $this->rank = $rank;
         $this->removeSuperclasses = $removeSuperclasses;
-        
+        $this->editGroupId = $editGroupId;
+
         // Initialize logging context
         $this->logContext = [
             'answer' => $this->answerId,
             'rank' => $this->rank,
             'rm_superclasses' => $this->removeSuperclasses,
+            'editGroupId' => $this->editGroupId,
         ];
     }
 
@@ -180,7 +184,7 @@ class AddDepicts implements ShouldQueue
             // Remove superclass statements if option is enabled and we found any
             if($this->removeSuperclasses && !empty($superclassStatements)) {
                 $this->logContext['superclass_statements'] = count($superclassStatements);
-                $editInfo = new EditInfo("Removing superclass depicts before adding more specific one");
+                $editInfo = new EditInfo($this->getEditInfoSummary("Removing superclass depicts before adding more specific one"));
                 foreach($superclassStatements as $superclassStatement) {
                     $superclassId = $superclassStatement->getMainSnak()->getDataValue()->getEntityId()->getSerialization();
                     $this->logContext['removing_superclass'] = $superclassId;
@@ -210,7 +214,7 @@ class AddDepicts implements ShouldQueue
                 }
                 $qid = $question->properties['depicts_id'];
                 $this->logContext['manual_cat'] = $cat;
-                $editInfo = new EditInfo("From custom inputs [[:$cat]] and [[wikidata:$qid]]");
+                $editInfo = new EditInfo($this->getEditInfoSummary("From custom inputs [[:$cat]] and [[wikidata:$qid]]"));
             }
             
             \Log::info("Creating new depicts statement", $this->logContext);
@@ -251,9 +255,10 @@ class AddDepicts implements ShouldQueue
                 $preferredPrefix = 'Marking prominent (preferred rank). ';
                 if ($editInfo !== null) {
                     $summary = $editInfo->getSummary();
+                    // The summary already contains the edit group details, so we just prepend.
                     $editInfo = new EditInfo($preferredPrefix . $summary, true);
                 } else {
-                    $editInfo = new EditInfo($preferredPrefix, true);
+                    $editInfo = new EditInfo($this->getEditInfoSummary($preferredPrefix), true);
                 }
                 $statement = new Statement($snak, null, null, $createdClaimGuid);
                 $statement->setRank(Statement::RANK_PREFERRED);
@@ -308,5 +313,13 @@ class AddDepicts implements ShouldQueue
         }
         
         return $parentQids;
+    }
+
+    private function getEditInfoSummary(string $summary): string
+    {
+        if ($this->editGroupId) {
+            return $summary . " ([[:toolforge:editgroups/b/wikicrowd/{$this->editGroupId}|details]])";
+        }
+        return $summary;
     }
 }
