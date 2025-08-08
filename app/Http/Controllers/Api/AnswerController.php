@@ -29,6 +29,7 @@ class AnswerController extends Controller
             'question_id' => 'required|exists:App\Models\Question,id',
             'answer' => 'required|in:yes,no,skip,yes-preferred',
             'remove_superclasses' => 'boolean',
+            'edit_group_id' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -60,8 +61,9 @@ class AnswerController extends Controller
                 $parentGroupName = $question->group->parentGroup->name;
                 $rank = ($answerValue === 'yes-preferred') ? 'preferred' : null;
                 $removeSuperclasses = $request->boolean('remove_superclasses', false);
+                $editGroupId = $request->input('edit_group_id');
                 if ($parentGroupName === 'depicts') {
-                    dispatch(new AddDepicts($storedAnswer->id, $rank, $removeSuperclasses));
+                    dispatch(new AddDepicts($storedAnswer->id, $rank, $removeSuperclasses, $editGroupId));
                 }
             } else {
                 // Log if group or parentGroup is missing, as jobs might not be dispatched correctly
@@ -93,6 +95,7 @@ class AnswerController extends Controller
             'answers.*.question_id' => 'required|exists:App\\Models\\Question,id',
             'answers.*.answer' => 'required|in:yes,no,skip,yes-preferred',
             'remove_superclasses' => 'boolean',
+            'edit_group_id' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -131,8 +134,9 @@ class AnswerController extends Controller
                     $parentGroupName = $question->group->parentGroup->name;
                     $rank = ($answerData['answer'] === 'yes-preferred') ? 'preferred' : null;
                     $removeSuperclasses = $request->boolean('remove_superclasses', false);
+                    $editGroupId = $request->input('edit_group_id');
                     if ($parentGroupName === 'depicts') {
-                        dispatch(new AddDepicts($storedAnswer->id, $rank, $removeSuperclasses));
+                        dispatch(new AddDepicts($storedAnswer->id, $rank, $removeSuperclasses, $editGroupId));
                     }
                 } else if ($question) {
                     \Log::warning("Question {$question->id} is missing group or parentGroup information. Answer ID: {$storedAnswer->id}");

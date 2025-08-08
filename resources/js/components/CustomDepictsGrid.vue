@@ -37,7 +37,7 @@
       </form>
     </div>
     <div class='w-full'>
-      <GridMode v-if="showGrid && canShowGrid()" :manual-category="manualCategory" :manual-qid="manualQid" :manual-mode="true" :load-all="loadAll" :key="gridKey" />
+      <GridMode v-if="showGrid && canShowGrid()" :manual-category="manualCategory" :manual-qid="manualQid" :manual-mode="true" :load-all="loadAll" :key="gridKey" :edit-group-id="editGroupId" />
     </div>
   </div>
 </template>
@@ -46,6 +46,7 @@
 import { ref, onMounted, computed } from 'vue';
 import GridMode from './GridMode.vue';
 
+const editGroupId = ref('');
 const manualCategory = ref('');
 const manualQid = ref('');
 const showGrid = ref(false);
@@ -461,6 +462,7 @@ function canShowGrid() {
 }
 
 onMounted(async () => {
+  editGroupId.value = [...Array(12)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
   const categoryParam = getQueryParam('category');
   const itemParam = getQueryParam('item');
   const autoParam = getQueryParam('auto');
