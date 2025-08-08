@@ -205,6 +205,9 @@ class AddDepicts implements ShouldQueue
             $editInfo = null;
             if (!empty($question->properties['manual']) && !empty($question->properties['category']) && !empty($question->properties['depicts_id'])) {
                 $cat = $question->properties['category'];
+                if (stripos($cat, 'Category:') !== 0) {
+                    $cat = 'Category:' . $cat;
+                }
                 $qid = $question->properties['depicts_id'];
                 $this->logContext['manual_cat'] = $cat;
                 $editInfo = new EditInfo("From custom inputs [[:$cat]] and [[wikidata:$qid]]");
