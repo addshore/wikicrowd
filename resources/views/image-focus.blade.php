@@ -40,6 +40,12 @@
             @else
                 window.apiToken = null;
             @endif
+
+            const groupName = document.getElementById('question-container')?.dataset.groupName;
+            const offlineQuestions = localStorage.getItem(`wikicrowd-questions-${groupName}`);
+            if (offlineQuestions) {
+                window.offlineQuestions = JSON.parse(offlineQuestions);
+            }
             // JavaScript will be in the yes-no-maybe-buttons component
             // and interact with the elements here.
         </script>

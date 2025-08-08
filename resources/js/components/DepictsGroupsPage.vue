@@ -16,6 +16,16 @@
       </ul>
     </div>
 
+    <div class="mb-4">
+        <div class="font-semibold text-base mb-1 text-gray-900 dark:text-gray-100">Offline Mode</div>
+        <div class="flex gap-2">
+            <button @click="exportOfflineData" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">Export Offline Data</button>
+            <input type="file" @change="importOfflineData" accept=".json" class="hidden" ref="importFile">
+            <button @click="triggerImport" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">Import Offline Data</button>
+            <button @click="syncOfflineAnswers" class="bg-purple-600 text-white px-4 py-2 rounded font-bold hover:bg-purple-700">Sync Offline Answers</button>
+        </div>
+    </div>
+
     <DepictsGroupsFromYaml />
 
     <DepictsCustom />
@@ -44,6 +54,118 @@ import DepictsCustom from '../components/DepictsCustom.vue';
 
 const stats = ref({ questions: 0, answers: 0, edits: 0, users: 0 });
 const isAuthed = ref(false);
+const importFile = ref(null);
+
+function exportOfflineData() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith('wikicrowd-')) {
+      data[key] = localStorage.getItem(key);
+    }
+  }
+
+  const dataStr = JSON.stringify(data, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(dataBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'wikicrowd-offline-data.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function importOfflineData(event) {
+  const file = event.target.files[0];
+  if (!file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      for (const key in data) {
+        if (key.startsWith('wikicrowd-')) {
+          localStorage.setItem(key, data[key]);
+        }
+      }
+      alert('Successfully imported offline data.');
+    } catch (error) {
+      console.error('Error importing offline data:', error);
+      alert('Failed to import offline data. The file might be corrupted.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function triggerImport() {
+  importFile.value.click();
+}
+
+async function syncOfflineAnswers() {
+  const offlineAnswers = JSON.parse(localStorage.getItem('wikicrowd-answers-offline') || '[]');
+  if (offlineAnswers.length === 0) {
+    alert('No offline answers to sync.');
+    return;
+  }
+
+  const regularAnswers = offlineAnswers.filter(a => a.type === 'regular');
+  const manualAnswers = offlineAnswers.filter(a => a.type === 'manual');
+
+  let allSucceeded = true;
+
+  if (regularAnswers.length > 0) {
+    try {
+      const response = await fetch('/api/answers/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${window.apiToken}`,
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        },
+        body: JSON.stringify({ answers: regularAnswers.map(({ type, ...rest }) => rest) }),
+      });
+      if (!response.ok) {
+        allSucceeded = false;
+        alert('Failed to sync regular answers.');
+      }
+    } catch (error) {
+      allSucceeded = false;
+      console.error('Error syncing regular answers:', error);
+      alert('An error occurred while syncing regular answers.');
+    }
+  }
+
+  if (manualAnswers.length > 0) {
+    try {
+      const response = await fetch('/api/manual-question/bulk-answer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${window.apiToken}`,
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        },
+        body: JSON.stringify({ answers: manualAnswers.map(({ type, ...rest }) => rest) }),
+      });
+      if (!response.ok) {
+        allSucceeded = false;
+        alert('Failed to sync manual answers.');
+      }
+    } catch (error) {
+      allSucceeded = false;
+      console.error('Error syncing manual answers:', error);
+      alert('An error occurred while syncing manual answers.');
+    }
+  }
+
+  if (allSucceeded) {
+    localStorage.removeItem('wikicrowd-answers-offline');
+    alert('Successfully synced all offline answers.');
+  }
+}
 
 onMounted(async () => {
   isAuthed.value = window.apiToken !== null;

@@ -25,6 +25,11 @@
       </template>
     </div>
     <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">Unanswered: {{ sub.unanswered }}</div>
+    <div class="mt-auto flex justify-end">
+        <button @click.prevent.stop="downloadQuestions" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs">
+            Download
+        </button>
+    </div>
     <div v-if="sub.example_question && sub.example_question.properties && sub.example_question.properties.img_url" class="mb-2 flex justify-center">
       <img :src="sub.example_question.properties.img_url" alt="Sample" class="rounded max-h-32 object-contain border" />
     </div>
@@ -34,6 +39,7 @@
 <script setup>
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
+
 const props = defineProps({
   sub: { type: Object, required: true },
   emojiForDifficulty: { type: Function, required: true },
@@ -41,8 +47,32 @@ const props = defineProps({
   getCategoryName: { type: Function, required: true },
   getWikidataUrl: { type: Function, required: true },
 });
-// Expose props for template destructuring
+
 const { sub, emojiForDifficulty, getCategoryUrl, getCategoryName, getWikidataUrl } = props;
+
+async function downloadQuestions() {
+  const groupName = props.sub.route_name || props.sub.name;
+  console.log('downloading questions for', groupName);
+
+  try {
+    const response = await fetch(`/api/questions/${groupName}?count=9999`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    const questions = data.questions;
+
+    if (questions && questions.length > 0) {
+      localStorage.setItem(`wikicrowd-questions-${groupName}`, JSON.stringify(questions));
+      alert(`Successfully downloaded ${questions.length} questions for ${groupName}.`);
+    } else {
+      alert(`No questions found for ${groupName}.`);
+    }
+  } catch (error) {
+    console.error('Error downloading questions:', error);
+    alert(`Failed to download questions for ${groupName}.`);
+  }
+}
 </script>
 
 <style scoped>

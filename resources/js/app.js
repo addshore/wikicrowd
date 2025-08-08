@@ -10,7 +10,11 @@ import ToastNotification from './components/ToastNotification.vue';
 console.log('Vue app is starting...');
 
 if (document.getElementById('image-focus-vue-root')) {
-  const gridApp = createApp(GridMode);
+  const props = {};
+  if (window.offlineQuestions) {
+    props.questions = window.offlineQuestions;
+  }
+  const gridApp = createApp(GridMode, props);
   gridApp.mount('#image-focus-vue-root');
 }
 

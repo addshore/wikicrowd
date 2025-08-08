@@ -31,13 +31,14 @@
         <div class="flex gap-2">
           <button type='submit' class='flex-1 bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded font-bold' title="Loads images dynamically, a bit below the fold">Dynamic grid</button>
           <button type='button' @click="generateFullGrid" class='flex-1 bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded font-bold' title="Loads all images in the category and its subcategories">Full grid</button>
+          <button type='button' @click="downloadQuestions" class='flex-1 bg-purple-600 dark:bg-purple-700 text-white px-4 py-2 rounded font-bold' title="Download all questions for this custom grid">Download</button>
         </div>
         <div v-if="autoError" class="mt-2 text-red-600 dark:text-red-400 text-sm">{{ autoError }}</div>
         <div v-if="categoryQidWarning" class="mt-2 text-red-600 dark:text-red-400 text-sm">{{ categoryQidWarning }}</div>
       </form>
     </div>
     <div class='w-full'>
-      <GridMode v-if="showGrid && canShowGrid()" :manual-category="manualCategory" :manual-qid="manualQid" :manual-mode="true" :load-all="loadAll" :key="gridKey" />
+      <GridMode v-if="showGrid && canShowGrid()" :manual-category="manualCategory" :manual-qid="manualQid" :manual-mode="true" :load-all="loadAll" :key="gridKey" @questions-loaded="onQuestionsLoaded" />
     </div>
   </div>
 </template>
@@ -51,6 +52,22 @@ const manualQid = ref('');
 const showGrid = ref(false);
 const gridKey = ref(0); // Used to force re-render of GridMode
 const loadAll = ref(false); // New data property
+const loadedQuestions = ref([]);
+
+function onQuestionsLoaded(questions) {
+  loadedQuestions.value = questions;
+}
+
+async function downloadQuestions() {
+  if (loadedQuestions.value.length === 0) {
+    alert('No questions loaded to download.');
+    return;
+  }
+
+  const groupName = `custom-${manualCategory.value.replace('Category:', '')}-${manualQid.value}`;
+  localStorage.setItem(`wikicrowd-questions-${groupName}`, JSON.stringify(loadedQuestions.value));
+  alert(`Successfully downloaded ${loadedQuestions.value.length} questions for the custom grid.`);
+}
 
 // --- Auto error state ---
 const autoError = ref('');

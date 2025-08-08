@@ -187,9 +187,11 @@ export default {
     manualCategory: { type: String, default: '' },
     manualQid: { type: String, default: '' },
     manualMode: { type: Boolean, default: false },
-    loadAll: { type: Boolean, default: false }
+    loadAll: { type: Boolean, default: false },
+    questions: { type: Array, default: null }
   },
-  setup(props) {
+  emits: ['questions-loaded'],
+  setup(props, { emit }) {
     const images = ref([]);
     const seenIds = ref([]);
     const allLoaded = ref(false);
@@ -537,6 +539,7 @@ export default {
       if (added < count && !allLoaded.value) {
         await fetchBatchAndFill(count - added);
       }
+      emit('questions-loaded', images.value);
       // Use setTimeout to prevent infinite recursion
       setTimeout(() => {
         ensureViewportFilled();
@@ -578,6 +581,24 @@ export default {
       // UI updates are now deferred until after successful API call.
       // The mode that will be used if the call is successful.
       const finalAnswerMode = modeOverride || selectedMode[image.id] || answerMode.value;
+
+      if (!navigator.onLine) {
+        console.log('Offline, saving answer to local storage');
+        const offlineAnswers = JSON.parse(localStorage.getItem('wikicrowd-answers-offline') || '[]');
+        offlineAnswers.push({
+          question_id: image.id,
+          answer: finalAnswerMode,
+          remove_superclasses: removeSuperclasses.value,
+          type: 'regular'
+        });
+        localStorage.setItem('wikicrowd-answers-offline', JSON.stringify(offlineAnswers));
+
+        answered.value.add(image.id);
+        answeredMode[image.id] = finalAnswerMode;
+        selected.value.delete(image.id);
+        delete selectedMode[image.id];
+        return;
+      }
 
       const url = '/api/answers';
       const options = {
@@ -747,6 +768,7 @@ export default {
       } finally {
         if (!foundAny) loading.value = false;
       }
+      emit('questions-loaded', images.value);
     }
 
     async function fetchImageInfoInBatches(allPageIds) {
@@ -951,6 +973,28 @@ export default {
     const sendAnswerManual = async (image, modeOverride = null) => {
       // UI updates are now deferred until after successful API call.
       const finalAnswerMode = modeOverride || selectedMode[image.id] || answerMode.value;
+
+      if (!navigator.onLine) {
+        console.log('Offline, saving manual answer to local storage');
+        const offlineAnswers = JSON.parse(localStorage.getItem('wikicrowd-answers-offline') || '[]');
+        offlineAnswers.push({
+          category: props.manualCategory,
+          qid: props.manualQid,
+          mediainfo_id: image.properties.mediainfo_id,
+          img_url: image.properties.img_url,
+          answer: finalAnswerMode,
+          remove_superclasses: removeSuperclasses.value,
+          manual: true,
+          type: 'manual'
+        });
+        localStorage.setItem('wikicrowd-answers-offline', JSON.stringify(offlineAnswers));
+
+        answered.value.add(image.id);
+        answeredMode[image.id] = finalAnswerMode;
+        selected.value.delete(image.id);
+        delete selectedMode[image.id];
+        return;
+      }
 
       const url = '/api/manual-question/answer';
       const options = {
@@ -1947,6 +1991,14 @@ export default {
       window.addEventListener('mouseup', handleMouseUp);
       window.addEventListener('touchmove', processDragTouchMove, { passive: false });
       window.addEventListener('touchend', processDragTouchEnd);
+
+      if (props.questions) {
+        images.value = props.questions;
+        allLoaded.value = true;
+        loading.value = false;
+        emit('questions-loaded', images.value);
+        return;
+      }
 
 
       if (props.manualMode) {
