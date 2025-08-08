@@ -49,7 +49,7 @@ class AddDepicts implements ShouldQueue
         $this->answerId = $answerId;
         $this->rank = $rank;
         $this->removeSuperclasses = $removeSuperclasses;
-        $this->editGroupId = $editGroupId ?? bin2hex(random_bytes(6));
+        $this->editGroupId = $editGroupId;
 
         // Initialize logging context
         $this->logContext = [
@@ -314,6 +314,9 @@ class AddDepicts implements ShouldQueue
 
     private function getEditInfoSummary(string $summary): string
     {
-        return $summary . " ([[:toolforge:editgroups/b/wikicrowd/{$this->editGroupId}|details]])";
+        if ($this->editGroupId) {
+            return $summary . " ([[:toolforge:editgroups/b/wikicrowd/{$this->editGroupId}|details]])";
+        }
+        return $summary;
     }
 }

@@ -36,6 +36,7 @@ class ManualQuestionController extends Controller
             'img_url' => 'required|url',
             'answer' => 'required|in:yes,no,skip,yes-preferred',
             'remove_superclasses' => 'boolean',
+            'edit_group_id' => 'nullable|string|max:255',
         ]);
         if ($v->fails()) {
             return response()->json(['message' => 'Invalid input', 'errors' => $v->errors()], 422);
@@ -70,7 +71,8 @@ class ManualQuestionController extends Controller
             // Check for superclass depicts
             $rank = ($request->input('answer') === 'yes-preferred') ? 'preferred' : null;
             $removeSuperclasses = $request->boolean('remove_superclasses', false);
-            dispatch(new \App\Jobs\AddDepicts($answer->id, $rank, $removeSuperclasses));
+            $editGroupId = $request->input('edit_group_id');
+            dispatch(new \App\Jobs\AddDepicts($answer->id, $rank, $removeSuperclasses, $editGroupId));
         }
 
         return response()->json(['message' => 'Question answered', 'question_id' => $question->id, 'answer_id' => $answer->id]);
@@ -94,6 +96,7 @@ class ManualQuestionController extends Controller
             'answers.*.img_url' => 'required|url',
             'answers.*.answer' => 'required|in:yes,no,skip,yes-preferred',
             'remove_superclasses' => 'boolean',
+            'edit_group_id' => 'nullable|string|max:255',
         ]);
         if ($v->fails()) {
             return response()->json(['message' => 'Invalid input', 'errors' => $v->errors()], 422);
@@ -143,7 +146,8 @@ class ManualQuestionController extends Controller
             if ($input['answer'] === 'yes' || $input['answer'] === 'yes-preferred') {
                 $rank = ($input['answer'] === 'yes-preferred') ? 'preferred' : null;
                 $removeSuperclasses = $request->boolean('remove_superclasses', false);
-                dispatch(new \App\Jobs\AddDepicts($answer->id, $rank, $removeSuperclasses));
+                $editGroupId = $request->input('edit_group_id');
+                dispatch(new \App\Jobs\AddDepicts($answer->id, $rank, $removeSuperclasses, $editGroupId));
             }
             $results[] = [
                 'question_id' => $question->id,
