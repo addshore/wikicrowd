@@ -48,7 +48,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useOfflineMode } from '../composables/useOfflineMode';
 import GridMode from './GridMode.vue';
 
-const { isOfflineModeEnabled } = useOfflineMode();
+const { isOfflineModeEnabled, updateOfflineStats } = useOfflineMode();
 const manualCategory = ref('');
 const manualQid = ref('');
 const showGrid = ref(false);
@@ -69,6 +69,7 @@ async function downloadQuestions() {
   const groupName = `custom-${manualCategory.value.replace('Category:', '')}-${manualQid.value}`;
   localStorage.setItem(`wikicrowd-questions-${groupName}`, JSON.stringify(loadedQuestions.value));
   alert(`Successfully downloaded ${loadedQuestions.value.length} questions for the custom grid.`);
+  updateOfflineStats();
 }
 
 // --- Auto error state ---

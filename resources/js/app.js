@@ -6,7 +6,7 @@ import DepictsGroupsFromYaml from './components/DepictsGroupsFromYaml.vue';
 import DepictsGroupsPage from './components/DepictsGroupsPage.vue';
 import CustomDepictsGrid from './components/CustomDepictsGrid.vue';
 import ToastNotification from './components/ToastNotification.vue';
-import OfflineModeToggle from './components/OfflineModeToggle.vue';
+import OfflineModeManager from './components/OfflineModeManager.vue';
 
 console.log('Vue app is starting...');
 
@@ -34,9 +34,9 @@ if (document.getElementById('custom-depicts-grid-vue-root')) {
   customGridApp.mount('#custom-depicts-grid-vue-root');
 }
 
-if (document.getElementById('offline-mode-toggle-root')) {
-    const offlineModeToggleApp = createApp(OfflineModeToggle);
-    offlineModeToggleApp.mount('#offline-mode-toggle-root');
+if (document.getElementById('offline-mode-manager-root')) {
+    const offlineModeManagerApp = createApp(OfflineModeManager);
+    offlineModeManagerApp.mount('#offline-mode-manager-root');
 }
 
 // Mount the ToastNotification component

@@ -16,7 +16,7 @@
         @else
             <a href="{{ route('login') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white sm:text-gray-700 sm:dark:text-gray-500 sm:hover:bg-transparent sm:dark:hover:bg-transparent sm:underline">Login</a>
         @endauth
-        <div id="offline-mode-toggle-root" class="block px-4 py-2 text-sm text-gray-700 sm:px-0 sm:py-0"></div>
+        <div id="offline-mode-manager-root" class="block px-4 py-2 text-sm text-gray-700 sm:px-0 sm:py-0"></div>
         <button id="dark-mode-toggle" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white sm:ml-2 sm:w-auto sm:text-base sm:p-1 sm:rounded-md sm:border-0 sm:text-gray-700 sm:dark:text-gray-300 hover:sm:bg-gray-100 dark:hover:sm:bg-gray-700" onclick="toggleDarkMode()" title="Toggle dark mode"><span class="sm:hidden">🌓 Mode Toggle</span><span class="hidden sm:inline">🌓</span></button>
     </div>
 

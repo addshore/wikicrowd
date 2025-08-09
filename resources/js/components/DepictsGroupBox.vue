@@ -41,7 +41,7 @@ import { useOfflineMode } from '../composables/useOfflineMode';
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
 
-const { isOfflineModeEnabled } = useOfflineMode();
+const { isOfflineModeEnabled, updateOfflineStats } = useOfflineMode();
 
 const props = defineProps({
   sub: { type: Object, required: true },
@@ -78,6 +78,7 @@ async function downloadQuestions() {
     if (questions && questions.length > 0) {
       localStorage.setItem(`wikicrowd-questions-${groupName}`, JSON.stringify(questions));
       alert(`Successfully downloaded ${questions.length} questions for ${groupName}.`);
+      updateOfflineStats();
     } else {
       alert(`No questions found for ${groupName}.`);
     }

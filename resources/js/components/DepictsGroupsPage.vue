@@ -23,6 +23,7 @@
             <input type="file" @change="importOfflineData" accept=".json" class="hidden" ref="importFile">
             <button @click="triggerImport" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">Import Offline Data</button>
             <button @click="syncOfflineAnswers" class="bg-purple-600 text-white px-4 py-2 rounded font-bold hover:bg-purple-700">Sync Offline Answers</button>
+            <button @click="clearOfflineData" class="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700">Clear Offline Data</button>
         </div>
     </div>
 
@@ -53,7 +54,7 @@ import { useOfflineMode } from '../composables/useOfflineMode';
 import DepictsGroupsFromYaml from '../components/DepictsGroupsFromYaml.vue';
 import DepictsCustom from '../components/DepictsCustom.vue';
 
-const { isOfflineModeEnabled } = useOfflineMode();
+const { isOfflineModeEnabled, updateOfflineStats } = useOfflineMode();
 const stats = ref({ questions: 0, answers: 0, edits: 0, users: 0 });
 const isAuthed = ref(false);
 const importFile = ref(null);
@@ -93,6 +94,7 @@ function importOfflineData(event) {
         }
       }
       alert('Successfully imported offline data.');
+      updateOfflineStats();
     } catch (error) {
       console.error('Error importing offline data:', error);
       alert('Failed to import offline data. The file might be corrupted.');
@@ -166,7 +168,23 @@ async function syncOfflineAnswers() {
   if (allSucceeded) {
     localStorage.removeItem('wikicrowd-answers-offline');
     alert('Successfully synced all offline answers.');
+    updateOfflineStats();
   }
+}
+
+function clearOfflineData() {
+    if (confirm('Are you sure you want to delete all offline questions and answers? This cannot be undone.')) {
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('wikicrowd-')) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        alert('All offline data has been cleared.');
+        updateOfflineStats();
+    }
 }
 
 onMounted(async () => {

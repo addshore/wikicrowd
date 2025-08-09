@@ -155,6 +155,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue';
+import { useOfflineMode } from '../composables/useOfflineMode';
 import FullscreenImageView from './FullscreenImageView.vue';
 import AnswerModeButtons from './AnswerModeButtons.vue';
 import ImageSizeControl from './ImageSizeControl.vue';
@@ -192,6 +193,7 @@ export default {
   },
   emits: ['questions-loaded'],
   setup(props, { emit }) {
+    const { updateOfflineStats } = useOfflineMode();
     const images = ref([]);
     const seenIds = ref([]);
     const allLoaded = ref(false);
@@ -597,6 +599,7 @@ export default {
         answeredMode[image.id] = finalAnswerMode;
         selected.value.delete(image.id);
         delete selectedMode[image.id];
+        updateOfflineStats();
         return;
       }
 
@@ -923,6 +926,7 @@ export default {
               }
               
               console.log(`[CustomGrid] Added ${imagesWithoutAnswers.length}/${candidateImages.length} images from ${fullCatName} (${candidateImages.length - imagesWithoutAnswers.length} already answered)`);
+              emit('questions-loaded', images.value);
             }
           }
         }
@@ -993,6 +997,7 @@ export default {
         answeredMode[image.id] = finalAnswerMode;
         selected.value.delete(image.id);
         delete selectedMode[image.id];
+        updateOfflineStats();
         return;
       }
 
