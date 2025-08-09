@@ -70,9 +70,22 @@ async function downloadQuestions() {
   }
 
   isDownloading.value = true;
-  downloadProgress.value = 'Saving question data...';
+  downloadProgress.value = 'Fetching metadata...';
 
   try {
+    // 1. Fetch and store metadata if it doesn't exist
+    if (!localStorage.getItem('wikicrowd-api-groups') || !localStorage.getItem('wikicrowd-api-depicts-yaml-spec')) {
+        const [groupsResp, yamlResp] = await Promise.all([
+            fetch('/api/groups'),
+            fetch('/api/depicts/yaml-spec')
+        ]);
+        const groupsData = await groupsResp.json();
+        const yamlData = await yamlResp.json();
+        localStorage.setItem('wikicrowd-api-groups', JSON.stringify(groupsData));
+        localStorage.setItem('wikicrowd-api-depicts-yaml-spec', JSON.stringify(yamlData));
+    }
+
+    downloadProgress.value = 'Saving question data...';
     const groupName = `custom-${manualCategory.value.replace('Category:', '')}-${manualQid.value}`;
     localStorage.setItem(`wikicrowd-questions-${groupName}`, JSON.stringify(loadedQuestions.value));
     updateOfflineStats();

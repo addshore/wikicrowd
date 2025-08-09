@@ -192,7 +192,8 @@ async function importOfflineData(event) {
         }
 
         updateOfflineStats();
-        alert('Successfully imported offline data.');
+        alert('Successfully imported offline data. The page will now reload to apply the changes.');
+        window.location.reload();
 
     } catch (error) {
         console.error('Error importing offline data:', error);

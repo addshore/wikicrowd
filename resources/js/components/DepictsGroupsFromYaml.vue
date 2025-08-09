@@ -181,6 +181,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useOfflineMode } from '../composables/useOfflineMode';
 import DepictsGroupBox from './DepictsGroupBox.vue';
 import WikidataLabel from './WikidataLabel.vue';
 import { generateDepictsUpQueryUrl, generateDepictsDownQueryUrl } from '../sparqlQueries.js';
@@ -243,29 +244,48 @@ const getWikidataUrl = (qid) => {
 
 // Build mergedQuestions on mount
 onMounted(async () => {
-  try {
-    // Start both requests simultaneously and parse responses in parallel
-    const [groupsResp, yamlResp] = await Promise.all([
-      fetch('/api/groups'),
-      fetch('/api/depicts/yaml-spec')
-    ]);
-    
-    // Parse both responses in parallel
-    const [groupsData, yamlSpecData] = await Promise.all([
-      groupsResp.json(),
-      yamlResp.json()
-    ]);
-    
-    // Assign the parsed data
-    groupsApiData.value = groupsData;
-    yamlData.value = yamlSpecData;
-    levels.value = yamlSpecData.global?.levels || {};
-  } catch (error) {
-    console.error('Error loading data:', error);
-    // Set empty values so loading state clears
-    groupsApiData.value = {};
-    yamlData.value = { questions: [] };
-    levels.value = {};
+  const { isOfflineModeEnabled } = useOfflineMode();
+
+  if (isOfflineModeEnabled.value) {
+    console.log('Offline mode enabled, loading group data from localStorage.');
+    const localGroups = localStorage.getItem('wikicrowd-api-groups');
+    const localYaml = localStorage.getItem('wikicrowd-api-depicts-yaml-spec');
+
+    if (localGroups && localYaml) {
+        groupsApiData.value = JSON.parse(localGroups);
+        yamlData.value = JSON.parse(localYaml);
+        levels.value = yamlData.value.global?.levels || {};
+    } else {
+        console.error('Offline data for groups not found in localStorage.');
+        // Set empty values so loading state clears and user sees a message
+        groupsApiData.value = {};
+        yamlData.value = { questions: [] };
+        levels.value = {};
+        // Optionally, show a more explicit error to the user
+        alert('Could not find offline group data. Please go online and use the "Download" button on a group to save the necessary data for offline use.');
+    }
+  } else {
+    try {
+        // Online mode: fetch from network
+        const [groupsResp, yamlResp] = await Promise.all([
+        fetch('/api/groups'),
+        fetch('/api/depicts/yaml-spec')
+        ]);
+
+        const [groupsData, yamlSpecData] = await Promise.all([
+        groupsResp.json(),
+        yamlResp.json()
+        ]);
+
+        groupsApiData.value = groupsData;
+        yamlData.value = yamlSpecData;
+        levels.value = yamlSpecData.global?.levels || {};
+    } catch (error) {
+        console.error('Error loading data:', error);
+        groupsApiData.value = {};
+        yamlData.value = { questions: [] };
+        levels.value = {};
+    }
   }
 
   // Build mergedQuestions

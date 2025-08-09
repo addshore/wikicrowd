@@ -62,9 +62,23 @@ const { sub, emojiForDifficulty, getCategoryUrl, getCategoryName, getWikidataUrl
 async function downloadQuestions() {
   const groupName = props.sub.route_name || props.sub.name;
   isDownloading.value = true;
-  downloadProgress.value = 'Fetching question data...';
+  downloadProgress.value = 'Fetching metadata...';
 
   try {
+    // 1. Fetch and store metadata if it doesn't exist
+    if (!localStorage.getItem('wikicrowd-api-groups') || !localStorage.getItem('wikicrowd-api-depicts-yaml-spec')) {
+        const [groupsResp, yamlResp] = await Promise.all([
+            fetch('/api/groups'),
+            fetch('/api/depicts/yaml-spec')
+        ]);
+        const groupsData = await groupsResp.json();
+        const yamlData = await yamlResp.json();
+        localStorage.setItem('wikicrowd-api-groups', JSON.stringify(groupsData));
+        localStorage.setItem('wikicrowd-api-depicts-yaml-spec', JSON.stringify(yamlData));
+    }
+
+    // 2. Fetch question data
+    downloadProgress.value = 'Fetching question data...';
     const headers = {
         'Accept': 'application/json',
     };
