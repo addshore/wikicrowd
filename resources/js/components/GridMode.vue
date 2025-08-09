@@ -193,7 +193,7 @@ export default {
   },
   emits: ['questions-loaded'],
   setup(props, { emit }) {
-    const { updateOfflineStats } = useOfflineMode();
+    const { isOfflineModeEnabled, updateOfflineStats } = useOfflineMode();
     const images = ref([]);
     const seenIds = ref([]);
     const allLoaded = ref(false);
@@ -584,8 +584,8 @@ export default {
       // The mode that will be used if the call is successful.
       const finalAnswerMode = modeOverride || selectedMode[image.id] || answerMode.value;
 
-      if (!navigator.onLine) {
-        console.log('Offline, saving answer to local storage');
+      if (isOfflineModeEnabled.value) {
+        console.log('Offline mode enabled, saving answer to local storage');
         const offlineAnswers = JSON.parse(localStorage.getItem('wikicrowd-answers-offline') || '[]');
         offlineAnswers.push({
           question_id: image.id,
@@ -978,8 +978,8 @@ export default {
       // UI updates are now deferred until after successful API call.
       const finalAnswerMode = modeOverride || selectedMode[image.id] || answerMode.value;
 
-      if (!navigator.onLine) {
-        console.log('Offline, saving manual answer to local storage');
+      if (isOfflineModeEnabled.value) {
+        console.log('Offline mode enabled, saving manual answer to local storage');
         const offlineAnswers = JSON.parse(localStorage.getItem('wikicrowd-answers-offline') || '[]');
         offlineAnswers.push({
           category: props.manualCategory,
@@ -2005,6 +2005,14 @@ export default {
         return;
       }
 
+      if (isOfflineModeEnabled.value) {
+        // If offline mode is ON and no questions were passed as props,
+        // it means there's no local data for this group.
+        // We should not fetch from the network.
+        loading.value = false;
+        allLoaded.value = true; // This will show the "EmptyState" component
+        return;
+      }
 
       if (props.manualMode) {
         fetchManualImages().then(() => {
