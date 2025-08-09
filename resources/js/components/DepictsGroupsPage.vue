@@ -19,12 +19,20 @@
     <div v-if="isOfflineModeEnabled" class="mb-4">
         <div class="font-semibold text-base mb-1 text-gray-900 dark:text-gray-100">Offline Mode</div>
         <div class="flex gap-2">
-            <button @click="exportOfflineData" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">Export Offline Data</button>
+            <button @click="exportOfflineData" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700" :disabled="isExporting || isImporting">
+                <span v-if="!isExporting">Export Offline Data</span>
+                <span v-else>Exporting...</span>
+            </button>
             <input type="file" @change="importOfflineData" accept=".json" class="hidden" ref="importFile">
-            <button @click="triggerImport" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">Import Offline Data</button>
-            <button @click="syncOfflineAnswers" class="bg-purple-600 text-white px-4 py-2 rounded font-bold hover:bg-purple-700">Sync Offline Answers</button>
-            <button @click="clearOfflineData" class="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700">Clear Offline Data</button>
+            <button @click="triggerImport" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700" :disabled="isExporting || isImporting">
+                <span v-if="!isImporting">Import Offline Data</span>
+                <span v-else>Importing...</span>
+            </button>
+            <button @click="syncOfflineAnswers" class="bg-purple-600 text-white px-4 py-2 rounded font-bold hover:bg-purple-700" :disabled="isExporting || isImporting">Sync Offline Answers</button>
+            <button @click="clearOfflineData" class="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700" :disabled="isExporting || isImporting">Clear Offline Data</button>
         </div>
+        <div v-if="isExporting" class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ exportProgress }}</div>
+        <div v-if="isImporting" class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ importProgress }}</div>
     </div>
 
     <DepictsGroupsFromYaml />
@@ -58,49 +66,143 @@ const { isOfflineModeEnabled, updateOfflineStats } = useOfflineMode();
 const stats = ref({ questions: 0, answers: 0, edits: 0, users: 0 });
 const isAuthed = ref(false);
 const importFile = ref(null);
+const isExporting = ref(false);
+const exportProgress = ref('');
+const isImporting = ref(false);
+const importProgress = ref('');
 
-function exportOfflineData() {
-  const data = {};
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key.startsWith('wikicrowd-')) {
-      data[key] = localStorage.getItem(key);
+async function exportOfflineData() {
+  isExporting.value = true;
+  exportProgress.value = 'Collecting data from local storage...';
+
+  try {
+    const data = {
+        localStorage: {},
+        imageData: {}
+    };
+
+    // 1. Get localStorage data
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key.startsWith('wikicrowd-')) {
+        data.localStorage[key] = localStorage.getItem(key);
+      }
     }
-  }
 
-  const dataStr = JSON.stringify(data, null, 2);
-  const dataBlob = new Blob([dataStr], { type: 'application/json' });
-  const url = URL.createObjectURL(dataBlob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'wikicrowd-offline-data.json';
-  link.click();
-  URL.revokeObjectURL(url);
+    // 2. Collect all unique image URLs
+    exportProgress.value = 'Collecting image URLs...';
+    const imageUrls = new Set();
+    for (const key in data.localStorage) {
+        if (key.startsWith('wikicrowd-questions-')) {
+            const questions = JSON.parse(data.localStorage[key]);
+            questions.forEach(q => {
+                if (q.properties && q.properties.img_url) {
+                    imageUrls.add(q.properties.img_url);
+                }
+            });
+        }
+    }
+
+    // 3. Get images from cache and convert to Base64
+    const urlsArray = Array.from(imageUrls);
+    const totalImages = urlsArray.length;
+    const cache = await caches.open('wikicrowd-images-v1');
+
+    for (let i = 0; i < totalImages; i++) {
+        const url = urlsArray[i];
+        exportProgress.value = `Processing image ${i + 1} of ${totalImages}...`;
+        const cachedResponse = await cache.match(url);
+        if (cachedResponse) {
+            const blob = await cachedResponse.blob();
+            data.imageData[url] = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+    }
+
+    // 4. Create and download the file
+    exportProgress.value = 'Creating download file...';
+    const dataStr = JSON.stringify(data, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const blobUrl = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = 'wikicrowd-offline-data.json';
+    link.click();
+    URL.revokeObjectURL(blobUrl);
+
+  } catch (error) {
+      console.error('Error exporting offline data:', error);
+      alert('An error occurred during export.');
+  } finally {
+      isExporting.value = false;
+      exportProgress.value = '';
+  }
 }
 
-function importOfflineData(event) {
-  const file = event.target.files[0];
-  if (!file) {
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const data = JSON.parse(e.target.result);
-      for (const key in data) {
-        if (key.startsWith('wikicrowd-')) {
-          localStorage.setItem(key, data[key]);
-        }
-      }
-      alert('Successfully imported offline data.');
-      updateOfflineStats();
-    } catch (error) {
-      console.error('Error importing offline data:', error);
-      alert('Failed to import offline data. The file might be corrupted.');
+async function importOfflineData(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        return;
     }
-  };
-  reader.readAsText(file);
+
+    isImporting.value = true;
+    importProgress.value = 'Reading file...';
+
+    try {
+        const fileContent = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+        });
+
+        importProgress.value = 'Parsing data...';
+        const data = JSON.parse(fileContent);
+
+        // 1. Restore localStorage
+        if (data.localStorage) {
+            for (const key in data.localStorage) {
+                if (key.startsWith('wikicrowd-')) {
+                    localStorage.setItem(key, data.localStorage[key]);
+                }
+            }
+        }
+
+        // 2. Restore images from Base64 to cache
+        if (data.imageData) {
+            const urls = Object.keys(data.imageData);
+            const totalImages = urls.length;
+            const cache = await caches.open('wikicrowd-images-v1');
+
+            for (let i = 0; i < totalImages; i++) {
+                const url = urls[i];
+                const base64String = data.imageData[url];
+                importProgress.value = `Importing image ${i + 1} of ${totalImages}...`;
+                try {
+                    const response = await fetch(base64String);
+                    await cache.put(url, response);
+                } catch (e) {
+                    console.error(`Failed to import and cache image ${url}:`, e);
+                }
+            }
+        }
+
+        updateOfflineStats();
+        alert('Successfully imported offline data.');
+
+    } catch (error) {
+        console.error('Error importing offline data:', error);
+        alert('Failed to import offline data. The file might be corrupted or in the wrong format.');
+    } finally {
+        isImporting.value = false;
+        importProgress.value = '';
+        // Reset file input so user can import the same file again if needed
+        event.target.value = '';
+    }
 }
 
 function triggerImport() {

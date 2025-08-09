@@ -55,3 +55,13 @@ if (document.getElementById('toast-notifications')) {
   toastApp.mount('#toast-notifications');
   console.log('ToastNotification div created and component mounted.');
 }
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, err => {
+            console.log('ServiceWorker registration failed: ', err);
+        });
+    });
+}

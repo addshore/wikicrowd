@@ -26,9 +26,12 @@
     </div>
     <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">Unanswered: {{ sub.unanswered }}</div>
     <div v-if="isOfflineModeEnabled" class="mt-auto flex justify-end">
-        <button @click.prevent.stop="downloadQuestions" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs">
+        <button v-if="!isDownloading" @click.prevent.stop="downloadQuestions" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs">
             Download
         </button>
+        <div v-else class="text-xs text-gray-500 dark:text-gray-400">
+            {{ downloadProgress }}
+        </div>
     </div>
     <div v-if="sub.example_question && sub.example_question.properties && sub.example_question.properties.img_url" class="mb-2 flex justify-center">
       <img :src="sub.example_question.properties.img_url" alt="Sample" class="rounded max-h-32 object-contain border" />
@@ -37,11 +40,14 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import { useOfflineMode } from '../composables/useOfflineMode';
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
 
 const { isOfflineModeEnabled, updateOfflineStats } = useOfflineMode();
+const isDownloading = ref(false);
+const downloadProgress = ref('');
 
 const props = defineProps({
   sub: { type: Object, required: true },
@@ -55,7 +61,8 @@ const { sub, emojiForDifficulty, getCategoryUrl, getCategoryName, getWikidataUrl
 
 async function downloadQuestions() {
   const groupName = props.sub.route_name || props.sub.name;
-  console.log('downloading questions for', groupName);
+  isDownloading.value = true;
+  downloadProgress.value = 'Fetching question data...';
 
   try {
     const headers = {
@@ -68,6 +75,7 @@ async function downloadQuestions() {
     if (!response.ok) {
         if (response.status === 401) {
             alert('You must be logged in to download questions.');
+            isDownloading.value = false;
             return;
         }
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -77,14 +85,36 @@ async function downloadQuestions() {
 
     if (questions && questions.length > 0) {
       localStorage.setItem(`wikicrowd-questions-${groupName}`, JSON.stringify(questions));
-      alert(`Successfully downloaded ${questions.length} questions for ${groupName}.`);
       updateOfflineStats();
+
+      // Now download images
+      const imageUrls = questions.map(q => q.properties.img_url).filter(Boolean);
+      const totalImages = imageUrls.length;
+      const cache = await caches.open('wikicrowd-images-v1');
+
+      for (let i = 0; i < totalImages; i++) {
+        const url = imageUrls[i];
+        downloadProgress.value = `Downloading image ${i + 1} of ${totalImages}...`;
+        try {
+            const imageResponse = await fetch(url);
+            if (imageResponse.ok) {
+                await cache.put(url, imageResponse);
+            }
+        } catch (e) {
+            console.error(`Failed to fetch and cache image ${url}:`, e);
+        }
+      }
+
+      alert(`Successfully downloaded ${questions.length} questions and attempted to download ${totalImages} images for ${groupName}.`);
     } else {
       alert(`No questions found for ${groupName}.`);
     }
   } catch (error) {
     console.error('Error downloading questions:', error);
     alert(`Failed to download questions for ${groupName}.`);
+  } finally {
+    isDownloading.value = false;
+    downloadProgress.value = '';
   }
 }
 </script>

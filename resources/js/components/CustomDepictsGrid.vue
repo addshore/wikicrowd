@@ -29,10 +29,11 @@
           </ul>
         </div>
         <div class="flex gap-2">
-          <button type='submit' class='flex-1 bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded font-bold' title="Loads images dynamically, a bit below the fold">Dynamic grid</button>
-          <button type='button' @click="generateFullGrid" class='flex-1 bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded font-bold' title="Loads all images in the category and its subcategories">Full grid</button>
-          <button v-if="isOfflineModeEnabled" type='button' @click="downloadQuestions" class='flex-1 bg-purple-600 dark:bg-purple-700 text-white px-4 py-2 rounded font-bold' title="Download all questions for this custom grid">Download</button>
+          <button type='submit' class='flex-1 bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded font-bold' title="Loads images dynamically, a bit below the fold" :disabled="isDownloading">Dynamic grid</button>
+          <button type='button' @click="generateFullGrid" class='flex-1 bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded font-bold' title="Loads all images in the category and its subcategories" :disabled="isDownloading">Full grid</button>
+          <button v-if="isOfflineModeEnabled && !isDownloading" type='button' @click="downloadQuestions" class='flex-1 bg-purple-600 dark:bg-purple-700 text-white px-4 py-2 rounded font-bold' title="Download all questions for this custom grid">Download</button>
         </div>
+        <div v-if="isDownloading" class="mt-2 text-center text-gray-700 dark:text-gray-300">{{ downloadProgress }}</div>
         <div v-if="autoError" class="mt-2 text-red-600 dark:text-red-400 text-sm">{{ autoError }}</div>
         <div v-if="categoryQidWarning" class="mt-2 text-red-600 dark:text-red-400 text-sm">{{ categoryQidWarning }}</div>
       </form>
@@ -49,6 +50,8 @@ import { useOfflineMode } from '../composables/useOfflineMode';
 import GridMode from './GridMode.vue';
 
 const { isOfflineModeEnabled, updateOfflineStats } = useOfflineMode();
+const isDownloading = ref(false);
+const downloadProgress = ref('');
 const manualCategory = ref('');
 const manualQid = ref('');
 const showGrid = ref(false);
@@ -66,10 +69,40 @@ async function downloadQuestions() {
     return;
   }
 
-  const groupName = `custom-${manualCategory.value.replace('Category:', '')}-${manualQid.value}`;
-  localStorage.setItem(`wikicrowd-questions-${groupName}`, JSON.stringify(loadedQuestions.value));
-  alert(`Successfully downloaded ${loadedQuestions.value.length} questions for the custom grid.`);
-  updateOfflineStats();
+  isDownloading.value = true;
+  downloadProgress.value = 'Saving question data...';
+
+  try {
+    const groupName = `custom-${manualCategory.value.replace('Category:', '')}-${manualQid.value}`;
+    localStorage.setItem(`wikicrowd-questions-${groupName}`, JSON.stringify(loadedQuestions.value));
+    updateOfflineStats();
+
+    // Now download images
+    const imageUrls = loadedQuestions.value.map(q => q.properties.img_url).filter(Boolean);
+    const totalImages = imageUrls.length;
+    const cache = await caches.open('wikicrowd-images-v1');
+
+    for (let i = 0; i < totalImages; i++) {
+        const url = imageUrls[i];
+        downloadProgress.value = `Downloading image ${i + 1} of ${totalImages}...`;
+        try {
+            const imageResponse = await fetch(url);
+            if (imageResponse.ok) {
+                await cache.put(url, imageResponse);
+            }
+        } catch (e) {
+            console.error(`Failed to fetch and cache image ${url}:`, e);
+        }
+    }
+
+    alert(`Successfully downloaded ${loadedQuestions.value.length} questions and attempted to download ${totalImages} images for the custom grid.`);
+  } catch (error) {
+      console.error('Error downloading custom questions:', error);
+      alert('An error occurred while downloading the custom questions.');
+  } finally {
+      isDownloading.value = false;
+      downloadProgress.value = '';
+  }
 }
 
 // --- Auto error state ---
