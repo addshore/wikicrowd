@@ -16,7 +16,7 @@
       </ul>
     </div>
 
-    <div class="mb-4">
+    <div v-if="isOfflineModeEnabled" class="mb-4">
         <div class="font-semibold text-base mb-1 text-gray-900 dark:text-gray-100">Offline Mode</div>
         <div class="flex gap-2">
             <button @click="exportOfflineData" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">Export Offline Data</button>
@@ -49,9 +49,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useOfflineMode } from '../composables/useOfflineMode';
 import DepictsGroupsFromYaml from '../components/DepictsGroupsFromYaml.vue';
 import DepictsCustom from '../components/DepictsCustom.vue';
 
+const { isOfflineModeEnabled } = useOfflineMode();
 const stats = ref({ questions: 0, answers: 0, edits: 0, users: 0 });
 const isAuthed = ref(false);
 const importFile = ref(null);

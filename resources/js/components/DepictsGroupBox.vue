@@ -25,7 +25,7 @@
       </template>
     </div>
     <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">Unanswered: {{ sub.unanswered }}</div>
-    <div class="mt-auto flex justify-end">
+    <div v-if="isOfflineModeEnabled" class="mt-auto flex justify-end">
         <button @click.prevent.stop="downloadQuestions" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs">
             Download
         </button>
@@ -37,8 +37,11 @@
 </template>
 
 <script setup>
+import { useOfflineMode } from '../composables/useOfflineMode';
 import WikidataLabel from './WikidataLabel.vue';
 import WikidataDescription from './WikidataDescription.vue';
+
+const { isOfflineModeEnabled } = useOfflineMode();
 
 const props = defineProps({
   sub: { type: Object, required: true },
@@ -55,9 +58,19 @@ async function downloadQuestions() {
   console.log('downloading questions for', groupName);
 
   try {
-    const response = await fetch(`/api/questions/${groupName}?count=9999`);
+    const headers = {
+        'Accept': 'application/json',
+    };
+    if (window.apiToken) {
+        headers['Authorization'] = `Bearer ${window.apiToken}`;
+    }
+    const response = await fetch(`/api/questions/${groupName}?count=9999`, { headers });
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 401) {
+            alert('You must be logged in to download questions.');
+            return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
     const questions = data.questions;
