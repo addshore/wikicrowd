@@ -436,7 +436,9 @@ export default {
       isFetchingMore.value = true;
       let url = `/api/questions/${groupName}?count=${BATCH_SIZE}`;
       if (seenIds.value.length > 0) {
-        url += `&seen_ids=${encodeURIComponent(seenIds.value.join(','))}`;
+        // Take the last 300 seen IDs to keep the URL length manageable.
+        const seenIdsToSend = seenIds.value.slice(-300);
+        url += `&seen_ids=${encodeURIComponent(seenIdsToSend.join(','))}`;
       }
       const headers = { 'Accept': 'application/json' };
       if (apiToken) headers['Authorization'] = `Bearer ${apiToken}`;
