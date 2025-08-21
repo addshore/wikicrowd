@@ -22,16 +22,19 @@ use App\Services\SparqlQueryService;
 use Addwiki\Mediawiki\DataModel\EditInfo;
 use Wikibase\DataModel\Statement\Statement;
 use Wikibase\DataModel\Statement\StatementId;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 
-class AddDepicts implements ShouldQueue
+class AddDepicts implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private $answerId;
-    private $instancesOfAndSubclassesOf;
+    private int $answerId;
     private ?string $rank;
     private bool $removeSuperclasses;
+    private string $mediainfoId;
+    private string $depictsId;
     private array $logContext;
+    private $instancesOfAndSubclassesOf;
 
     /**
      * Create a new job instance.
@@ -40,20 +43,35 @@ class AddDepicts implements ShouldQueue
      */
     public function __construct(
         int $answerId,
+        string $mediainfoId,
+        string $depictsId,
         ?string $rank = null,
         bool $removeSuperclasses = false
-    )
-    {
+    ) {
         $this->answerId = $answerId;
         $this->rank = $rank;
         $this->removeSuperclasses = $removeSuperclasses;
-        
+        $this->mediainfoId = $mediainfoId;
+        $this->depictsId = $depictsId;
+
         // Initialize logging context
         $this->logContext = [
             'answer' => $this->answerId,
             'rank' => $this->rank,
             'rm_superclasses' => $this->removeSuperclasses,
+            'mediainfo_id' => $this->mediainfoId,
+            'depicts_id' => $this->depictsId,
         ];
+    }
+
+    /**
+     * The unique ID of the job.
+     *
+     * @return string
+     */
+    public function uniqueId()
+    {
+        return $this->mediainfoId . '-' . $this->depictsId;
     }
 
     /**
@@ -118,9 +136,9 @@ class AddDepicts implements ShouldQueue
         $mwApi = $wm->newMediawikiApiForDomain("commons.wikimedia.org", $mwAuth);
         $wbServices = $wm->newWikibaseFactoryForDomain("commons.wikimedia.org", $mwAuth);
 
-        $mid = new MediaInfoId( $question->properties['mediainfo_id'] );
+        $mid = new MediaInfoId( $this->mediainfoId );
         $depictsProperty = new PropertyId( 'P180' );
-        $depictsValue = new ItemId( $question->properties['depicts_id'] );
+        $depictsValue = new ItemId( $this->depictsId );
 
         $this->logContext['mid'] = $mid->getSerialization();
         $this->logContext['qid'] = $depictsValue->getSerialization();
