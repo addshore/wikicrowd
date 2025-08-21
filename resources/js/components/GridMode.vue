@@ -1387,9 +1387,13 @@ export default {
           reason: `Failed to load after ${MAX_IMAGE_RETRIES} retries.`
         };
 
-        // Add to batch for server validation
-        console.log(`[GridMode] Image ${image.id} permanently failed to load. Adding to validation batch.`);
-        addToFailedImagesBatch(image.id);
+        // Add to batch for server validation, but only if not in manual mode
+        if (!props.manualMode) {
+          console.log(`[GridMode] Image ${image.id} permanently failed to load. Adding to validation batch.`);
+          addToFailedImagesBatch(image.id);
+        } else {
+          console.log(`[GridMode] Image ${image.id} (manual mode) permanently failed to load. No server validation needed.`);
+        }
       }
     };
 
