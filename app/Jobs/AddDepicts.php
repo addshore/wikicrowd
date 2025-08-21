@@ -183,7 +183,7 @@ class AddDepicts implements ShouldQueue, ShouldBeUnique
                 }
                 
                 // Collect superclass statements for potential removal
-                if( $this->removeSuperclasses && in_array( $entityId->getSerialization(), $parentClasses ) ) {
+                if( $this->removeSuperclasses && in_array( $entityId->getSerialization(), $parentClasses ) && $statement->getQualifiers()->isEmpty() ) {
                     $superclassStatements[] = $statement;
                 }
             }
