@@ -46,6 +46,7 @@
         :alt="`Image ${image.id}`"
         draggable="false"
         class="object-contain align-top w-full h-full"
+        :class="{ 'checkerboard-bg': isSvg }"
         style="object-position:top"
         @load="$emit('imgLoad', image)"
         @error="$emit('imgError', image, $event)"
@@ -190,6 +191,12 @@ export default {
     }
   },
   computed: {
+    isSvg() {
+      if (!this.image.properties?.img_url) {
+        return false;
+      }
+      return this.image.properties.img_url.toLowerCase().endsWith('.svg');
+    },
     filePageUrl() {
       // For manual mode, use the title directly (e.g., "File:Example.jpg")
       if (this.image.title) {
