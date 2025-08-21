@@ -61,7 +61,13 @@ class AnswerController extends Controller
                 $rank = ($answerValue === 'yes-preferred') ? 'preferred' : null;
                 $removeSuperclasses = $request->boolean('remove_superclasses', false);
                 if ($parentGroupName === 'depicts') {
-                    dispatch(new AddDepicts($storedAnswer->id, $rank, $removeSuperclasses));
+                    dispatch(new AddDepicts(
+                        $storedAnswer->id,
+                        $question->properties['mediainfo_id'],
+                        $question->properties['depicts_id'],
+                        $rank,
+                        $removeSuperclasses
+                    ));
                 }
             } else {
                 // Log if group or parentGroup is missing, as jobs might not be dispatched correctly
@@ -132,7 +138,13 @@ class AnswerController extends Controller
                     $rank = ($answerData['answer'] === 'yes-preferred') ? 'preferred' : null;
                     $removeSuperclasses = $request->boolean('remove_superclasses', false);
                     if ($parentGroupName === 'depicts') {
-                        dispatch(new AddDepicts($storedAnswer->id, $rank, $removeSuperclasses));
+                        dispatch(new AddDepicts(
+                            $storedAnswer->id,
+                            $question->properties['mediainfo_id'],
+                            $question->properties['depicts_id'],
+                            $rank,
+                            $removeSuperclasses
+                        ));
                     }
                 } else if ($question) {
                     \Log::warning("Question {$question->id} is missing group or parentGroup information. Answer ID: {$storedAnswer->id}");
