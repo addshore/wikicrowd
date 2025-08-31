@@ -147,7 +147,7 @@ class ManualQuestionController extends Controller
                 $rank = ($input['answer'] === 'yes-preferred') ? 'preferred' : null;
                 $removeSuperclasses = $request->boolean('remove_superclasses', false);
                 $editGroupId = $request->input('edit_group_id');
-                dispatch(new \App\Jobs\AddDepicts($answer->id, $rank, $removeSuperclasses, $editGroupId));
+                dispatch(new \App\Jobs\AddDepicts($answer->id, $question->properties['mediainfo_id'], $question->properties['depicts_id'], $rank, $removeSuperclasses, $editGroupId));
             }
             $results[] = [
                 'question_id' => $question->id,

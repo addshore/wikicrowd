@@ -6,6 +6,7 @@
 /public/js/app.js.LICENSE.txt
 /storage/*.key
 /vendor
+.logs
 .env
 .env.backup
 .phpunit.result.cache
