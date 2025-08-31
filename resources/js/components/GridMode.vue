@@ -207,6 +207,10 @@ export default {
     const apiToken = window.apiToken || null;
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const answerMode = ref('yes');
+
+    const isMobile = computed(() => {
+      return /Mobi/i.test(navigator.userAgent);
+    });
     
     // Initialize removeSuperclasses - set to true by default for all routes
     const removeSuperclasses = ref(true);
@@ -596,7 +600,8 @@ export default {
           question_id: image.id,
           answer: finalAnswerMode, // Use the determined mode for the API call
           remove_superclasses: removeSuperclasses.value,
-          edit_group_id: props.editGroupId
+          edit_group_id: props.editGroupId,
+          is_mobile: isMobile.value
         })
       };
 
@@ -974,7 +979,8 @@ export default {
           answer: finalAnswerMode, // Use the determined mode
           remove_superclasses: removeSuperclasses.value,
           manual: true,
-          edit_group_id: props.editGroupId
+          edit_group_id: props.editGroupId,
+          is_mobile: isMobile.value
         })
       };
 
@@ -1083,7 +1089,8 @@ export default {
             body: JSON.stringify({
               answers,
               remove_superclasses: removeSuperclasses.value,
-              edit_group_id: props.editGroupId
+              edit_group_id: props.editGroupId,
+              is_mobile: isMobile.value
             }),
           };
           response = await fetchAnswerWithRetry(manualUrl, manualOptions);
@@ -1101,7 +1108,8 @@ export default {
             body: JSON.stringify({
               answers,
               remove_superclasses: removeSuperclasses.value,
-              edit_group_id: props.editGroupId
+              edit_group_id: props.editGroupId,
+              is_mobile: isMobile.value
             }),
           };
           response = await fetchAnswerWithRetry(regularUrl, regularOptions);
@@ -2273,6 +2281,7 @@ export default {
       answerModeStyles,
       isHeaderCollapsed,
       toggleHeaderCollapse,
+      isMobile
     };
   },
 };

@@ -34,6 +34,7 @@ class AddDepicts implements ShouldQueue, ShouldBeUnique
     private string $mediainfoId;
     private string $depictsId;
     private ?string $editGroupId;
+    private bool $isMobile;
 
     /**
      * Create a new job instance.
@@ -46,7 +47,8 @@ class AddDepicts implements ShouldQueue, ShouldBeUnique
         string $depictsId,
         ?string $rank = null,
         bool $removeSuperclasses = false,
-        ?string $editGroupId = null
+        ?string $editGroupId = null,
+        bool $isMobile = false
     ) {
         $this->answerId = $answerId;
         $this->rank = $rank;
@@ -54,6 +56,7 @@ class AddDepicts implements ShouldQueue, ShouldBeUnique
         $this->mediainfoId = $mediainfoId;
         $this->depictsId = $depictsId;
         $this->editGroupId = $editGroupId;
+        $this->isMobile = $isMobile;
 
         // Initialize logging context
         $this->logContext = [
@@ -63,6 +66,7 @@ class AddDepicts implements ShouldQueue, ShouldBeUnique
             'mediainfo_id' => $this->mediainfoId,
             'depicts_id' => $this->depictsId,
             'editGroupId' => $this->editGroupId,
+            'isMobile' => $this->isMobile,
         ];
     }
 
@@ -333,9 +337,18 @@ class AddDepicts implements ShouldQueue, ShouldBeUnique
 
     private function getEditInfoSummary(string $summary): string
     {
+        $summaryDetails = [];
         if ($this->editGroupId) {
-            return $summary . " ([[:toolforge:editgroups/b/wikicrowd/{$this->editGroupId}|details]])";
+            $summaryDetails[] = "[[:toolforge:editgroups/b/wikicrowd/{$this->editGroupId}|details]]";
         }
+        if ($this->isMobile) {
+            $summaryDetails[] = "#mobile";
+        }
+
+        if (!empty($summaryDetails)) {
+            return $summary . " (" . implode(' ', $summaryDetails) . ")";
+        }
+
         return $summary;
     }
 }

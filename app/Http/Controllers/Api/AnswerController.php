@@ -30,6 +30,7 @@ class AnswerController extends Controller
             'answer' => 'required|in:yes,no,skip,yes-preferred',
             'remove_superclasses' => 'boolean',
             'edit_group_id' => 'nullable|string|max:255',
+            'is_mobile' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -63,13 +64,15 @@ class AnswerController extends Controller
                 $removeSuperclasses = $request->boolean('remove_superclasses', false);
                 if ($parentGroupName === 'depicts') {
                     $editGroupId = $request->input('edit_group_id');
+                    $isMobile = $request->boolean('is_mobile', false);
                     dispatch(new AddDepicts(
                         $storedAnswer->id,
                         $question->properties['mediainfo_id'],
                         $question->properties['depicts_id'],
                         $rank,
                         $removeSuperclasses,
-                        $editGroupId
+                        $editGroupId,
+                        $isMobile
                     ));
                 }
             } else {
@@ -103,6 +106,7 @@ class AnswerController extends Controller
             'answers.*.answer' => 'required|in:yes,no,skip,yes-preferred',
             'remove_superclasses' => 'boolean',
             'edit_group_id' => 'nullable|string|max:255',
+            'is_mobile' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -143,13 +147,15 @@ class AnswerController extends Controller
                     $removeSuperclasses = $request->boolean('remove_superclasses', false);
                     if ($parentGroupName === 'depicts') {
                         $editGroupId = $request->input('edit_group_id');
+                        $isMobile = $request->boolean('is_mobile', false);
                         dispatch(new AddDepicts(
                             $storedAnswer->id,
                             $question->properties['mediainfo_id'],
                             $question->properties['depicts_id'],
                             $rank,
                             $removeSuperclasses,
-                            $editGroupId
+                            $editGroupId,
+                            $isMobile
                         ));
                     }
                 } else if ($question) {
