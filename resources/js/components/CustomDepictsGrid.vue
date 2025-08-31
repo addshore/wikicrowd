@@ -37,7 +37,7 @@
       </form>
     </div>
     <div class='w-full'>
-      <GridMode v-if="showGrid && canShowGrid()" :manual-category="manualCategory" :manual-qid="manualQid" :manual-mode="true" :load-all="loadAll" :key="gridKey" />
+      <GridMode v-if="showGrid && canShowGrid()" :manual-category="manualCategory" :manual-qid="manualQid" :manual-mode="true" :load-all="loadAll" :key="gridKey" :edit-group-id="editGroupId" />
     </div>
   </div>
 </template>
@@ -45,9 +45,11 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import GridMode from './GridMode.vue';
+import { randomBytes } from 'crypto';
 
 const manualCategory = ref('');
 const manualQid = ref('');
+const editGroupId = ref('');
 const showGrid = ref(false);
 const gridKey = ref(0); // Used to force re-render of GridMode
 const loadAll = ref(false); // New data property
@@ -461,6 +463,7 @@ function canShowGrid() {
 }
 
 onMounted(async () => {
+  editGroupId.value = randomBytes(6).toString('hex');
   const categoryParam = getQueryParam('category');
   const itemParam = getQueryParam('item');
   const autoParam = getQueryParam('auto');

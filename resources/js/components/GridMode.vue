@@ -187,7 +187,8 @@ export default {
     manualCategory: { type: String, default: '' },
     manualQid: { type: String, default: '' },
     manualMode: { type: Boolean, default: false },
-    loadAll: { type: Boolean, default: false }
+    loadAll: { type: Boolean, default: false },
+    editGroupId: { type: String, default: null },
   },
   setup(props) {
     const images = ref([]);
@@ -594,7 +595,8 @@ export default {
         body: JSON.stringify({
           question_id: image.id,
           answer: finalAnswerMode, // Use the determined mode for the API call
-          remove_superclasses: removeSuperclasses.value
+          remove_superclasses: removeSuperclasses.value,
+          edit_group_id: props.editGroupId
         })
       };
 
@@ -971,7 +973,8 @@ export default {
           img_url: image.properties.img_url,
           answer: finalAnswerMode, // Use the determined mode
           remove_superclasses: removeSuperclasses.value,
-          manual: true
+          manual: true,
+          edit_group_id: props.editGroupId
         })
       };
 
@@ -1079,7 +1082,8 @@ export default {
             headers,
             body: JSON.stringify({
               answers,
-              remove_superclasses: removeSuperclasses.value
+              remove_superclasses: removeSuperclasses.value,
+              edit_group_id: props.editGroupId
             }),
           };
           response = await fetchAnswerWithRetry(manualUrl, manualOptions);
@@ -1096,7 +1100,8 @@ export default {
             headers,
             body: JSON.stringify({
               answers,
-              remove_superclasses: removeSuperclasses.value
+              remove_superclasses: removeSuperclasses.value,
+              edit_group_id: props.editGroupId
             }),
           };
           response = await fetchAnswerWithRetry(regularUrl, regularOptions);
