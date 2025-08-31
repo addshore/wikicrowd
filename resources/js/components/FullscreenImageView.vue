@@ -23,6 +23,7 @@
           :src="thumbnailUrl"
           :alt="`Thumbnail ${image.id}`"
           class="max-h-[80vh] max-w-full object-contain cursor-pointer blur-sm"
+          :class="{ 'checkerboard-bg': isThumbnailSvg }"
           @click="close"
           draggable="false"
         />
@@ -31,7 +32,7 @@
           :src="imageUrl"
           :alt="`Fullscreen Image ${image.id}`"
           class="max-h-[80vh] max-w-full object-contain cursor-pointer"
-          :class="{ 'opacity-0': !highQualityLoaded }"
+          :class="{ 'opacity-0': !highQualityLoaded, 'checkerboard-bg': isSvg }"
           @click="close"
           draggable="false"
           @load="onHighQualityImageLoad"
@@ -202,6 +203,14 @@ export default {
       type: String,
       required: false,
       default: null,
+    }
+  },
+  computed: {
+    isSvg() {
+      return this.imageUrl && this.imageUrl.toLowerCase().endsWith('.svg');
+    },
+    isThumbnailSvg() {
+      return this.thumbnailUrl && this.thumbnailUrl.toLowerCase().endsWith('.svg');
     }
   },
   data() {

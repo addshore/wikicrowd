@@ -1080,7 +1080,7 @@ export default {
           const manualOptions = {
             method: 'POST',
             headers,
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               answers,
               remove_superclasses: removeSuperclasses.value,
               edit_group_id: props.editGroupId
@@ -1098,7 +1098,7 @@ export default {
           const regularOptions = {
             method: 'POST',
             headers,
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               answers,
               remove_superclasses: removeSuperclasses.value,
               edit_group_id: props.editGroupId

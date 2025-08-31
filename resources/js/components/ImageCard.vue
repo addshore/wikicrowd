@@ -46,6 +46,7 @@
         :alt="`Image ${image.id}`"
         draggable="false"
         class="object-contain align-top w-full h-full"
+        :class="{ 'checkerboard-bg': isSvg }"
         style="object-position:top"
         @load="$emit('imgLoad', image)"
         @error="$emit('imgError', image, $event)"
@@ -190,24 +191,25 @@ export default {
     }
   },
   computed: {
+    isSvg() {
+      if (!this.image.properties?.img_url) {
+        return false;
+      }
+      return this.image.properties.img_url.toLowerCase().endsWith('.svg');
+    },
     filePageUrl() {
-      // For manual mode, use the title directly (e.g., "File:Example.jpg")
+      // Prioritize using MediaInfo ID for a stable link to the entity data page.
+      if (this.image.properties?.mediainfo_id) {
+        return `https://commons.wikimedia.org/wiki/Special:EntityData/${this.image.properties.mediainfo_id}`;
+      }
+
+      // Fallback for manual mode where a title might be available but no mediainfo_id.
       if (this.image.title) {
         return `https://commons.wikimedia.org/wiki/${encodeURIComponent(this.image.title)}`;
       }
       
-      // For API mode, extract filename from img_url and construct File: page URL
-      if (this.image.properties?.img_url) {
-        const filename = this.image.properties.img_url.substring(this.image.properties.img_url.lastIndexOf('/') + 1);
-        // Remove thumbnail size prefix (e.g., "960px-" from "960px-Kitten_(9169054156).jpg")
-        const cleanedFilename = filename.replace(/^\d+px-/, '');
-        // Decode the filename to get the original name
-        const decodedFilename = decodeURIComponent(cleanedFilename);
-        return `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(decodedFilename)}`;
-      }
-      
-      // Fallback to MediaInfo if no filename available
-      return `https://commons.wikimedia.org/wiki/Special:EntityData/${this.image.properties?.mediainfo_id || this.image.id}`;
+      // If no identifier is available, do not generate a link.
+      return '#';
     }
   }
 };

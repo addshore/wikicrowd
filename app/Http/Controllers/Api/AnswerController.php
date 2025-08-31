@@ -167,8 +167,7 @@ rred' : null;
                         ));
                     }
                 } else if ($question) {
-                    \Log::warning("Question {$question->id} is missing group or
-parentGroup information. Answer ID: {$storedAnswer->id}");
+                    \Log::warning("Question {$question->id} is missing group or parentGroup information. Answer ID: {$storedAnswer->id}");
                 }
             }
             $createdAnswers[] = $storedAnswer;

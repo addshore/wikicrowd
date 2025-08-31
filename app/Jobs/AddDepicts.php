@@ -33,8 +33,6 @@ class AddDepicts implements ShouldQueue, ShouldBeUnique
     private bool $removeSuperclasses;
     private string $mediainfoId;
     private string $depictsId;
-    private array $logContext;
-    private $instancesOfAndSubclassesOf;
     private ?string $editGroupId;
 
     /**
