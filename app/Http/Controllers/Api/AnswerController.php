@@ -33,7 +33,8 @@ class AnswerController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['message' => 'The given data was invalid.', 'errors' => $validator->errors()], 422);
+            return response()->json(['message' => 'The given data was invalid.',
+ 'errors' => $validator->errors()], 422);
         }
 
         $questionId = $request->input('question_id');
@@ -44,7 +45,8 @@ class AnswerController extends Controller
         $question = Question::with('group.parentGroup')->find($questionId);
 
         if (!$question) {
-            // This case should ideally be caught by 'exists' validation, but as a safeguard:
+            // This case should ideally be caught by 'exists' validation, but as
+ a safeguard:
             return response()->json(['message' => 'Question not found.'], 404);
         }
 
@@ -56,18 +58,29 @@ class AnswerController extends Controller
 
         // Dispatch the edit job if the answer is 'yes' or 'yes-preferred'
         if ($answerValue === 'yes' || $answerValue === 'yes-preferred') {
-            // Ensure group and parentGroup are loaded. The 'with' above should handle this.
+            // Ensure group and parentGroup are loaded. The 'with' above should
+handle this.
             if ($question->group && $question->group->parentGroup) {
                 $parentGroupName = $question->group->parentGroup->name;
                 $rank = ($answerValue === 'yes-preferred') ? 'preferred' : null;
-                $removeSuperclasses = $request->boolean('remove_superclasses', false);
-                $editGroupId = $request->input('edit_group_id');
+                $removeSuperclasses = $request->boolean('remove_superclasses', f
+alse);
                 if ($parentGroupName === 'depicts') {
-                    dispatch(new AddDepicts($storedAnswer->id, $rank, $removeSuperclasses, $editGroupId));
+                    $editGroupId = $request->input('edit_group_id');
+                    dispatch(new AddDepicts(
+                        $storedAnswer->id,
+                        $question->properties['mediainfo_id'],
+                        $question->properties['depicts_id'],
+                        $rank,
+                        $removeSuperclasses,
+                        $editGroupId
+                    ));
                 }
             } else {
-                // Log if group or parentGroup is missing, as jobs might not be dispatched correctly
-                \Log::warning("Question {$question->id} is missing group or parentGroup information. Answer ID: {$storedAnswer->id}");
+                // Log if group or parentGroup is missing, as jobs might not be
+dispatched correctly
+                \Log::warning("Question {$question->id} is missing group or pare
+ntGroup information. Answer ID: {$storedAnswer->id}");
             }
         }
 
@@ -92,14 +105,16 @@ class AnswerController extends Controller
 
         $validator = Validator::make($request->all(), [
             'answers' => 'required|array|min:1',
-            'answers.*.question_id' => 'required|exists:App\\Models\\Question,id',
+            'answers.*.question_id' => 'required|exists:App\\Models\\Question,id
+',
             'answers.*.answer' => 'required|in:yes,no,skip,yes-preferred',
             'remove_superclasses' => 'boolean',
             'edit_group_id' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['message' => 'The given data was invalid.', 'errors' => $validator->errors()], 422);
+            return response()->json(['message' => 'The given data was invalid.',
+ 'errors' => $validator->errors()], 422);
         }
 
         $user = Auth::user();
@@ -126,20 +141,34 @@ class AnswerController extends Controller
         $createdAnswers = [];
         foreach ($answers as $storedAnswer) {
             // Find the original answer data for this question
-            $answerData = collect($answersData)->firstWhere('question_id', $storedAnswer->question_id);
+            $answerData = collect($answersData)->firstWhere('question_id', $stor
+edAnswer->question_id);
             if (!$answerData) continue;
-            $question = Question::with('group.parentGroup')->find($storedAnswer->question_id);
-            if ($answerData['answer'] === 'yes' || $answerData['answer'] === 'yes-preferred') {
-                if ($question && $question->group && $question->group->parentGroup) {
+            $question = Question::with('group.parentGroup')->find($storedAnswer-
+>question_id);
+            if ($answerData['answer'] === 'yes' || $answerData['answer'] === 'ye
+s-preferred') {
+                if ($question && $question->group && $question->group->parentGro
+up) {
                     $parentGroupName = $question->group->parentGroup->name;
-                    $rank = ($answerData['answer'] === 'yes-preferred') ? 'preferred' : null;
-                    $removeSuperclasses = $request->boolean('remove_superclasses', false);
-                    $editGroupId = $request->input('edit_group_id');
+                    $rank = ($answerData['answer'] === 'yes-preferred') ? 'prefe
+rred' : null;
+                    $removeSuperclasses = $request->boolean('remove_superclasses
+', false);
                     if ($parentGroupName === 'depicts') {
-                        dispatch(new AddDepicts($storedAnswer->id, $rank, $removeSuperclasses, $editGroupId));
+                        $editGroupId = $request->input('edit_group_id');
+                        dispatch(new AddDepicts(
+                            $storedAnswer->id,
+                            $question->properties['mediainfo_id'],
+                            $question->properties['depicts_id'],
+                            $rank,
+                            $removeSuperclasses,
+                            $editGroupId
+                        ));
                     }
                 } else if ($question) {
-                    \Log::warning("Question {$question->id} is missing group or parentGroup information. Answer ID: {$storedAnswer->id}");
+                    \Log::warning("Question {$question->id} is missing group or
+parentGroup information. Answer ID: {$storedAnswer->id}");
                 }
             }
             $createdAnswers[] = $storedAnswer;

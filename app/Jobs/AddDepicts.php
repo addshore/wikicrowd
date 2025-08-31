@@ -22,16 +22,19 @@ use App\Services\SparqlQueryService;
 use Addwiki\Mediawiki\DataModel\EditInfo;
 use Wikibase\DataModel\Statement\Statement;
 use Wikibase\DataModel\Statement\StatementId;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 
-class AddDepicts implements ShouldQueue
+class AddDepicts implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private $answerId;
-    private $instancesOfAndSubclassesOf;
+    private int $answerId;
     private ?string $rank;
     private bool $removeSuperclasses;
+    private string $mediainfoId;
+    private string $depictsId;
     private array $logContext;
+    private $instancesOfAndSubclassesOf;
     private ?string $editGroupId;
 
     /**
@@ -41,14 +44,17 @@ class AddDepicts implements ShouldQueue
      */
     public function __construct(
         int $answerId,
+        string $mediainfoId,
+        string $depictsId,
         ?string $rank = null,
         bool $removeSuperclasses = false,
         ?string $editGroupId = null
-    )
-    {
+    ) {
         $this->answerId = $answerId;
         $this->rank = $rank;
         $this->removeSuperclasses = $removeSuperclasses;
+        $this->mediainfoId = $mediainfoId;
+        $this->depictsId = $depictsId;
         $this->editGroupId = $editGroupId;
 
         // Initialize logging context
@@ -56,8 +62,20 @@ class AddDepicts implements ShouldQueue
             'answer' => $this->answerId,
             'rank' => $this->rank,
             'rm_superclasses' => $this->removeSuperclasses,
+            'mediainfo_id' => $this->mediainfoId,
+            'depicts_id' => $this->depictsId,
             'editGroupId' => $this->editGroupId,
         ];
+    }
+
+    /**
+     * The unique ID of the job.
+     *
+     * @return string
+     */
+    public function uniqueId()
+    {
+        return $this->mediainfoId . '-' . $this->depictsId;
     }
 
     /**
@@ -78,7 +96,7 @@ class AddDepicts implements ShouldQueue
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
-            
+
             throw $e; // Re-throw to maintain job failure behavior
         }
     }
@@ -122,9 +140,9 @@ class AddDepicts implements ShouldQueue
         $mwApi = $wm->newMediawikiApiForDomain("commons.wikimedia.org", $mwAuth);
         $wbServices = $wm->newWikibaseFactoryForDomain("commons.wikimedia.org", $mwAuth);
 
-        $mid = new MediaInfoId( $question->properties['mediainfo_id'] );
+        $mid = new MediaInfoId( $this->mediainfoId );
         $depictsProperty = new PropertyId( 'P180' );
-        $depictsValue = new ItemId( $question->properties['depicts_id'] );
+        $depictsValue = new ItemId( $this->depictsId );
 
         $this->logContext['mid'] = $mid->getSerialization();
         $this->logContext['qid'] = $depictsValue->getSerialization();
@@ -139,13 +157,13 @@ class AddDepicts implements ShouldQueue
             $superclassStatements = [];
         } else {
             $this->instancesOfAndSubclassesOf = $this->instancesOfAndSubclassesOf( $depictsValue->getSerialization() );
-            
+
             // Get parent classes (superclasses) if removal option is enabled
             $parentClasses = [];
             if($this->removeSuperclasses) {
                 $parentClasses = $this->getParentClasses( $depictsValue->getSerialization() );
             }
-            
+
             $foundDepicts = false;
             $superclassStatements = [];
             foreach( $entity->getStatements()->getByPropertyId( $depictsProperty )->toArray() as $statement ) {
@@ -167,9 +185,9 @@ class AddDepicts implements ShouldQueue
                     $foundDepicts = 'inherited';
                     break;
                 }
-                
+
                 // Collect superclass statements for potential removal
-                if( $this->removeSuperclasses && in_array( $entityId->getSerialization(), $parentClasses ) ) {
+                if( $this->removeSuperclasses && in_array( $entityId->getSerialization(), $parentClasses ) && $statement->getQualifiers()->isEmpty() ) {
                     $superclassStatements[] = $statement;
                 }
             }
@@ -204,16 +222,19 @@ class AddDepicts implements ShouldQueue
                     sleep(1); // Sleep 1 second between each edit
                 }
             }
-            
+
             // Build custom summary if manual
             $editInfo = null;
             if (!empty($question->properties['manual']) && !empty($question->properties['category']) && !empty($question->properties['depicts_id'])) {
                 $cat = $question->properties['category'];
+                if (stripos($cat, 'Category:') !== 0) {
+                    $cat = 'Category:' . $cat;
+                }
                 $qid = $question->properties['depicts_id'];
                 $this->logContext['manual_cat'] = $cat;
                 $editInfo = new EditInfo($this->getEditInfoSummary("From custom inputs [[:$cat]] and [[wikidata:$qid]]"));
             }
-            
+
             \Log::info("Creating new depicts statement", $this->logContext);
             $snak = new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) );
             try {
@@ -232,16 +253,16 @@ class AddDepicts implements ShouldQueue
             $mwServices = new MediawikiFactory( $mwApi );
 
             $pageIdentifier = new PageIdentifier( null, str_replace( 'M', '', $mid->getSerialization() ) );
-            
+
             // Track revision IDs for all edits made
             $revisionIds = [];
-            
+
             // Get revision ID after removals (if any were done)
             if($this->removeSuperclasses && !empty($superclassStatements)) {
                 $revId = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
                 $revisionIds[] = (int)$revId;
             }
-            
+
             // Get revision ID after adding the new statement
             $revId = $mwServices->newPageGetter()->getFromPageIdentifier( $pageIdentifier )->getRevisions()->getLatest()->getId();
             $revisionIds[] = (int)$revId;
@@ -281,7 +302,7 @@ class AddDepicts implements ShouldQueue
             $this->logContext['revids'] = $revisionIds;
             $this->logContext['revs'] = count($revisionIds);
             \Log::info("Creating Edit records for revisions", $this->logContext);
-            
+
             foreach($revisionIds as $revId) {
                 Edit::create([
                     'question_id' => $question->id,
@@ -289,7 +310,7 @@ class AddDepicts implements ShouldQueue
                     'revision_id' => $revId,
                 ]);
             }
-            
+
             \Log::info("AddDepicts job completed successfully", $this->logContext);
         }
     }
@@ -302,13 +323,13 @@ class AddDepicts implements ShouldQueue
     private function getParentClasses( string $itemId ) : array {
         $sparqlService = new SparqlQueryService();
         $parentClassesWithLabels = $sparqlService->getParentClassesWithLabels($itemId);
-        
+
         // Extract just the QIDs from the result
         $parentQids = [];
         foreach($parentClassesWithLabels as $item) {
             $parentQids[] = $item['qid'];
         }
-        
+
         return $parentQids;
     }
 
