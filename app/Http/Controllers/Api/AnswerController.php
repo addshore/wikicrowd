@@ -29,6 +29,7 @@ class AnswerController extends Controller
             'question_id' => 'required|exists:App\Models\Question,id',
             'answer' => 'required|in:yes,no,skip,yes-preferred',
             'remove_superclasses' => 'boolean',
+            'edit_group_id' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -61,12 +62,14 @@ class AnswerController extends Controller
                 $rank = ($answerValue === 'yes-preferred') ? 'preferred' : null;
                 $removeSuperclasses = $request->boolean('remove_superclasses', false);
                 if ($parentGroupName === 'depicts') {
+                    $editGroupId = $request->input('edit_group_id');
                     dispatch(new AddDepicts(
                         $storedAnswer->id,
                         $question->properties['mediainfo_id'],
                         $question->properties['depicts_id'],
                         $rank,
-                        $removeSuperclasses
+                        $removeSuperclasses,
+                        $editGroupId
                     ));
                 }
             } else {
@@ -99,6 +102,7 @@ class AnswerController extends Controller
             'answers.*.question_id' => 'required|exists:App\\Models\\Question,id',
             'answers.*.answer' => 'required|in:yes,no,skip,yes-preferred',
             'remove_superclasses' => 'boolean',
+            'edit_group_id' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -138,12 +142,14 @@ class AnswerController extends Controller
                     $rank = ($answerData['answer'] === 'yes-preferred') ? 'preferred' : null;
                     $removeSuperclasses = $request->boolean('remove_superclasses', false);
                     if ($parentGroupName === 'depicts') {
+                        $editGroupId = $request->input('edit_group_id');
                         dispatch(new AddDepicts(
                             $storedAnswer->id,
                             $question->properties['mediainfo_id'],
                             $question->properties['depicts_id'],
                             $rank,
-                            $removeSuperclasses
+                            $removeSuperclasses,
+                            $editGroupId
                         ));
                     }
                 } else if ($question) {
