@@ -191,6 +191,10 @@ export default {
     editGroupId: { type: String, default: '' }
   },
   setup(props) {
+    const internalEditGroupId = ref(props.editGroupId);
+    if (!internalEditGroupId.value) {
+        internalEditGroupId.value = [...Array(12)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+    }
     const images = ref([]);
     const seenIds = ref([]);
     const allLoaded = ref(false);
@@ -596,7 +600,7 @@ export default {
           question_id: image.id,
           answer: finalAnswerMode, // Use the determined mode for the API call
           remove_superclasses: removeSuperclasses.value,
-          edit_group_id: props.editGroupId
+          edit_group_id: internalEditGroupId.value
         })
       };
 
@@ -974,7 +978,7 @@ export default {
           answer: finalAnswerMode, // Use the determined mode
           remove_superclasses: removeSuperclasses.value,
           manual: true,
-          edit_group_id: props.editGroupId
+          edit_group_id: internalEditGroupId.value
         })
       };
 
@@ -1083,7 +1087,7 @@ export default {
             body: JSON.stringify({
               answers,
               remove_superclasses: removeSuperclasses.value,
-              edit_group_id: props.editGroupId
+              edit_group_id: internalEditGroupId.value
             }),
           };
           response = await fetchAnswerWithRetry(manualUrl, manualOptions);
@@ -1101,7 +1105,7 @@ export default {
             body: JSON.stringify({
               answers,
               remove_superclasses: removeSuperclasses.value,
-              edit_group_id: props.editGroupId
+              edit_group_id: internalEditGroupId.value
             }),
           };
           response = await fetchAnswerWithRetry(regularUrl, regularOptions);
