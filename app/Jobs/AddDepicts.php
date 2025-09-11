@@ -234,6 +234,9 @@ class AddDepicts implements ShouldQueue, ShouldBeUnique
             }
 
             \Log::info("Creating new depicts statement", $this->logContext);
+            if ($editInfo === null) {
+                $editInfo = new EditInfo($this->getEditInfoSummary('Adding depicts'));
+            }
             $snak = new PropertyValueSnak( $depictsProperty, new EntityIdValue( $depictsValue ) );
             try {
                 $createdClaimGuid = $wbServices->newStatementCreator()->create( $snak, $mid, $editInfo );
