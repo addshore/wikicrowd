@@ -334,7 +334,7 @@ class AddDepicts implements ShouldQueue, ShouldBeUnique
     private function getEditInfoSummary(string $summary): string
     {
         if ($this->editGroupId) {
-            return $summary . " ([[:toolforge:editgroups/b/wikicrowd/{$this->editGroupId}|details]])";
+            return $summary . " ([[:toolforge:editgroups-commons/b/wikicrowd/{$this->editGroupId}|details]])";
         }
         return $summary;
     }
