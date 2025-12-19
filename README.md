@@ -2,7 +2,7 @@
 
 The [currently deployed web app](https://wikicrowd.toolforge.org) built using Laravel.
 
-![](https://i.imgur.com/mn5wRiQ.png)
+![](https://upload.wikimedia.org/wikipedia/commons/7/70/WikiCrowd_screenshot_26_May_2025.png)
 
 `toolforge` contains documentation and resources for deploying the web app.
 
@@ -20,18 +20,26 @@ To get the dependencies you'll need to do a composer install...
 composer install
 ```
 
-If you have docker you should be able to use sail to run the development system.
+If you have docker you should be able to use sail to run the development system, `sail up -d` for the backend and `npm run watch` for the frontend.
 
 ```sh
 ./vendor/bin/sail up -d
 npm run watch
 ```
 
-On first setup you'll need to create the databases.
+On first setup you'll need to create the backend databases.
 
 ```sh
 ./vendor/bin/sail artisan migrate
 ```
+
+You should then be ready to go in terms of using the UI.
+
+Find the site at http://localhost
+
+Note: In order to have the API fully setup you'll need to make your own `.env` file, including your own mediawiki oauth details.
+
+**First questions generation?**
 
 You can then generate questions using the YAML that is on commons in the queue...
 
@@ -52,10 +60,6 @@ And also manually generate specific questions...
 ```sh
 ./vendor/bin/sail artisan job:dispatchNow GenerateDepictsQuestions "Bicycles" "[\"foo\",\"bar\"]" "/(Videos)/i" Q11442 "Bicycle (pedal-driven two-wheel)" 10 true
 ```
-
-Then find the site at http://localhost
-
-In order to have the API fully setup you'll need to make your own `.env` file, including your own mediawiki oauth details.
 
 ### Other commands
 
