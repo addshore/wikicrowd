@@ -8,6 +8,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue';
+import { fetchWikimediaRestApi } from '../wikimediaApi.js';
 
 const props = defineProps({
   qid: { type: String, required: true },
@@ -25,18 +26,17 @@ async function fetchWikidataDescription(qid) {
   try {
     loading.value = true;
     error.value = false;
-    const resp = await fetch(`https://www.wikidata.org/w/rest.php/wikibase/v1/entities/items/${qid}/descriptions_with_language_fallback/en`, {
-      redirect: 'follow'
+    const resp = await fetchWikimediaRestApi('wikidata', {
+      endpoint: 'descriptions_with_language_fallback',
+      qid,
+      lang: 'en',
     });
     if (resp.ok) {
       const data = await resp.json();
-      if (typeof data === 'string') {
-        cache[qid] = data;
-        return data;
-      }
-      if (data.value) {
-        cache[qid] = data.value;
-        return data.value;
+      const descriptionValue = typeof data === 'string' ? data : data?.value;
+      if (descriptionValue) {
+        cache[qid] = descriptionValue;
+        return descriptionValue;
       }
     }
   } catch (e) {

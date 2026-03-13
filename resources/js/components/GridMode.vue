@@ -168,6 +168,7 @@ import EmptyState from './EmptyState.vue';
 import { fetchSubclassesAndInstances, fetchDepictsForMediaInfoIds } from './depictsUtils';
 import { generateDepictsUpQueryUrl } from '../sparqlQueries.js';
 import { toastStore } from '../toastStore.js';
+import { fetchWikimediaActionApi } from '../wikimediaApi.js';
 
 export default {
   name: 'GridMode',
@@ -765,10 +766,16 @@ export default {
       while (pageIdsCopy.length > 0) {
         const currentChunkPageIds = pageIdsCopy.splice(0, 50); // Take 50 IDs
         const idsParam = currentChunkPageIds.join('|');
-        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&iiurlwidth=600&pageids=${idsParam}&format=json&origin=*`;
 
         try {
-          const resp = await fetchWithRetry(infoUrl);
+          const resp = await fetchWikimediaActionApi('commons', {
+            action: 'query',
+            prop: 'imageinfo',
+            iiprop: 'url',
+            iiurlwidth: 600,
+            pageids: idsParam,
+            format: 'json',
+          });
           const data = await resp.json();
           if (data.query && data.query.pages) {
             for (const pageId in data.query.pages) {
@@ -808,12 +815,16 @@ export default {
       }
 
       try {
-        let url = `https://commons.wikimedia.org/w/api.php?action=query&generator=categorymembers&gcmtitle=Category:${encodeURIComponent(normalizedCat)}&gcmtype=file|subcat&gcmlimit=50&prop=pageprops&format=json&origin=*`;
-        if (gcmcontinueToken) {
-          url += `&gcmcontinue=${encodeURIComponent(gcmcontinueToken)}`;
-        }
-
-        const resp = await fetchWithRetry(url);
+        const resp = await fetchWikimediaActionApi('commons', {
+          action: 'query',
+          generator: 'categorymembers',
+          gcmtitle: `Category:${normalizedCat}`,
+          gcmtype: 'file|subcat',
+          gcmlimit: 50,
+          prop: 'pageprops',
+          format: 'json',
+          gcmcontinue: gcmcontinueToken,
+        });
         const data = await resp.json();
 
         if (!data.query || !data.query.pages) {
@@ -1298,8 +1309,13 @@ export default {
         // If this is a manual mode image, we need to get the full size URL
         if (props.manualMode && image.title) {
           const filename = image.title.replace('File:', '');
-          const url = `https://commons.wikimedia.org/w/api.php?action=query&titles=File:${encodeURIComponent(filename)}&prop=imageinfo&iiprop=url&format=json&origin=*`;
-          const response = await fetch(url, { redirect: 'follow' });
+          const response = await fetchWikimediaActionApi('commons', {
+            action: 'query',
+            titles: `File:${filename}`,
+            prop: 'imageinfo',
+            iiprop: 'url',
+            format: 'json',
+          });
           const data = await response.json();
           const pages = data.query?.pages;
           if (pages) {

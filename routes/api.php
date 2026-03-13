@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\AnswerController;
 use App\Http\Controllers\Api\YamlSpecController;
 use App\Http\Controllers\Api\QuestionValidationController;
+use App\Http\Controllers\Api\WikimediaProxyController;
 use App\Models\Question;
 use App\Models\Answer;
 use App\Models\Edit;
@@ -29,6 +30,10 @@ Route::get('/groups', [QuestionGroupController::class, 'index'])->name('api.grou
 Route::get('/depicts/yaml-spec', [YamlSpecController::class, 'index'])->name('api.depicts.yaml-spec');
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/wikimedia/action', [WikimediaProxyController::class, 'action'])
+        ->name('api.wikimedia.action');
+    Route::get('/wikimedia/rest', [WikimediaProxyController::class, 'rest'])
+        ->name('api.wikimedia.rest');
     Route::get('/questions/{groupName}/{desiredId?}', [QuestionController::class, 'getGroupQuestions'])
         ->where('groupName', '(.*)')
         ->name('api.questions.show');
