@@ -27,7 +27,7 @@
         >
           &#x2715; <!-- '✕' character -->
         </button>
-        <p class="pr-3" v-html="toast.message"></p>
+        <p class="pr-3">{{ toast.message }}</p>
       </div>
     </transition-group>
   </div>
