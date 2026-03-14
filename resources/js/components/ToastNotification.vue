@@ -1,10 +1,10 @@
 <template>
-  <div class="fixed top-16 right-4 z-40 w-full max-w-xs sm:max-w-sm">
+  <div class="fixed top-2 left-1/2 -translate-x-1/2 z-40 w-full max-w-[18rem] px-2 sm:max-w-xs">
     <transition-group name="toast-fade" tag="div" class="space-y-2">
       <div
         v-for="toast in toasts"
         :key="toast.id"
-        class="p-4 rounded-md shadow-lg text-sm relative"
+        class="p-2 rounded-md shadow text-xs leading-tight relative"
         :class="{
           'bg-green-500 text-white': toast.type === 'success',
           'bg-red-500 text-white': toast.type === 'error',
@@ -15,7 +15,7 @@
       >
         <button
           @click="removeToast(toast.id)"
-          class="absolute top-1 right-1 p-1 text-xs font-bold leading-none rounded-full hover:bg-opacity-20 hover:bg-black focus:outline-none"
+          class="absolute top-0.5 right-0.5 px-1 py-0.5 text-[10px] font-bold leading-none rounded-full hover:bg-opacity-20 hover:bg-black focus:outline-none"
           :class="{
             'text-green-100 hover:text-green-50': toast.type === 'success',
             'text-red-100 hover:text-red-50': toast.type === 'error',
@@ -27,7 +27,7 @@
         >
           &#x2715; <!-- '✕' character -->
         </button>
-        <p class="pr-4" v-html="toast.message"></p>
+        <p class="pr-3" v-html="toast.message"></p>
       </div>
     </transition-group>
   </div>
