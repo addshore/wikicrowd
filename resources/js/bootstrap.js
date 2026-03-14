@@ -18,23 +18,11 @@ const getApiUserAgent = () => {
 	return 'Addbot';
 };
 
-const shouldAddApiUserAgentHeader = (rawUrl) => {
-	if (!rawUrl || typeof rawUrl !== 'string') {
-		return false;
-	}
-
-	return /\/(api|rest)\.php(?:[/?]|$)/i.test(rawUrl);
-};
-
 if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
 	const originalFetch = window.fetch.bind(window);
 
 	window.fetch = (input, init = {}) => {
 		const requestUrl = typeof input === 'string' ? input : input?.url;
-
-		if (!shouldAddApiUserAgentHeader(requestUrl)) {
-			return originalFetch(input, init);
-		}
 
 		const headers = new Headers(
 			init.headers || (typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined)
