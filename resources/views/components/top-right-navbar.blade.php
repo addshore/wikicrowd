@@ -20,6 +20,8 @@
     </div>
 
     <script>
+        window.apiUserAgent = @json(Auth::check() ? Auth::user()->username : 'Addbot');
+
         function setDarkModeClass(isDark) {
             if (isDark) {
                 document.documentElement.classList.add('dark');

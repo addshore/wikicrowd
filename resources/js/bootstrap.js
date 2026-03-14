@@ -10,6 +10,58 @@ window.axios = require('axios');
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
+const getApiUserAgent = () => {
+	if (typeof window !== 'undefined' && typeof window.apiUserAgent === 'string' && window.apiUserAgent.trim()) {
+		return window.apiUserAgent;
+	}
+
+	return 'Addbot';
+};
+
+const shouldAddApiUserAgentHeader = (rawUrl) => {
+	if (!rawUrl || typeof rawUrl !== 'string') {
+		return false;
+	}
+
+	return /\/(api|rest)\.php(?:[/?]|$)/i.test(rawUrl);
+};
+
+if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+	const originalFetch = window.fetch.bind(window);
+
+	window.fetch = (input, init = {}) => {
+		const requestUrl = typeof input === 'string' ? input : input?.url;
+
+		if (!shouldAddApiUserAgentHeader(requestUrl)) {
+			return originalFetch(input, init);
+		}
+
+		const headers = new Headers(
+			init.headers || (typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined)
+		);
+		headers.set('Api-User-Agent', getApiUserAgent());
+
+		return originalFetch(input, {
+			...init,
+			headers
+		});
+	};
+}
+
+if (window.axios?.interceptors?.request) {
+	window.axios.interceptors.request.use((config) => {
+		if (shouldAddApiUserAgentHeader(config?.url)) {
+			if (!config.headers) {
+				config.headers = {};
+			}
+
+			config.headers['Api-User-Agent'] = getApiUserAgent();
+		}
+
+		return config;
+	});
+}
+
 /**
  * Echo exposes an expressive API for subscribing to channels and listening
  * for events that are broadcast by Laravel. Echo and event broadcasting
