@@ -45,7 +45,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import GridMode from './GridMode.vue';
-import { fetchWikimediaActionApi } from '../wikimediaApi.js';
 
 const editGroupId = ref('');
 const manualCategory = ref('');
@@ -119,15 +118,9 @@ function onCategoryInput() {
 
   categorySearchTimeout = setTimeout(async () => {
     const search = manualCategory.value.replace(/^Category:/i, '');
+    const url = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(search)}&srnamespace=14&srlimit=10&format=json&origin=*`;
     try {
-      const resp = await fetchWikimediaActionApi('commons', {
-        action: 'query',
-        list: 'search',
-        srsearch: search,
-        srnamespace: 14,
-        srlimit: 10,
-        format: 'json',
-      });
+      const resp = await fetch(url, { redirect: 'follow' });
       const data = await resp.json();
       categoryResults.value = (data.query?.search || []).map(r => {
         let title = r.title.replace(/^Category:/i, '');
@@ -158,12 +151,8 @@ async function handleCategoryRedirectByParsing(isManualInputOrBlur = false) {
     : 'Category:' + manualCategory.value;
 
   try {
-    const response = await fetchWikimediaActionApi('commons', {
-      action: 'parse',
-      page: categoryForAPI,
-      prop: 'wikitext',
-      format: 'json',
-    });
+    const apiUrl = `https://commons.wikimedia.org/w/api.php?action=parse&page=${encodeURIComponent(categoryForAPI)}&prop=wikitext&format=json&origin=*`;
+    const response = await fetch(apiUrl, { redirect: 'follow' });
     if (!response.ok) {
       console.error('API error in handleCategoryRedirectByParsing (fetch not ok):', response.statusText);
       if (autoError.value.includes("redirected from")) autoError.value = '';
@@ -275,12 +264,8 @@ function onQidInput() {
   categoryQidWarning.value = '';
   qidSearchTimeout = setTimeout(async () => {
     // Use wbsearchentities API instead of REST endpoint
-    const resp = await fetchWikimediaActionApi('wikidata', {
-      action: 'wbsearchentities',
-      search: val,
-      language: 'en',
-      format: 'json',
-    });
+    const url = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(val)}&language=en&format=json&origin=*`;
+    const resp = await fetch(url, { redirect: 'follow' });
     const data = await resp.json();
     qidResults.value = (data.search || []).map(p => ({
       id: p.id,
@@ -293,12 +278,8 @@ function onQidInput() {
 
 async function checkIfCategoryQid(qid) {
   try {
-    const resp = await fetchWikimediaActionApi('wikidata', {
-      action: 'wbgetentities',
-      ids: qid,
-      props: 'claims',
-      format: 'json',
-    });
+    const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${encodeURIComponent(qid)}&props=claims&format=json&origin=*`;
+    const resp = await fetch(url, { redirect: 'follow' });
     const data = await resp.json();
     const entity = data.entities?.[qid];
     const p31 = entity?.claims?.P31;
@@ -377,12 +358,8 @@ async function autoFillCategoryFromQid() {
     return;
   }
   try {
-    const resp = await fetchWikimediaActionApi('wikidata', {
-      action: 'wbgetentities',
-      ids: qid,
-      props: 'claims',
-      format: 'json',
-    });
+    const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${encodeURIComponent(qid)}&props=claims&format=json&origin=*`;
+    const resp = await fetch(url, { redirect: 'follow' });
     const data = await resp.json();
     const entity = data.entities?.[qid];
     const p373 = entity?.claims?.P373;
@@ -441,12 +418,8 @@ async function onClickAutoFillQidFromCategory() {
     : 'Category:' + currentCategoryValue;
 
   try {
-    const resp = await fetchWikimediaActionApi('wikidata', {
-      action: 'wbgetentities',
-      sites: 'commonswiki',
-      titles: categoryForQidLookup,
-      format: 'json',
-    });
+    const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&sites=commonswiki&titles=${encodeURIComponent(categoryForQidLookup)}&format=json&origin=*`;
+    const resp = await fetch(url, { redirect: 'follow' });
     const data = await resp.json();
     const entities = data.entities || {};
     const qids = Object.keys(entities).filter(k => k.startsWith('Q'));

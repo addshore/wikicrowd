@@ -1,5 +1,4 @@
 import { fetchSubclassesAndInstances as sparqlFetchSubclassesAndInstances } from '../sparqlQueries.js';
-import { fetchWikimediaActionApi } from '../wikimediaApi.js';
 
 // Utility to fetch all subclasses/instances of a QID from Wikidata
 export async function fetchSubclassesAndInstances(qid) {
@@ -13,12 +12,8 @@ export async function fetchDepictsForMediaInfoIds(mids) {
   const depicts = {};
   for (let i = 0; i < mids.length; i += MAX_IDS) {
     const batch = mids.slice(i, i + MAX_IDS);
-    const resp = await fetchWikimediaActionApi('commons', {
-      action: 'wbgetentities',
-      format: 'json',
-      ids: batch.join('|'),
-      props: 'claims',
-    });
+    const url = 'https://commons.wikimedia.org/w/api.php?action=wbgetentities&format=json&ids=' + batch.join('|') + '&props=claims&origin=*';
+    const resp = await fetch(url, { redirect: 'follow' });
     const data = await resp.json();
     for (const mid of batch) {
       // check the mid is in the response
