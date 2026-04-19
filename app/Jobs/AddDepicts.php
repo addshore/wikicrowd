@@ -28,6 +28,12 @@ class AddDepicts implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 5;
+
+    public array $backoff = [10, 30, 60, 300];
+
+    public int $timeout = 300;
+
     private int $answerId;
     private ?string $rank;
     private bool $removeSuperclasses;
@@ -74,6 +80,35 @@ class AddDepicts implements ShouldQueue, ShouldBeUnique
     public function uniqueId()
     {
         return $this->mediainfoId . '-' . $this->depictsId;
+    }
+
+    /**
+     * The number of seconds the unique lock should be held.
+     *
+     * @return int
+     */
+    public function uniqueFor(): int
+    {
+        return 3600; // 1 hour, matching GenerateDepictsQuestions
+    }
+
+    /**
+     * Handle a permanently failed job (after $tries is exhausted).
+     *
+     * Complements the per-attempt logging inside handle(): this runs
+     * only once, on terminal failure, so operators can filter for
+     * "this job is dead" separately from "this attempt failed".
+     *
+     * @return void
+     */
+    public function failed(\Throwable $exception)
+    {
+        \Log::error("AddDepicts permanently failed", [
+            'answer_id' => $this->answerId,
+            'mediainfo_id' => $this->mediainfoId,
+            'depicts_id' => $this->depictsId,
+            'exception' => $exception->getMessage(),
+        ]);
     }
 
     /**
