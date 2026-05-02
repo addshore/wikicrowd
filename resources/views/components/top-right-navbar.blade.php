@@ -6,7 +6,7 @@
     </button>
 
     <!-- Menu items wrapper -->
-    <div id="menu-items-wrapper" class="block hidden top-0 right-0 rounded-md shadow-xl py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none sm:flex sm:items-center sm:space-x-3 z-50">
+    <div id="menu-items-wrapper" class="block hidden top-0 right-0 rounded-md shadow-xl px-3 py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none sm:flex sm:items-center sm:space-x-3 z-50">
         @auth
             <span class="block px-4 py-2 text-sm text-gray-800 dark:text-gray-300 sm:text-gray-800 sm:dark:text-gray-400 sm:px-0 sm:py-0">Hello, {{ Auth::user()->username }}!</span>
         @endauth
